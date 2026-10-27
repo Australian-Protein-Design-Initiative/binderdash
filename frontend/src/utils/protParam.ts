@@ -4,7 +4,11 @@
  */
 
 export const WARNING_CONTAINS_CYS = 'Contains Cys'
-export const WARNING_NO_TRP = 'No Trp'
+export const WARNING_LOW_EXTINCTION = 'Low extinction coefficient at 280 nm (ε₂₈₀)'
+/** Table label for WARNING_LOW_EXTINCTION. */
+export const WARNING_LOW_EXTINCTION_SHORT = 'Low ε₂₈₀'
+/** ε₂₈₀ of a single Trp; constructs below it are hard to quantify by A280. */
+export const LOW_EXTINCTION_THRESHOLD = 5500
 
 const POSITIVE_PKS: Record<string, number> = {
     Nterm: 7.5,
@@ -126,6 +130,8 @@ export function sequenceWarnings(aa: string): string[] {
     const s = codingSequenceBeforeStop(aa)
     const w: string[] = []
     if (s.includes('C')) w.push(WARNING_CONTAINS_CYS)
-    if (!s.includes('W')) w.push(WARNING_NO_TRP)
+    if (molarExtinctionCoefficient(s).reduced < LOW_EXTINCTION_THRESHOLD) {
+        w.push(WARNING_LOW_EXTINCTION)
+    }
     return w
 }

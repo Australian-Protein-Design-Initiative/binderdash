@@ -87,19 +87,26 @@ export function buildPrepareState(): PrepareSequencesStateDto {
         dna_mode: !!seqPrep.dnaMode,
         n_tags: plain(seqPrep.nTags ?? []),
         c_tags: plain(seqPrep.cTags ?? []),
-        n_terminal_prefix: seqPrep.nTerminalPrefix ?? '',
-        c_terminal_suffix: seqPrep.cTerminalSuffix ?? '',
         stop_options: collect(seqPrep, STOP_FIELDS),
         short_name_strategy: collect(seqPrep, SHORT_NAME_FIELDS),
         codon_table_id: seqPrep.selectedCodonTable ?? null,
         optimization_method: seqPrep.optimizationMethod ?? null,
-        optimization_constraints: plain(seqPrep.optimizationConstraints ?? [])
+        optimization_constraints: plain(seqPrep.optimizationConstraints ?? []),
+        // Seeds are only replayable against these exact versions: a DnaChisel
+        // upgrade can change the search order, and so the DNA for a given seed.
+        tool_versions: plain(seqPrep.optimizationToolVersions ?? {})
     }
 }
 
-/** Prepared rows for the bundle, minus the fields that only exist to drive the UI. */
+/**
+ * Prepared rows for the bundle, minus the fields that only exist to drive the UI.
+ *
+ * Each row carries the seed that produced its DNA, so the run can be replayed
+ * rather than only described.
+ */
 export function buildPreparedRows(): Array<Record<string, any>> {
     const seqPrep: any = useSeqPrepStore()
+    const seeds: Record<string, number> = seqPrep.optimizedSeedsByDesign ?? {}
     return (seqPrep.preparedRows ?? []).map((row: any) => {
         const {
             segments_aa,
@@ -109,7 +116,8 @@ export function buildPreparedRows(): Array<Record<string, any>> {
             design_filter_text,
             ...rest
         } = row
-        return plain(rest)
+        const seed = seeds[row.design_id]
+        return plain(seed != null ? { ...rest, seed } : rest)
     })
 }
 
@@ -128,10 +136,24 @@ export function applyPrepareState(state: PrepareSequencesStateDto): RestoreOutco
     const seqPrep: any = useSeqPrepStore()
     const outcomes: RestoreOutcome[] = []
 
-    if (Array.isArray(state.n_tags)) seqPrep.nTags = plain(state.n_tags)
-    if (Array.isArray(state.c_tags)) seqPrep.cTags = plain(state.c_tags)
-    if (typeof state.n_terminal_prefix === 'string') seqPrep.nTerminalPrefix = state.n_terminal_prefix
-    if (typeof state.c_terminal_suffix === 'string') seqPrep.cTerminalSuffix = state.c_terminal_suffix
+    const nTags: Array<Record<string, any>> = Array.isArray(state.n_tags) ? plain(state.n_tags) : []
+    const cTags: Array<Record<string, any>> = Array.isArray(state.c_tags) ? plain(state.c_tags) : []
+    // Older saves had free-text additions applied to every design; they are now custom
+    // tags flagged "always", outermost as before.
+    const nFix = (state.n_terminal_prefix ?? '').trim()
+    const cFix = (state.c_terminal_suffix ?? '').trim()
+    if (nFix) {
+        nTags.unshift({
+            id: 'legacy-n-prefix', kind: 'custom', sequence: nFix, label: 'N-terminal prefix', always: true
+        })
+    }
+    if (cFix) {
+        cTags.push({
+            id: 'legacy-c-suffix', kind: 'custom', sequence: cFix, label: 'C-terminal suffix', always: true
+        })
+    }
+    if (Array.isArray(state.n_tags) || nFix) seqPrep.nTags = nTags
+    if (Array.isArray(state.c_tags) || cFix) seqPrep.cTags = cTags
     outcomes.push({
         section: 'Tags',
         status: 'applied',
@@ -154,14 +176,22 @@ export function applyPrepareState(state: PrepareSequencesStateDto): RestoreOutco
     if (Array.isArray(state.optimization_constraints)) {
         seqPrep.optimizationConstraints = plain(state.optimization_constraints)
     }
-    // Optimised DNA is not restored: it is a function of these settings plus the
-    // sequences, and stale DNA presented as current would be worse than none. The store's
-    // own staleness flag prompts a re-run.
+    // Optimised DNA is still not restored: it is a function of these settings plus
+    // the sequences, and stale DNA presented as current would be worse than none.
+    // The bundle now records the seed and dependency versions for each row, so a
+    // run can be reproduced by re-running Optimize DNA on the same versions, or
+    // offline with the downloaded script and --seed-map.
     seqPrep.optimizationStale = true
+    const recorded = state.tool_versions ?? {}
+    const versionNote = Object.keys(recorded).length
+        ? ` Recorded with ${Object.entries(recorded)
+              .map(([k, v]) => `${k} ${v}`)
+              .join(', ')}.`
+        : ''
     outcomes.push({
         section: 'Codon optimisation',
         status: 'applied',
-        detail: 'Settings restored; re-run Optimize DNA to regenerate sequences.'
+        detail: `Settings restored; re-run Optimize DNA to regenerate sequences.${versionNote}`
     })
 
     return outcomes

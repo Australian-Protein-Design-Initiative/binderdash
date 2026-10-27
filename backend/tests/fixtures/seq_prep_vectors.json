@@ -1,0 +1,476 @@
+{
+  "_comment": "Generated from the TypeScript implementation by frontend/scripts/genSeqPrepVectors.ts. Do not edit by hand.",
+  "protparam": [
+    {
+      "sequence": "",
+      "extinction_reduced": 0,
+      "extinction_oxidized": 0,
+      "isoelectric_point": null,
+      "warnings": [
+        "Low extinction coefficient at 280 nm (ε₂₈₀)"
+      ]
+    },
+    {
+      "sequence": "M",
+      "extinction_reduced": 0,
+      "extinction_oxidized": 0,
+      "isoelectric_point": 5.275022315979004,
+      "warnings": [
+        "Low extinction coefficient at 280 nm (ε₂₈₀)"
+      ]
+    },
+    {
+      "sequence": "MKWVTFISLLW",
+      "extinction_reduced": 11000,
+      "extinction_oxidized": 11000,
+      "isoelectric_point": 8.500108146667483,
+      "warnings": []
+    },
+    {
+      "sequence": "MKWVTFISLLFLFSSAYSRGVFRRDAHKSEVAHRFKDLGEENFKALVLIAFAQYLQQCPFEDHVKLVNEVTEFAK",
+      "extinction_reduced": 8480,
+      "extinction_oxidized": 8480,
+      "isoelectric_point": 7.9211820602417005,
+      "warnings": [
+        "Contains Cys"
+      ]
+    },
+    {
+      "sequence": "GGGGSHHHHHHSG*",
+      "extinction_reduced": 0,
+      "extinction_oxidized": 0,
+      "isoelectric_point": 7.205899620056152,
+      "warnings": [
+        "Low extinction coefficient at 280 nm (ε₂₈₀)"
+      ]
+    },
+    {
+      "sequence": "CCCCWWWYYY",
+      "extinction_reduced": 20970,
+      "extinction_oxidized": 21220,
+      "isoelectric_point": 5.496751213073729,
+      "warnings": [
+        "Contains Cys"
+      ]
+    },
+    {
+      "sequence": "ACDEFGHIKLMNPQRSTVWY",
+      "extinction_reduced": 6990,
+      "extinction_oxidized": 6990,
+      "isoelectric_point": 6.784552192687988,
+      "warnings": [
+        "Contains Cys"
+      ]
+    },
+    {
+      "sequence": "MKWVTFISLL*GGGG",
+      "extinction_reduced": 5500,
+      "extinction_oxidized": 5500,
+      "isoelectric_point": 8.500108146667483,
+      "warnings": []
+    },
+    {
+      "sequence": "DDDDDDDDDD",
+      "extinction_reduced": 0,
+      "extinction_oxidized": 0,
+      "isoelectric_point": 4.0500284194946286,
+      "warnings": [
+        "Low extinction coefficient at 280 nm (ε₂₈₀)"
+      ]
+    },
+    {
+      "sequence": "KKKKKKKKKK",
+      "extinction_reduced": 0,
+      "extinction_oxidized": 0,
+      "isoelectric_point": 10.954419517517088,
+      "warnings": [
+        "Low extinction coefficient at 280 nm (ε₂₈₀)"
+      ]
+    },
+    {
+      "sequence": "MGSSHHHHHHSSGLVPRGSHMASMTGGQQMGRGSEF",
+      "extinction_reduced": 0,
+      "extinction_oxidized": 0,
+      "isoelectric_point": 9.461202812194827,
+      "warnings": [
+        "Low extinction coefficient at 280 nm (ε₂₈₀)"
+      ]
+    }
+  ],
+  "hash_base52": [
+    {
+      "input": "",
+      "len5": "QPtZB",
+      "len10": "iaISNQPtZB"
+    },
+    {
+      "input": "MKWVTFISLL",
+      "len5": "lUNXa",
+      "len10": "wPnJhlUNXa"
+    },
+    {
+      "input": "batch-1_designA",
+      "len5": "aiqjT",
+      "len10": "THmaPaiqjT"
+    },
+    {
+      "input": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "len5": "QOpIV",
+      "len10": "OFhgkQOpIV"
+    }
+  ],
+  "sanitize": [
+    {
+      "input": "  batch-1_design  ",
+      "output": "batch-1_design"
+    },
+    {
+      "input": "a//b??c",
+      "output": "a_b_c"
+    },
+    {
+      "input": "___x___",
+      "output": "x"
+    },
+    {
+      "input": "",
+      "output": ""
+    },
+    {
+      "input": "A-B_C",
+      "output": "A-B_C"
+    }
+  ],
+  "short_names": [
+    {
+      "strategy": "none",
+      "spec": {
+        "kind": "none"
+      },
+      "names": [
+        [
+          "k1",
+          "batch-1_designA_model0"
+        ],
+        [
+          "k2",
+          "batch-1_designB_model0"
+        ],
+        [
+          "k3",
+          "batch-2_designC_model1"
+        ],
+        [
+          "k4",
+          "batch-2_designC_model1_2"
+        ]
+      ],
+      "dedupe_count": 1,
+      "non_unique": [
+        "k3",
+        "k4"
+      ]
+    },
+    {
+      "strategy": "regex_strip_prefix",
+      "spec": {
+        "kind": "regex",
+        "pattern": "^batch-[0-9]+_",
+        "replacement": "",
+        "flags": ""
+      },
+      "names": [
+        [
+          "k1",
+          "designA_model0"
+        ],
+        [
+          "k2",
+          "designB_model0"
+        ],
+        [
+          "k3",
+          "designC_model1"
+        ],
+        [
+          "k4",
+          "designC_model1_2"
+        ]
+      ],
+      "dedupe_count": 1,
+      "non_unique": [
+        "k3",
+        "k4"
+      ]
+    },
+    {
+      "strategy": "splitTake",
+      "spec": {
+        "kind": "splitTake",
+        "delimiter": "_",
+        "indices": [
+          2,
+          3
+        ],
+        "addPrefix": "ord",
+        "addSuffix": "",
+        "addHash": true,
+        "hashLen": 5
+      },
+      "names": [
+        [
+          "k1",
+          "ord_designA_model0_lUNXa"
+        ],
+        [
+          "k2",
+          "ord_designB_model0_NUYkW"
+        ],
+        [
+          "k3",
+          "ord_designC_model1_quaBb"
+        ],
+        [
+          "k4",
+          "ord_designC_model1_quaBb_2"
+        ]
+      ],
+      "dedupe_count": 1,
+      "non_unique": [
+        "k3",
+        "k4"
+      ]
+    },
+    {
+      "strategy": "splitTake_nohash",
+      "spec": {
+        "kind": "splitTake",
+        "delimiter": "_",
+        "indices": [
+          1,
+          2
+        ],
+        "addPrefix": "",
+        "addSuffix": "x",
+        "addHash": false,
+        "hashLen": 5
+      },
+      "names": [
+        [
+          "k1",
+          "batch-1_designA_x"
+        ],
+        [
+          "k2",
+          "batch-1_designB_x"
+        ],
+        [
+          "k3",
+          "batch-2_designC_x"
+        ],
+        [
+          "k4",
+          "batch-2_designC_x_2"
+        ]
+      ],
+      "dedupe_count": 1,
+      "non_unique": [
+        "k3",
+        "k4"
+      ]
+    },
+    {
+      "strategy": "pattern",
+      "spec": {
+        "kind": "pattern",
+        "prefix": "design",
+        "uidLength": 5,
+        "numberPad": 3
+      },
+      "names": [
+        [
+          "k1",
+          "design_Ucqgl_001"
+        ],
+        [
+          "k2",
+          "design_Ucqgl_002"
+        ],
+        [
+          "k3",
+          "design_Ucqgl_003"
+        ],
+        [
+          "k4",
+          "design_Ucqgl_004"
+        ]
+      ],
+      "dedupe_count": 0,
+      "non_unique": []
+    },
+    {
+      "strategy": "pattern_nopad",
+      "spec": {
+        "kind": "pattern",
+        "prefix": "",
+        "uidLength": 6,
+        "numberPad": 0
+      },
+      "names": [
+        [
+          "k1",
+          "wUcqgl_1"
+        ],
+        [
+          "k2",
+          "wUcqgl_2"
+        ],
+        [
+          "k3",
+          "wUcqgl_3"
+        ],
+        [
+          "k4",
+          "wUcqgl_4"
+        ]
+      ],
+      "dedupe_count": 0,
+      "non_unique": []
+    },
+    {
+      "strategy": "smartStemHash",
+      "spec": {
+        "kind": "smartStemHash",
+        "includeHash": true,
+        "hashLen": 5,
+        "includeIndex": false,
+        "removeCommonPrefix": false,
+        "removeCommonSuffix": true,
+        "addPrefix": "",
+        "addSuffix": ""
+      },
+      "names": [
+        [
+          "k1",
+          "batch-1_designA_model0_lUNXa"
+        ],
+        [
+          "k2",
+          "batch-1_designB_model0_NUYkW"
+        ],
+        [
+          "k3",
+          "batch-2_designC_model1_quaBb"
+        ],
+        [
+          "k4",
+          "batch-2_designC_model1_quaBb_2"
+        ]
+      ],
+      "dedupe_count": 1,
+      "non_unique": [
+        "k3",
+        "k4"
+      ]
+    },
+    {
+      "strategy": "smartStemHash_idx",
+      "spec": {
+        "kind": "smartStemHash",
+        "includeHash": true,
+        "hashLen": 4,
+        "includeIndex": true,
+        "removeCommonPrefix": true,
+        "removeCommonSuffix": false,
+        "addPrefix": "p",
+        "addSuffix": "s"
+      },
+      "names": [
+        [
+          "k1",
+          "p_1_designA_model0_s_UNXa_1"
+        ],
+        [
+          "k2",
+          "p_1_designB_model0_s_UYkW_2"
+        ],
+        [
+          "k3",
+          "p_2_designC_model1_s_uaBb_3"
+        ],
+        [
+          "k4",
+          "p_2_designC_model1_s_uaBb_4"
+        ]
+      ],
+      "dedupe_count": 0,
+      "non_unique": []
+    },
+    {
+      "strategy": "smartStemHash_nohash",
+      "spec": {
+        "kind": "smartStemHash",
+        "includeHash": false,
+        "hashLen": 5,
+        "includeIndex": true,
+        "removeCommonPrefix": true,
+        "removeCommonSuffix": true,
+        "addPrefix": "",
+        "addSuffix": ""
+      },
+      "names": [
+        [
+          "k1",
+          "1_designA_model0_1"
+        ],
+        [
+          "k2",
+          "1_designB_model0_2"
+        ],
+        [
+          "k3",
+          "2_designC_model1_3"
+        ],
+        [
+          "k4",
+          "2_designC_model1_4"
+        ]
+      ],
+      "dedupe_count": 0,
+      "non_unique": []
+    },
+    {
+      "strategy": "smartRegexStrip",
+      "spec": {
+        "kind": "smartRegexStrip",
+        "prefixPattern": "^batch-[0-9]+_",
+        "suffixPattern": "_model[0-9]+$",
+        "newPrefix": "bd",
+        "hashLen": 5
+      },
+      "names": [
+        [
+          "k1",
+          "bd_designA_lUNXa"
+        ],
+        [
+          "k2",
+          "bd_designB_NUYkW"
+        ],
+        [
+          "k3",
+          "bd_designC_quaBb"
+        ],
+        [
+          "k4",
+          "bd_designC_quaBb_2"
+        ]
+      ],
+      "dedupe_count": 1,
+      "non_unique": [
+        "k3",
+        "k4"
+      ]
+    }
+  ]
+}

@@ -114,6 +114,7 @@ before first use.
 | `export_structures` | Manifest plus the tar endpoint to fetch many structures |
 | `list_target_residues` | Targets in a run scope, residue labels to filter on, contact coverage |
 | `target_contact_profile` | Per-residue mean ΔSASA / closest approach / contact frequency |
+| `prepare_sequences` | Add N/C tags, linkers, stops and short names; return a download URL for the ordering table |
 
 There is deliberately **no plotting tool**: `query_designs` returns column-selected
 tabular data and an agent charts it itself. For bulk dumps, `list_runs` includes
@@ -155,6 +156,31 @@ structure in the selection and takes minutes, so it stays behind the web UI's Co
 button in the Filtering tab. A design with no record fails every contact condition, so
 tools emit a `TARGET_CONTACTS_UNAVAILABLE` warning and an empty result explains that
 contacts may be uncomputed rather than reporting it as a real answer.
+
+### Preparing sequences for ordering
+
+`prepare_sequences` runs the same construct builder as the Prepare Sequences tab
+(`backend/seq_prep/`): N/C-terminal tags and linkers, start methionine, stop codons,
+post-stop padding and short names. It takes a run/design selection plus a `config`
+matching the tab's settings, and `format` picks `twist` (default), `fasta`, `tsv`,
+`csv` or `json`.
+
+It deliberately does **not** run DnaChisel: constraint solving takes minutes for a few
+hundred designs, which is too long for a tool call. With DNA enabled the result is a
+plain reverse translation (what the UI shows before Optimize DNA is pressed), flagged
+as `dna_optimized: false` with a warning, since a reverse translation is
+indistinguishable from an optimised one by eye and the difference only shows up after
+ordering. Constraint-checked DNA comes from the UI or its downloaded script.
+
+The rows are **not** returned in the tool result - an ordering table for a few hundred
+designs would swamp the context. The result carries counts, warnings and a
+`download_url` with a short-lived token scoped to that request and format; fetch it
+without the MCP API key. Nothing is written to disk: the request is held in memory and
+rendered when the URL is fetched, so the URL stops working after the TTL or a restart.
+
+Designs without a placed tag are skipped and listed, so a selection that was never set
+up in the UI returns an explicit skip list rather than untagged constructs; `default_tag`
+overrides that for designs with no tag recorded.
 
 **Write scope** is read + analysis + Saved Sets, plus the compute-and-cache writes
 (sequence extraction, structural metrics) that only populate derived caches. Scanning,

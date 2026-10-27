@@ -22,7 +22,9 @@ from ..schemas import DnaOptConstraintSpec
 from ..session_state import SessionState
 
 MANIFEST_SCHEMA_VERSION = "1.0"
-PREPARE_SEQUENCES_SCHEMA_VERSION = "1.0"
+# 1.1 adds PreparedRowExport.seed and PrepareSequencesPayload.tool_versions, so a
+# recorded run can be replayed. Additive, so 1.0 readers still accept it.
+PREPARE_SEQUENCES_SCHEMA_VERSION = "1.1"
 CONTACTS_REFERENCE_SCHEMA_VERSION = "1.0"
 
 BundleKind = Literal["designs", "prepare_sequences"]
@@ -77,6 +79,9 @@ class PreparedRowExport(BaseModel):
     extinction_coeff_oxidized: Optional[float] = None
     isoelectric_point: Optional[float] = None
     warnings: List[str] = Field(default_factory=list)
+    # The DnaChisel seed that produced prepared_dna. Replay it (with the matching
+    # tool_versions) to reproduce this exact sequence.
+    seed: Optional[int] = None
 
 
 class PreparedTag(BaseModel):
@@ -87,6 +92,8 @@ class PreparedTag(BaseModel):
     sequence: str = ""
     label: str = ""
     zone: Optional[str] = None
+    # Applied to every design regardless of its tag-end column.
+    always: bool = False
 
 
 class PrepareSequencesPayload(BaseModel):
@@ -104,6 +111,7 @@ class PrepareSequencesPayload(BaseModel):
 
     n_tags: List[PreparedTag] = Field(default_factory=list)
     c_tags: List[PreparedTag] = Field(default_factory=list)
+    # Legacy (before tags could be flagged "always"): read from old bundles, no longer written.
     n_terminal_prefix: str = ""
     c_terminal_suffix: str = ""
 
@@ -113,6 +121,9 @@ class PrepareSequencesPayload(BaseModel):
     codon_table_id: Optional[str] = None
     optimization_method: Optional[str] = None
     optimization_constraints: List[DnaOptConstraintSpec] = Field(default_factory=list)
+    # Versions the recorded seeds are replayable against; a DnaChisel upgrade can
+    # change the search order and so the DNA for the same seed.
+    tool_versions: Dict[str, str] = Field(default_factory=dict)
 
     rows: List[PreparedRowExport] = Field(default_factory=list)
 

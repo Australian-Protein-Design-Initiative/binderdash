@@ -70,7 +70,10 @@ async def _build_and_respond(spec: BundleSpec) -> StreamingResponse:
         built = await asyncio.to_thread(_build_sync, spec)
     except BundleCapsError as e:
         raise HTTPException(
-            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+            # Literal 413: starlette renamed this constant to HTTP_413_CONTENT_TOO_LARGE
+            # only in 0.41, and the pinned 0.38 has just the old spelling, so naming
+            # either one raises AttributeError on the other.
+            status_code=413,
             detail={"message": str(e), "estimate": e.estimate.model_dump()},
         ) from e
     except OSError as e:

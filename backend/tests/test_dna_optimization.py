@@ -1,6 +1,6 @@
 import pytest
 
-from backend.util.dna_optimization import (
+from backend.seq_prep.optimize import (
     FIXED_STOP_DNA,
     fixed_nt_indices,
     free_intervals,
@@ -115,7 +115,7 @@ def test_resolve_fixed_mask_rejects_bad_masks() -> None:
 
 
 def test_optimize_dna_leading_met_stays_atg(api_client) -> None:
-    from backend.util.dna_optimization import FIXED_START_DNA
+    from backend.seq_prep.optimize import FIXED_START_DNA
 
     payload = {
         "sequences": {"d1": "MGS*"},
@@ -230,7 +230,7 @@ def test_optimize_dna_fixed_length_mismatch(api_client) -> None:
 def test_no_solution_is_retried_before_reporting(monkeypatch: pytest.MonkeyPatch) -> None:
     import dnachisel as dc
 
-    from backend.util import dna_optimization as opt
+    from backend.seq_prep import optimize as opt
 
     calls = {"n": 0}
     real = dc.DnaOptimizationProblem.resolve_constraints
@@ -259,7 +259,7 @@ def test_no_solution_is_retried_before_reporting(monkeypatch: pytest.MonkeyPatch
 def test_no_solution_retry_can_succeed(monkeypatch: pytest.MonkeyPatch) -> None:
     import dnachisel as dc
 
-    from backend.util import dna_optimization as opt
+    from backend.seq_prep import optimize as opt
 
     calls = {"n": 0}
     real = dc.DnaOptimizationProblem.resolve_constraints
@@ -281,7 +281,7 @@ def test_no_solution_retry_can_succeed(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_non_solver_errors_are_not_retried(monkeypatch: pytest.MonkeyPatch) -> None:
     import dnachisel as dc
 
-    from backend.util import dna_optimization as opt
+    from backend.seq_prep import optimize as opt
 
     calls = {"n": 0}
 
@@ -310,3 +310,65 @@ def test_optimize_dna_fixed_non_stop_residue(api_client) -> None:
     assert res["optimized_dna"] is None
     assert res["error"] is not None
     assert "stop" in res["error"].lower() or "met" in res["error"].lower()
+
+
+# --- seed recording and replay ---------------------------------------------
+
+
+def _simple_constraints():
+    return [{"type": "EnforceGCContent", "enabled": True, "params": {"mini": 0.3, "maxi": 0.7}}]
+
+
+def test_optimize_records_a_seed():
+    from backend.seq_prep.optimize import optimize_sequences
+
+    res = optimize_sequences({"d1": "MKWVTFISLLW*"}, "e_coli_316407", _simple_constraints())
+    assert res["d1"]["error"] is None
+    assert isinstance(res["d1"]["seed"], int)
+
+
+def test_replaying_a_seed_reproduces_the_dna():
+    from backend.seq_prep.optimize import optimize_sequences
+
+    seqs = {"d1": "MKWVTFISLLWACDEFGHIKLMNPQRSTVWY*"}
+    first = optimize_sequences(seqs, "e_coli_316407", _simple_constraints())
+    seed = first["d1"]["seed"]
+
+    replay = optimize_sequences(
+        seqs, "e_coli_316407", _simple_constraints(), seeds={"d1": seed}
+    )
+    assert replay["d1"]["optimized_dna"] == first["d1"]["optimized_dna"]
+    assert replay["d1"]["seed"] == seed
+
+
+def test_unseeded_runs_explore_different_seeds():
+    """Re-running must not reproduce the same failure, which is why a manual
+    re-press rescues a design that failed."""
+    from backend.seq_prep.optimize import optimize_sequences
+
+    seqs = {"d1": "MKWVTFISLLWACDEFGHIKLMNPQRSTVWY*"}
+    seeds = {
+        optimize_sequences(seqs, "e_coli_316407", _simple_constraints())["d1"]["seed"]
+        for _ in range(3)
+    }
+    assert len(seeds) > 1
+
+
+def test_tool_versions_reports_the_pins_a_seed_depends_on():
+    from backend.seq_prep.optimize import tool_versions
+
+    versions = tool_versions()
+    assert "dnachisel" in versions and "numpy" in versions
+
+
+def test_repeated_kmer_pattern_constraint_builds():
+    """dnachisel calls it kmer_size; the UI config says k_size. Passing the UI
+    name as a keyword silently dropped this constraint from every optimisation."""
+    from backend.seq_prep.optimize import build_dnachisel_constraint
+
+    constraint = build_dnachisel_constraint(
+        "AvoidPattern",
+        {"pattern": {"type": "RepeatedKmerPattern", "params": {"n_repeats": 2, "k_size": 20}}},
+    )
+    assert constraint is not None
+    assert "2x20mer" in str(constraint)

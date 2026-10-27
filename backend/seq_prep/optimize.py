@@ -1,12 +1,37 @@
 import io
 import logging
+import random
+import threading
 from contextlib import redirect_stdout
+from importlib.metadata import PackageNotFoundError, version
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import dnachisel as dc
+import numpy as np
 import python_codon_tables as pct
 
 logger = logging.getLogger(__name__)
+
+# DnaChisel draws from the legacy global numpy RNG, so a solve can only be
+# replayed by seeding that RNG immediately before it, and only one solve may be
+# in flight at a time.
+_RNG_LOCK = threading.Lock()
+_MAX_SEED = 2**32 - 1
+
+
+def tool_versions() -> Dict[str, str]:
+    """Versions that a recorded seed is only replayable against.
+
+    A DnaChisel upgrade can change the search order, so the same seed can give
+    different DNA. Downloaded scripts pin these.
+    """
+    out: Dict[str, str] = {}
+    for pkg in ("dnachisel", "numpy", "python_codon_tables"):
+        try:
+            out[pkg] = version(pkg)
+        except PackageNotFoundError:
+            continue
+    return out
 
 FIXED_STOP_DNA = "TAA"
 FIXED_START_DNA = "ATG"
@@ -68,8 +93,10 @@ def build_dnachisel_constraint(
                     return None
                 from dnachisel.SequencePattern import RepeatedKmerPattern
 
+                # dnachisel names this kmer_size; the UI and stored configs say
+                # k_size, so pass positionally rather than renaming the wire format.
                 return dc.AvoidPattern(
-                    RepeatedKmerPattern(k_size=int(k_size), n_repeats=int(n_repeats))
+                    RepeatedKmerPattern(int(n_repeats), int(k_size))
                 )
             else:
                 return dc.AvoidPattern(pattern)
@@ -233,6 +260,7 @@ def _solve_once(
     initial_dna: str,
     seq_constraints: List[Any],
     objectives: List[Any],
+    seed: int,
 ) -> str:
     problem = dc.DnaOptimizationProblem(
         sequence=initial_dna,
@@ -240,9 +268,11 @@ def _solve_once(
         objectives=objectives,
     )
     captured = io.StringIO()
-    with redirect_stdout(captured):
-        problem.resolve_constraints()
-        problem.optimize()
+    with _RNG_LOCK:
+        np.random.seed(seed)
+        with redirect_stdout(captured):
+            problem.resolve_constraints()
+            problem.optimize()
     return problem.sequence
 
 
@@ -251,29 +281,42 @@ def _optimize_with_retries(
     initial_dna: str,
     seq_constraints: List[Any],
     objectives: List[Any],
-) -> Dict[str, Optional[str]]:
-    """Solve one design, retrying stochastic "no solution" failures."""
-    for attempt in range(1, OPTIMIZATION_ATTEMPTS + 1):
+    seed: Optional[int] = None,
+) -> Dict[str, Any]:
+    """Solve one design, retrying stochastic "no solution" failures.
+
+    Each attempt draws its own seed - reusing one would just reproduce the same
+    failure - and the seed that produced the accepted result is returned so the
+    solve can be replayed. Pass ``seed`` to replay a recorded one; a replay does
+    not retry, because a different seed would no longer be the recorded run.
+    """
+    replay = seed is not None
+    attempts = 1 if replay else OPTIMIZATION_ATTEMPTS
+    for attempt in range(1, attempts + 1):
+        attempt_seed = seed if replay else random.randrange(_MAX_SEED + 1)
         try:
             return {
-                "optimized_dna": _solve_once(initial_dna, seq_constraints, objectives),
+                "optimized_dna": _solve_once(
+                    initial_dna, seq_constraints, objectives, attempt_seed
+                ),
                 "error": None,
+                "seed": attempt_seed,
             }
         except dc.NoSolutionError as e:
-            if attempt < OPTIMIZATION_ATTEMPTS:
+            if attempt < attempts:
                 logger.warning(
                     f"No solution found for {design_id} "
-                    f"(attempt {attempt}/{OPTIMIZATION_ATTEMPTS}); retrying: {e}"
+                    f"(attempt {attempt}/{attempts}); retrying: {e}"
                 )
                 continue
             logger.error(
-                f"No solution found for {design_id} after {OPTIMIZATION_ATTEMPTS} attempts: {e}"
+                f"No solution found for {design_id} after {attempts} attempt(s): {e}"
             )
-            return {"optimized_dna": None, "error": _NO_SOLUTION_MESSAGE}
+            return {"optimized_dna": None, "error": _NO_SOLUTION_MESSAGE, "seed": None}
         except Exception as e:
             logger.exception(f"Exception during optimization of {design_id}")
-            return {"optimized_dna": None, "error": str(e)}
-    return {"optimized_dna": None, "error": _NO_SOLUTION_MESSAGE}
+            return {"optimized_dna": None, "error": str(e), "seed": None}
+    return {"optimized_dna": None, "error": _NO_SOLUTION_MESSAGE, "seed": None}
 
 
 def optimize_sequences(
@@ -282,7 +325,8 @@ def optimize_sequences(
     constraints: List[Dict[str, Any]],
     method: str = "match_codon_usage",
     fixed: Optional[Dict[str, List[bool]]] = None,
-) -> Dict[str, Dict[str, Optional[str]]]:
+    seeds: Optional[Dict[str, int]] = None,
+) -> Dict[str, Dict[str, Any]]:
     """
     Optimizes a batch of protein sequences.
     Returns: { design_id: {"optimized_dna": str | None, "error": str | None} }
@@ -292,12 +336,17 @@ def optimize_sequences(
     constraints. When a design_id is absent from ``fixed``, every ``*`` in that
     protein is treated as fixed.
 
-    A design that fails with ``NoSolutionError`` is solved again from the same
-    starting sequence, up to ``OPTIMIZATION_ATTEMPTS`` times, before that error
-    is returned. Other errors are returned on the first failure.
+    A design that fails with ``NoSolutionError`` is solved again with a fresh
+    seed, up to ``OPTIMIZATION_ATTEMPTS`` times, before that error is returned.
+    Other errors are returned on the first failure.
+
+    ``seeds`` maps design_id -> a previously recorded seed to replay. Each result
+    carries the ``seed`` that produced it, so a run can be reproduced exactly on
+    the same dependency versions (see ``tool_versions``).
     """
-    results: Dict[str, Dict[str, Optional[str]]] = {}
+    results: Dict[str, Dict[str, Any]] = {}
     fixed = fixed or {}
+    seeds = seeds or {}
 
     parsed_constraints: List[Any] = []
     for c in constraints:
@@ -309,7 +358,7 @@ def optimize_sequences(
 
     for design_id, protein_seq in sequences.items():
         if not protein_seq:
-            results[design_id] = {"optimized_dna": None, "error": "Empty sequence"}
+            results[design_id] = {"optimized_dna": None, "error": "Empty sequence", "seed": None}
             continue
 
         try:
@@ -325,7 +374,7 @@ def optimize_sequences(
             intervals = free_intervals(len(initial_dna), fixed_indices)
 
             if not intervals:
-                results[design_id] = {"optimized_dna": initial_dna, "error": None}
+                results[design_id] = {"optimized_dna": initial_dna, "error": None, "seed": None}
                 continue
 
             if fixed_indices:
@@ -347,18 +396,18 @@ def optimize_sequences(
                 ]
 
             if not objectives:
-                results[design_id] = {"optimized_dna": initial_dna, "error": None}
+                results[design_id] = {"optimized_dna": initial_dna, "error": None, "seed": None}
                 continue
         except ValueError as e:
-            results[design_id] = {"optimized_dna": None, "error": str(e)}
+            results[design_id] = {"optimized_dna": None, "error": str(e), "seed": None}
             continue
         except Exception as e:
             logger.exception(f"Exception preparing optimization of {design_id}")
-            results[design_id] = {"optimized_dna": None, "error": str(e)}
+            results[design_id] = {"optimized_dna": None, "error": str(e), "seed": None}
             continue
 
         results[design_id] = _optimize_with_retries(
-            design_id, initial_dna, seq_constraints, objectives
+            design_id, initial_dna, seq_constraints, objectives, seeds.get(design_id)
         )
 
     return results

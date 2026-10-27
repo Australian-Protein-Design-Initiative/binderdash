@@ -42,6 +42,7 @@ export type PresetTagKind =
     | 'avi'
     | 'strep'
     | 'ctag'
+    | 'pelb'
     | 'linker'
     | 'stop'
     | 'custom'
@@ -108,6 +109,8 @@ export interface PlacedTag {
     kind: PresetTagKind
     sequence: string
     label: string
+    /** Applied to every design, ignoring its tag-end column. */
+    always?: boolean
 }
 
 export interface PreparedSegment {
@@ -155,6 +158,8 @@ export interface TagPresetDefinition {
     background: string
     foreground: string
     zones: ('n' | 'c')[]
+    /** New chips of this tag start with the `always` toggle on. */
+    always?: boolean
 }
 
 export const TAG_PRESET_DEFS: readonly TagPresetDefinition[] = [
@@ -229,6 +234,18 @@ export const TAG_PRESET_DEFS: readonly TagPresetDefinition[] = [
         background: 'rgba(109, 76, 65, 0.12)',
         foreground: '#4e342e',
         zones: ['c']
+    },
+    {
+        // No leading Met: the construct's own start codon is not added here, so a
+        // start has to come from the vector (e.g. an NdeI site) or the design.
+        kind: 'pelb',
+        tag_name: 'pelB',
+        sequence: 'KYLLPTAAAGLLLLAAQPAMA',
+        color: '#c2185b',
+        background: 'rgba(194, 24, 91, 0.12)',
+        foreground: '#880e4f',
+        zones: ['n'],
+        always: true
     },
     {
         kind: 'linker',
@@ -421,30 +438,6 @@ function codonDetailDtoToTable(detail: CodonTableDetailResponseDto): CodonTable 
     return { label: detail.label, forward, reverse, stop }
 }
 
-const N_TERMINAL_SEGMENT_STYLE: Record<string, string> = {
-    display: 'inline-block',
-    boxDecorationBreak: 'clone',
-    WebkitBoxDecorationBreak: 'clone',
-    fontWeight: '600',
-    padding: '0.12em 0.28em',
-    borderRadius: '4px',
-    border: '1px solid #00796b',
-    backgroundColor: '#b2dfdb',
-    color: '#004d40'
-}
-
-const C_TERMINAL_SEGMENT_STYLE: Record<string, string> = {
-    display: 'inline-block',
-    boxDecorationBreak: 'clone',
-    WebkitBoxDecorationBreak: 'clone',
-    fontWeight: '600',
-    padding: '0.12em 0.28em',
-    borderRadius: '4px',
-    border: '1px solid #ad1457',
-    backgroundColor: '#f8bbd0',
-    color: '#880e4f'
-}
-
 const VALID_NUC = new Set(['a', 'c', 'g', 't'])
 
 export function validateMixedSequence(s: string, fieldName: string): string | null {
@@ -481,6 +474,7 @@ function segmentClass(kind: PresetTagKind): string {
     if (kind === 'avi') return 'seq-seg-avi'
     if (kind === 'strep') return 'seq-seg-strep'
     if (kind === 'ctag') return 'seq-seg-ctag'
+    if (kind === 'pelb') return 'seq-seg-pelb'
     if (kind === 'linker') return 'seq-seg-linker'
     if (kind === 'stop') return 'seq-seg-stop'
     return 'seq-seg-custom'
@@ -926,8 +920,6 @@ export function applyFixedStartAtgDna(
 export const useSeqPrepStore = defineStore('seqPrep', () => {
     const nTags = ref<PlacedTag[]>([])
     const cTags = ref<PlacedTag[]>([])
-    const nTerminalPrefix = ref('')
-    const cTerminalSuffix = ref('')
     const includeStopForNTagged = ref(true)
     const includeStopForCTagged = ref(true)
     const useDoubleStop = ref(false)
@@ -1128,14 +1120,6 @@ export const useSeqPrepStore = defineStore('seqPrep', () => {
                 if (e) errs.push(e)
             }
         }
-        const fields = [
-            [nTerminalPrefix.value, 'N-terminal prefix'],
-            [cTerminalSuffix.value, 'C-terminal suffix']
-        ] as const
-        for (const [val, name] of fields) {
-            const e = validateMixedSequence(val.trim(), name)
-            if (e) errs.push(e)
-        }
         const padTrim = postStopPadding.value.trim()
         const padTargetVal = postStopPadUpToNucleotideLength.value
         const usePadTarget =
@@ -1206,6 +1190,11 @@ export const useSeqPrepStore = defineStore('seqPrep', () => {
         if (applyingAutoShortNameStrategy) return
         shortNameStrategyAutoManaged.value = false
     })
+
+    /** Tags flagged `always` apply to every design; the rest only where the tag end matches. */
+    function activeTags(tags: PlacedTag[], include: boolean): PlacedTag[] {
+        return tags.filter(t => include || t.always)
+    }
 
     function appendTagsAa(
         tags: PlacedTag[],
@@ -1307,8 +1296,6 @@ export const useSeqPrepStore = defineStore('seqPrep', () => {
 
     function buildMainDnaForRow(
         table: CodonTable,
-        nFix: string,
-        cFix: string,
         tagCol: string,
         core: string,
         includeNTags: boolean,
@@ -1317,37 +1304,13 @@ export const useSeqPrepStore = defineStore('seqPrep', () => {
         const mainDnaChunks: string[] = []
         const mainSegChunks: PreparedSegment[][] = []
 
-        if (nFix) {
-            const { dna, segments } = mixedToDnaSegments(
-                nFix,
-                table,
-                'seq-seg-nfix',
-                { ...N_TERMINAL_SEGMENT_STYLE }
-            )
-            mainDnaChunks.push(dna)
-            mainSegChunks.push(mergeDnaSegments(segments, 'seq-seg-nfix'))
-        }
-        if (tagCol === 'N' && includeNTags) {
-            appendTagsDna(nTags.value, mainDnaChunks, mainSegChunks, table)
-        }
+        appendTagsDna(activeTags(nTags.value, includeNTags), mainDnaChunks, mainSegChunks, table)
         {
             const { dna, segments } = literalAaToDnaSegments(core, table)
             mainDnaChunks.push(dna)
             mainSegChunks.push(mergeDnaSegments(segments, 'seq-seg-dna-body'))
         }
-        if (tagCol === 'C' && includeCTags) {
-            appendTagsDna(cTags.value, mainDnaChunks, mainSegChunks, table)
-        }
-        if (cFix) {
-            const { dna, segments } = mixedToDnaSegments(
-                cFix,
-                table,
-                'seq-seg-cfix',
-                { ...C_TERMINAL_SEGMENT_STYLE }
-            )
-            mainDnaChunks.push(dna)
-            mainSegChunks.push(mergeDnaSegments(segments, 'seq-seg-cfix'))
-        }
+        appendTagsDna(activeTags(cTags.value, includeCTags), mainDnaChunks, mainSegChunks, table)
         if (
             (tagCol === 'N' && includeStopForNTagged.value) ||
             (tagCol === 'C' && includeStopForCTagged.value)
@@ -1361,8 +1324,6 @@ export const useSeqPrepStore = defineStore('seqPrep', () => {
     function appendPreparedBodyAa(
         table: CodonTable,
         tagCol: string,
-        nFix: string,
-        cFix: string,
         core: string,
         includeNTags: boolean,
         includeCTags: boolean,
@@ -1371,22 +1332,9 @@ export const useSeqPrepStore = defineStore('seqPrep', () => {
         aaExportParts: string[],
         aaExportPartsDisplay: string[]
     ): void {
-        if (nFix) {
-            const { segments, exportText } = mixedToAaSegments(
-                nFix,
-                'seq-seg-nfix',
-                { ...N_TERMINAL_SEGMENT_STYLE },
-                table
-            )
-            segmentsAa.push(...segments)
-            segmentsAaDisplay.push(...segments)
-            aaExportParts.push(exportText)
-            aaExportPartsDisplay.push(exportText)
-        }
-        if (tagCol === 'N' && includeNTags) {
-            appendTagsAa(nTags.value, segmentsAa, aaExportParts, table)
-            appendTagsAa(nTags.value, segmentsAaDisplay, aaExportPartsDisplay, table)
-        }
+        const nActive = activeTags(nTags.value, includeNTags)
+        appendTagsAa(nActive, segmentsAa, aaExportParts, table)
+        appendTagsAa(nActive, segmentsAaDisplay, aaExportPartsDisplay, table)
         {
             const coreSegs = splitCoreAaSegments(core)
             segmentsAa.push(...coreSegs)
@@ -1394,22 +1342,9 @@ export const useSeqPrepStore = defineStore('seqPrep', () => {
             aaExportParts.push(core)
             aaExportPartsDisplay.push(core)
         }
-        if (tagCol === 'C' && includeCTags) {
-            appendTagsAa(cTags.value, segmentsAa, aaExportParts, table)
-            appendTagsAa(cTags.value, segmentsAaDisplay, aaExportPartsDisplay, table)
-        }
-        if (cFix) {
-            const { segments, exportText } = mixedToAaSegments(
-                cFix,
-                'seq-seg-cfix',
-                { ...C_TERMINAL_SEGMENT_STYLE },
-                table
-            )
-            segmentsAa.push(...segments)
-            segmentsAaDisplay.push(...segments)
-            aaExportParts.push(exportText)
-            aaExportPartsDisplay.push(exportText)
-        }
+        const cActive = activeTags(cTags.value, includeCTags)
+        appendTagsAa(cActive, segmentsAa, aaExportParts, table)
+        appendTagsAa(cActive, segmentsAaDisplay, aaExportPartsDisplay, table)
         if (
             (tagCol === 'N' && includeStopForNTagged.value) ||
             (tagCol === 'C' && includeStopForCTagged.value)
@@ -1424,8 +1359,6 @@ export const useSeqPrepStore = defineStore('seqPrep', () => {
 
     const preparedRowsInternal = computed((): Omit<PreparedRow, 'short_name'>[] => {
         const table = activeCodonTable.value
-        const nFix = nTerminalPrefix.value.trim()
-        const cFix = cTerminalSuffix.value.trim()
         const padRaw = postStopPadding.value.trim()
         const padTargetVal = postStopPadUpToNucleotideLength.value
         const usePostStopPadTarget =
@@ -1446,8 +1379,6 @@ export const useSeqPrepStore = defineStore('seqPrep', () => {
 
             const bodyWithoutTerminalTags = buildMainDnaForRow(
                 table,
-                nFix,
-                cFix,
                 tagCol,
                 core,
                 false,
@@ -1474,8 +1405,6 @@ export const useSeqPrepStore = defineStore('seqPrep', () => {
             appendPreparedBodyAa(
                 table,
                 tagCol,
-                nFix,
-                cFix,
                 core,
                 includeNTags,
                 includeCTags,
@@ -1505,8 +1434,6 @@ export const useSeqPrepStore = defineStore('seqPrep', () => {
                     // the optimised sequence across those boundaries.
                     const built = buildMainDnaForRow(
                         table,
-                        nFix,
-                        cFix,
                         tagCol,
                         core,
                         includeNTags,
@@ -1528,8 +1455,6 @@ export const useSeqPrepStore = defineStore('seqPrep', () => {
                 } else {
                     ;({ mainDna, mainSegChunks } = buildMainDnaForRow(
                         table,
-                        nFix,
-                        cFix,
                         tagCol,
                         core,
                         includeNTags,
@@ -1749,7 +1674,8 @@ export const useSeqPrepStore = defineStore('seqPrep', () => {
             id: nextTagId(),
             kind: preset.kind,
             sequence: preset.sequence,
-            label: preset.tag_name
+            label: preset.tag_name,
+            always: preset.always ?? false
         }
         if (zone === 'n') nTags.value = [...nTags.value, t]
         else cTags.value = [...cTags.value, t]
@@ -1832,6 +1758,10 @@ export const useSeqPrepStore = defineStore('seqPrep', () => {
     const optimizationMethod = ref<string>('match_codon_usage')
     const optimizedDnaByDesign = ref<Record<string, string>>({})
     const optimizedErrorsByDesign = ref<Record<string, string>>({})
+    /** Seed that produced each design's DNA; recorded in bundles so a run can be replayed. */
+    const optimizedSeedsByDesign = ref<Record<string, number>>({})
+    /** Dependency versions those seeds are replayable against. */
+    const optimizationToolVersions = ref<Record<string, string>>({})
     const optimizing = ref(false)
     const optimizationGlobalError = ref<string | null>(null)
     const optimizationStale = ref(false)
@@ -1842,8 +1772,6 @@ export const useSeqPrepStore = defineStore('seqPrep', () => {
         [
             nTags,
             cTags,
-            nTerminalPrefix,
-            cTerminalSuffix,
             includeStopForNTagged,
             includeStopForCTagged,
             useDoubleStop,
@@ -1861,11 +1789,30 @@ export const useSeqPrepStore = defineStore('seqPrep', () => {
         { deep: true }
     )
 
-    async function runOptimization() {
+    /**
+     * Optimise DNA for the designs in scope.
+     *
+     * Pressing Optimize again re-solves only the designs that failed or have no
+     * DNA yet, each with a fresh seed. That is what repeated presses are for:
+     * hard constraints fail stochastically and another seed often succeeds.
+     * Designs that already succeeded keep their DNA and their recorded seed.
+     *
+     * When the settings change the results go stale, and then every design is
+     * re-solved - so changing a setting is the way to re-roll the whole set.
+     * Pass `onlyUnsolved = false` to force that without a settings change.
+     */
+    async function runOptimization(onlyUnsolved = true) {
         const seqs: Record<string, string> = {}
         const fixedByDesign: Record<string, boolean[]> = {}
         for (const row of preparedRows.value) {
             if (!row.segments_aa_display.length && !row.prepared_aa_display) continue
+            if (
+                onlyUnsolved &&
+                !optimizationStale.value &&
+                optimizedDnaByDesign.value[row.design_id]
+            ) {
+                continue
+            }
             const { aa, fixed } = expandFixedFromSegments(row.segments_aa_display)
             const codingAa = aa || row.prepared_aa_display
             if (!codingAa) continue
@@ -1875,7 +1822,9 @@ export const useSeqPrepStore = defineStore('seqPrep', () => {
                 : codingAa.split('').map(ch => ch === '*')
         }
         if (Object.keys(seqs).length === 0) {
-            optimizationGlobalError.value = 'No sequences in scope to optimise.'
+            optimizationGlobalError.value = onlyUnsolved
+                ? 'Every sequence in scope already has optimised DNA.'
+                : 'No sequences in scope to optimise.'
             return
         }
 
@@ -1913,6 +1862,7 @@ export const useSeqPrepStore = defineStore('seqPrep', () => {
 
             const optMap: Record<string, string> = {}
             const errMap: Record<string, string> = {}
+            const seedMap: Record<string, number> = {}
             for (const r of res.results) {
                 if (r.optimized_dna) {
                     optMap[r.design_id] = r.optimized_dna
@@ -1920,11 +1870,26 @@ export const useSeqPrepStore = defineStore('seqPrep', () => {
                 if (r.error) {
                     errMap[r.design_id] = r.error
                 }
+                if (r.seed != null) {
+                    seedMap[r.design_id] = r.seed
+                }
             }
-            optimizedDnaByDesign.value = optMap
-            optimizedErrorsByDesign.value = errMap
+            // Only the designs that were re-solved are replaced. Re-pressing
+            // Optimize to rescue one failure used to re-roll the DNA of every
+            // design that had already succeeded.
+            optimizedDnaByDesign.value = { ...optimizedDnaByDesign.value, ...optMap }
+            optimizedSeedsByDesign.value = { ...optimizedSeedsByDesign.value, ...seedMap }
+            const nextErrors = { ...optimizedErrorsByDesign.value }
+            for (const id of Object.keys(snapshotAa)) {
+                delete nextErrors[id]
+            }
+            optimizedErrorsByDesign.value = { ...nextErrors, ...errMap }
+            optimizationToolVersions.value = res.tool_versions ?? {}
             optimizationStale.value = false
-            optimizationEverSucceeded.value = Object.keys(optMap).length > 0
+            // The merged map, not this attempt's: a re-press that retries one
+            // failing design and fails again must not disable the download for
+            // the designs that already have DNA.
+            optimizationEverSucceeded.value = Object.keys(optimizedDnaByDesign.value).length > 0
         } catch (e: any) {
             optimizationGlobalError.value = String(e)
         } finally {
@@ -1953,8 +1918,6 @@ export const useSeqPrepStore = defineStore('seqPrep', () => {
     return {
         nTags,
         cTags,
-        nTerminalPrefix,
-        cTerminalSuffix,
         includeStopForNTagged,
         includeStopForCTagged,
         useDoubleStop,
@@ -1980,6 +1943,8 @@ export const useSeqPrepStore = defineStore('seqPrep', () => {
         optimizationMethod,
         optimizedDnaByDesign,
         optimizedErrorsByDesign,
+        optimizedSeedsByDesign,
+        optimizationToolVersions,
         optimizing,
         optimizationGlobalError,
         optimizationStale,

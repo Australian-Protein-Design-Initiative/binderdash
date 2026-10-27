@@ -7,7 +7,9 @@
  */
 
 export const SESSION_SCHEMA_VERSION = '1.0'
-export const PREPARE_SCHEMA_VERSION = '1.0'
+// 1.1 adds per-row 'seed' and 'tool_versions' so an optimisation run can be replayed.
+// Additive, so 1.0 readers still accept it (see assertReadableVersion).
+export const PREPARE_SCHEMA_VERSION = '1.1'
 
 export const SESSION_KIND = 'binderdash.session'
 export const PREPARE_KIND = 'binderdash.prepare_sequences'
@@ -64,13 +66,16 @@ export interface PrepareSequencesStateDto {
     dna_mode: boolean
     n_tags: Array<Record<string, any>>
     c_tags: Array<Record<string, any>>
-    n_terminal_prefix: string
-    c_terminal_suffix: string
+    /** Legacy free-text additions, now ordinary custom tags flagged `always`; read on restore only. */
+    n_terminal_prefix?: string
+    c_terminal_suffix?: string
     stop_options: Record<string, any>
     short_name_strategy: Record<string, any>
     codon_table_id?: string | null
     optimization_method?: string | null
     optimization_constraints: Array<Record<string, any>>
+    /** Dependency versions the per-row seeds are replayable against (schema 1.1+). */
+    tool_versions?: Record<string, string>
     rows?: Array<Record<string, any>>
 }
 

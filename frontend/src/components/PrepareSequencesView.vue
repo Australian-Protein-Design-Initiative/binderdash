@@ -47,6 +47,13 @@
               <div class="ps-tag-chip-body">
                 <span class="ps-tag-chip-name">{{ t.label }}</span>
                 <span class="ps-tag-chip-seq">{{ t.sequence }}</span>
+                <label
+                  class="ps-tag-always"
+                  title="Always add this to every design, ignoring its tag-end column"
+                >
+                  <ToggleSwitch v-model="t.always" class="ps-always-switch" />
+                  always
+                </label>
               </div>
             </Chip>
             <span v-if="seqPrep.nTags.length === 0" class="ps-placeholder">Add tags below</span>
@@ -68,6 +75,13 @@
               <div class="ps-tag-chip-body">
                 <span class="ps-tag-chip-name">{{ t.label }}</span>
                 <span class="ps-tag-chip-seq">{{ t.sequence }}</span>
+                <label
+                  class="ps-tag-always"
+                  title="Always add this to every design, ignoring its tag-end column"
+                >
+                  <ToggleSwitch v-model="t.always" class="ps-always-switch" />
+                  always
+                </label>
               </div>
             </Chip>
             <span v-if="seqPrep.cTags.length === 0" class="ps-placeholder">Add tags below</span>
@@ -118,22 +132,6 @@
     </div>
 
     <div class="ps-form grid card-like">
-      <div class="ps-field">
-        <label for="ps-npre">Add sequence to all N-terminal</label>
-        <InputText
-          id="ps-npre"
-          v-model="seqPrep.nTerminalPrefix"
-          class="w-full ps-terminal-input ps-terminal-input--n"
-        />
-      </div>
-      <div class="ps-field">
-        <label for="ps-csuf">Add sequence to all C-terminal</label>
-        <InputText
-          id="ps-csuf"
-          v-model="seqPrep.cTerminalSuffix"
-          class="w-full ps-terminal-input ps-terminal-input--c"
-        />
-      </div>
       <div class="ps-field ps-checks ps-checks--stops">
         <div class="ps-stop-check">
           <Checkbox v-model="seqPrep.includeStopForNTagged" input-id="ps-stop-n" binary />
@@ -707,7 +705,7 @@
         <template #body="{ data }">
           <span v-if="data.warnings.length > 0" class="ps-warn-cell">
             <i class="pi pi-exclamation-triangle ps-warn-icon" aria-hidden="true" />
-            <span class="ps-warn-text">{{ data.warnings.join(', ') }}</span>
+            <span class="ps-warn-text">{{ data.warnings.map(warningLabel).join(', ') }}</span>
           </span>
         </template>
       </Column>
@@ -808,12 +806,33 @@
         <div class="ps-warnings-banner-body">
           <p class="ps-warnings-banner-lead">
             <strong>Warning:</strong> Some designs have no value in the <strong>Tag End</strong> column.
-            Terminii-specific tags will only be applied to sequences where the tag column is <code>N</code> or <code>C</code>.
+            Terminii-specific tags will only be applied to sequences where the tag column is <code>N</code> or <code>C</code>; tags set to <em>always</em> are applied regardless.
           </p>
           <p v-if="invalidTagDesignSummary" class="ps-invalid-tag-summary">{{ invalidTagDesignSummary }}</p>
           <div class="ps-warnings-ack">
             <Checkbox v-model="tagColumnAcknowledged" input-id="ps-tag-col-ack" binary />
             <label for="ps-tag-col-ack">Acknowledged, continue anyway</label>
+          </div>
+        </div>
+      </div>
+    </Message>
+
+    <Message
+      v-if="rowsWithoutStartMet.length > 0"
+      severity="warn"
+      class="ps-warnings-banner"
+      :closable="false"
+    >
+      <div class="ps-warnings-banner-inner">
+        <i class="pi pi-exclamation-triangle ps-warn-banner-icon" aria-hidden="true" />
+        <div class="ps-warnings-banner-body">
+          <p class="ps-warnings-banner-lead">
+            <strong>Warning:</strong> Some designs do not have a start codon (acceptable if this will be introduced using restriction sites, eg NdeI)
+          </p>
+          <p v-if="noStartMetSummary" class="ps-invalid-tag-summary">{{ noStartMetSummary }}</p>
+          <div class="ps-warnings-ack">
+            <Checkbox v-model="startMetAcknowledged" input-id="ps-start-met-ack" binary />
+            <label for="ps-start-met-ack">Acknowledged, continue anyway</label>
           </div>
         </div>
       </div>
@@ -883,7 +902,8 @@ import {
 } from '../stores/seqPrep'
 import type { ShortNameStrategy } from '../stores/shortName'
 import { useDesignsStore } from '../stores/designs'
-import { bundlesApi } from '../webapi'
+import { bundlesApi, sequencesApi } from '../webapi'
+import { WARNING_LOW_EXTINCTION, WARNING_LOW_EXTINCTION_SHORT } from '../utils/protParam'
 import { buildPreparedRows, buildPrepareState } from '../session/prepareState'
 import { buildSessionState } from '../session/sessionState'
 import {
@@ -1015,11 +1035,7 @@ const columnOptions: Array<{ key: string; label: string }> = [
   { key: 'pi', label: 'pI' },
 ]
 
-const selectedColumnKeys = ref<string[]>(
-  columnOptions
-    .map((o) => o.key)
-    .filter((key) => key !== 'extinction' && key !== 'pi')
-)
+const selectedColumnKeys = ref<string[]>(columnOptions.map((o) => o.key))
 
 const shortNamePreviewLines = computed(() => {
   const rows = seqPrep.preparedRows.slice(0, 3)
@@ -1057,8 +1073,14 @@ const tableFilters = ref({
   tag: { value: null as string | null, matchMode: 'contains' as const }
 })
 
+/** Table cells use a shorter label for the long extinction warning. */
+function warningLabel(w: string): string {
+  return w === WARNING_LOW_EXTINCTION ? WARNING_LOW_EXTINCTION_SHORT : w
+}
+
 const warningsAcknowledged = ref(false)
 const tagColumnAcknowledged = ref(false)
+const startMetAcknowledged = ref(false)
 
 const NAME_UNIQUENESS_WARNINGS = new Set([
   WARNING_LONG_NAME_NOT_UNIQUE,
@@ -1081,6 +1103,7 @@ const preparedRowsFingerprint = computed(() =>
 watch(preparedRowsFingerprint, () => {
   warningsAcknowledged.value = false
   tagColumnAcknowledged.value = false
+  startMetAcknowledged.value = false
 })
 
 const dnaStalenessAcknowledged = ref(false)
@@ -1098,6 +1121,18 @@ const rowsWithWarnings = computed(() => seqPrep.preparedRows.filter((r) => r.war
 const rowsWithInvalidTagEnd = computed(() =>
   seqPrep.preparedRows.filter((r) => r.tag !== 'N' && r.tag !== 'C')
 )
+
+/** Constructs whose amino acid sequence does not begin with Met (e.g. after a pelB tag). */
+const rowsWithoutStartMet = computed(() =>
+  seqPrep.preparedRows.filter((r) => !r.prepared_aa.toUpperCase().startsWith('M'))
+)
+
+const noStartMetSummary = computed(() => {
+  const ids = rowsWithoutStartMet.value.map((r) => r.design_id)
+  if (ids.length === 0) return ''
+  const more = ids.length > 5 ? ` … (${ids.length} total)` : ''
+  return `Affected design_id: ${ids.slice(0, 5).join(', ')}${more}.`
+})
 
 const invalidTagDesignSummary = computed(() => {
   const rows = rowsWithInvalidTagEnd.value
@@ -1141,6 +1176,7 @@ const downloadAllowed = computed(() => {
   if (!seqPrep.canDownload) return false
   if (rowsWithWarnings.value.length > 0 && !warningsAcknowledged.value) return false
   if (rowsWithInvalidTagEnd.value.length > 0 && !tagColumnAcknowledged.value) return false
+  if (rowsWithoutStartMet.value.length > 0 && !startMetAcknowledged.value) return false
   if (dnaWarningActive.value && !dnaStalenessAcknowledged.value) return false
   return true
 })
@@ -1269,6 +1305,15 @@ function guardDownload(): boolean {
       severity: 'warn',
       summary: 'Acknowledge tag column',
       detail: 'Set the tag column to N or C where needed, or tick the tag acknowledgement before downloading.',
+      life: 5000
+    })
+    return false
+  }
+  if (rowsWithoutStartMet.value.length > 0 && !startMetAcknowledged.value) {
+    toast.add({
+      severity: 'warn',
+      summary: 'Acknowledge missing start codon',
+      detail: 'Tick the start codon acknowledgement before downloading.',
       life: 5000
     })
     return false
@@ -1547,11 +1592,54 @@ async function downloadBundle(): Promise<void> {
   }
 }
 
+/**
+ * The script is the backend's own builder source plus this tab's settings, so it
+ * reproduces these constructs exactly and can be re-run on a similar set later.
+ *
+ * Gated only on config validity, not `downloadAllowed`: the other three gates are
+ * about the rows on screen (per-sequence warnings, missing tag column, stale DNA),
+ * and the script embeds no sequences at all.
+ */
+async function downloadScript(): Promise<void> {
+  if (!seqPrep.canDownload) {
+    toast.add({
+      severity: 'warn',
+      summary: 'Settings not valid',
+      detail: seqPrep.validationErrors[0] ?? 'Fix the highlighted settings first',
+      life: 4000
+    })
+    return
+  }
+  try {
+    const blob = await sequencesApi.prepareScript({ config: buildPrepareState() })
+    downloadBlob(blob, `${exportDownloadStem()}.py`)
+    toast.add({
+      severity: 'success',
+      summary: 'Python script',
+      detail: 'Run it with: uv run <file> designs.tsv',
+      life: 4000
+    })
+  } catch (err: any) {
+    console.error('Error downloading prepare-sequences script:', err)
+    toast.add({
+      severity: 'error',
+      summary: 'Download failed',
+      detail: err?.message || 'Could not generate the script',
+      life: 5000
+    })
+  }
+}
+
 const downloadMenuItems = [
   { label: 'Download CSV (Twist-ready)', icon: 'pi pi-download', command: () => toCsvTwist() },
   { label: 'Download FASTA', icon: 'pi pi-download', command: () => downloadFasta() },
   { label: 'Download TSV', icon: 'pi pi-download', command: () => toTsv() },
-  { label: 'Download CSV', icon: 'pi pi-download', command: () => toCsv() }
+  { label: 'Download CSV', icon: 'pi pi-download', command: () => toCsv() },
+  {
+    label: 'Download Python script',
+    icon: 'pi pi-code',
+    command: () => downloadScript()
+  }
 ]
 </script>
 
@@ -1811,6 +1899,24 @@ const downloadMenuItems = [
   font-weight: 600;
 }
 
+.ps-tag-always {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+  font-size: 0.7em;
+  cursor: pointer;
+}
+
+.prepare-sequences-view :deep(.ps-always-switch.p-toggleswitch) {
+  width: 1.7rem;
+  height: 0.95rem;
+}
+
+.prepare-sequences-view :deep(.ps-always-switch .p-toggleswitch-handle) {
+  width: 0.7rem;
+  height: 0.7rem;
+}
+
 .ps-tag-chip-seq {
   font-size: 0.72em;
   font-weight: 500;
@@ -1982,16 +2088,6 @@ const downloadMenuItems = [
 }
 
 /* Preset tag segments: inline :style from store (same JSON as chips). */
-
-.prepare-sequences-view :deep(.ps-terminal-input--n.p-inputtext) {
-  border-left: 3px solid #00897b;
-  background: rgba(0, 137, 123, 0.06);
-}
-
-.prepare-sequences-view :deep(.ps-terminal-input--c.p-inputtext) {
-  border-left: 3px solid #c2185b;
-  background: rgba(194, 24, 91, 0.06);
-}
 
 :deep(.seq-seg-stop) {
   display: inline-block;

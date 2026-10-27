@@ -17,9 +17,11 @@ from .auth import ALGORITHM
 from .settings import SECRET_KEY
 
 PURPOSE_DESIGNS_DOWNLOAD = "designs_download"
+PURPOSE_PREPARE_DOWNLOAD = "prepare_download"
 DEFAULT_TTL_SECONDS = 600
 
 DesignsFormat = Literal["json", "tsv"]
+PrepareFormat = Literal["json", "tsv", "csv", "twist", "fasta"]
 
 
 class DownloadTokenError(ValueError):
@@ -70,4 +72,42 @@ def assert_designs_download_claims(
     if not run_id or claims["run_id"] != run_id:
         raise DownloadTokenError("download_token does not match run_ids")
     if claims["format"] != fmt:
+        raise DownloadTokenError("download_token does not match format")
+
+
+def mint_prepare_download_token(
+    prepare_id: str,
+    fmt: PrepareFormat,
+    *,
+    ttl_seconds: int = DEFAULT_TTL_SECONDS,
+) -> str:
+    """Scope a download to one stashed prepare request and one format.
+
+    A prepare request is a whole configuration, far too large for a JWT claim, so
+    the payload is stashed server-side and the token carries only its id. This is
+    a separate purpose from the designs download rather than a widening of it, so
+    a token for one can never be replayed against the other.
+    """
+    now = datetime.now(timezone.utc)
+    payload: Dict[str, Any] = {
+        "purpose": PURPOSE_PREPARE_DOWNLOAD,
+        "prepare_id": str(prepare_id),
+        "format": fmt,
+        "iat": now,
+        "exp": now + timedelta(seconds=ttl_seconds),
+        "jti": secrets.token_urlsafe(12),
+    }
+    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+
+
+def verify_prepare_download_token(token: str, *, prepare_id: str, fmt: str) -> None:
+    try:
+        claims = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    except JWTError as e:
+        raise DownloadTokenError("Invalid or expired download_token") from e
+    if claims.get("purpose") != PURPOSE_PREPARE_DOWNLOAD:
+        raise DownloadTokenError("download_token is not a prepare download token")
+    if claims.get("prepare_id") != prepare_id:
+        raise DownloadTokenError("download_token does not match prepare_id")
+    if claims.get("format") != fmt:
         raise DownloadTokenError("download_token does not match format")

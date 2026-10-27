@@ -271,6 +271,41 @@ class DnaOptConstraintSpec(BaseModel):
     params: Dict[str, Any] = {}
 
 
+class PrepareSequencesRequest(BaseModel):
+    """Build constructs from designs plus a Prepare Sequences config.
+
+    ``config`` is a ``PrepareSequencesPayload`` minus ``rows`` - the same JSON a
+    download bundle records and a generated script embeds as ``CONFIG``.
+    """
+
+    config: Dict[str, Any] = Field(default_factory=dict)
+    designs: List[Dict[str, Any]] = Field(default_factory=list)
+    # Previously optimised DNA / errors / seeds keyed by design_id, so the rows
+    # reflect an optimisation that has already run.
+    optimized: Optional[Dict[str, str]] = None
+    errors: Optional[Dict[str, str]] = None
+    seeds: Optional[Dict[str, int]] = None
+    include_segments: bool = True
+
+
+class PrepareSequencesResponse(BaseModel):
+    rows: List[Dict[str, Any]]
+    validation_errors: List[str] = Field(default_factory=list)
+    schema_version: str
+
+
+class PrepareScriptRequest(BaseModel):
+    config: Dict[str, Any] = Field(default_factory=dict)
+    include_self_check: bool = True
+
+
+class TagPresetsResponse(BaseModel):
+    presets: List[Dict[str, Any]]
+    custom_visual: Dict[str, str]
+    default_constraints: List[Dict[str, Any]]
+    default_post_stop_padding: str
+
+
 class DnaOptimizeRequest(BaseModel):
     sequences: Dict[str, str]
     codon_table_id: str
@@ -279,15 +314,22 @@ class DnaOptimizeRequest(BaseModel):
     # Per-residue fixed mask keyed by design_id. Stops marked true stay as TAA.
     # When a design_id is omitted, every * in that protein is treated as fixed.
     fixed: Optional[Dict[str, List[bool]]] = None
+    # Recorded seeds to replay, keyed by design_id. A design with a seed is
+    # solved once with it instead of retrying with fresh seeds.
+    seeds: Optional[Dict[str, int]] = None
 
 
 class DnaOptResultRow(BaseModel):
     design_id: str
     optimized_dna: Optional[str] = None
     error: Optional[str] = None
+    # The seed that produced optimized_dna; replay it to reproduce this result.
+    seed: Optional[int] = None
 
 
 class DnaOptimizeResponse(BaseModel):
     results: List[DnaOptResultRow]
     elapsed_seconds: float
+    # Seeds are only replayable against these exact versions.
+    tool_versions: Dict[str, str] = Field(default_factory=dict)
 

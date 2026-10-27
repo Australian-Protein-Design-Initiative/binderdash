@@ -37,8 +37,6 @@ function startPersisting(): void {
         () => [
             seqPrep.nTags,
             seqPrep.cTags,
-            seqPrep.nTerminalPrefix,
-            seqPrep.cTerminalSuffix,
             seqPrep.exportOrderName,
             seqPrep.extractChain,
             seqPrep.dnaMode,

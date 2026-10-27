@@ -1,0 +1,404 @@
+{
+  "$defs": {
+    "BuildInfo": {
+      "properties": {
+        "app_version": {
+          "title": "App Version",
+          "type": "string"
+        },
+        "build_source": {
+          "default": "unknown",
+          "enum": [
+            "env",
+            "build_file",
+            "git",
+            "unknown"
+          ],
+          "title": "Build Source",
+          "type": "string"
+        },
+        "git_commit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Git Commit"
+        },
+        "git_dirty": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Git Dirty"
+        },
+        "platform": {
+          "default": "",
+          "title": "Platform",
+          "type": "string"
+        },
+        "python_version": {
+          "default": "",
+          "title": "Python Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "app_version"
+      ],
+      "title": "BuildInfo",
+      "type": "object"
+    },
+    "DnaOptConstraintSpec": {
+      "properties": {
+        "enabled": {
+          "default": true,
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "params": {
+          "additionalProperties": true,
+          "default": {},
+          "title": "Params",
+          "type": "object"
+        },
+        "type": {
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "DnaOptConstraintSpec",
+      "type": "object"
+    },
+    "PreparedRowExport": {
+      "additionalProperties": true,
+      "properties": {
+        "design_id": {
+          "title": "Design Id",
+          "type": "string"
+        },
+        "extinction_coeff_oxidized": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Extinction Coeff Oxidized"
+        },
+        "extinction_coeff_reduced": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Extinction Coeff Reduced"
+        },
+        "isoelectric_point": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Isoelectric Point"
+        },
+        "original_sequence": {
+          "default": "",
+          "title": "Original Sequence",
+          "type": "string"
+        },
+        "prepared_aa": {
+          "title": "Prepared Aa",
+          "type": "string"
+        },
+        "prepared_dna": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Prepared Dna"
+        },
+        "project_id": {
+          "default": "",
+          "title": "Project Id",
+          "type": "string"
+        },
+        "row_key": {
+          "default": "",
+          "title": "Row Key",
+          "type": "string"
+        },
+        "run_id": {
+          "default": "",
+          "title": "Run Id",
+          "type": "string"
+        },
+        "run_name": {
+          "default": "",
+          "title": "Run Name",
+          "type": "string"
+        },
+        "seed": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Seed"
+        },
+        "short_name": {
+          "default": "",
+          "title": "Short Name",
+          "type": "string"
+        },
+        "source_path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Path"
+        },
+        "tag": {
+          "default": "",
+          "title": "Tag",
+          "type": "string"
+        },
+        "warnings": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Warnings",
+          "type": "array"
+        }
+      },
+      "required": [
+        "design_id",
+        "prepared_aa"
+      ],
+      "title": "PreparedRowExport",
+      "type": "object"
+    },
+    "PreparedTag": {
+      "additionalProperties": true,
+      "properties": {
+        "always": {
+          "default": false,
+          "title": "Always",
+          "type": "boolean"
+        },
+        "id": {
+          "default": "",
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "default": "",
+          "title": "Kind",
+          "type": "string"
+        },
+        "label": {
+          "default": "",
+          "title": "Label",
+          "type": "string"
+        },
+        "sequence": {
+          "default": "",
+          "title": "Sequence",
+          "type": "string"
+        },
+        "zone": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Zone"
+        }
+      },
+      "title": "PreparedTag",
+      "type": "object"
+    }
+  },
+  "$id": "https://binderdash.dev/schemas/prepare_sequences/1.1.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "properties": {
+    "binderdash": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/BuildInfo"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "c_tags": {
+      "items": {
+        "$ref": "#/$defs/PreparedTag"
+      },
+      "title": "C Tags",
+      "type": "array"
+    },
+    "c_terminal_suffix": {
+      "default": "",
+      "title": "C Terminal Suffix",
+      "type": "string"
+    },
+    "codon_table_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Codon Table Id"
+    },
+    "dna_mode": {
+      "default": false,
+      "title": "Dna Mode",
+      "type": "boolean"
+    },
+    "extract_chain": {
+      "default": "",
+      "title": "Extract Chain",
+      "type": "string"
+    },
+    "generated_at": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Generated At"
+    },
+    "good_only": {
+      "default": false,
+      "title": "Good Only",
+      "type": "boolean"
+    },
+    "kind": {
+      "const": "binderdash.prepare_sequences",
+      "default": "binderdash.prepare_sequences",
+      "title": "Kind",
+      "type": "string"
+    },
+    "n_tags": {
+      "items": {
+        "$ref": "#/$defs/PreparedTag"
+      },
+      "title": "N Tags",
+      "type": "array"
+    },
+    "n_terminal_prefix": {
+      "default": "",
+      "title": "N Terminal Prefix",
+      "type": "string"
+    },
+    "optimization_constraints": {
+      "items": {
+        "$ref": "#/$defs/DnaOptConstraintSpec"
+      },
+      "title": "Optimization Constraints",
+      "type": "array"
+    },
+    "optimization_method": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Optimization Method"
+    },
+    "order_name": {
+      "default": "",
+      "title": "Order Name",
+      "type": "string"
+    },
+    "rows": {
+      "items": {
+        "$ref": "#/$defs/PreparedRowExport"
+      },
+      "title": "Rows",
+      "type": "array"
+    },
+    "schema_version": {
+      "default": "1.1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "short_name_strategy": {
+      "additionalProperties": true,
+      "title": "Short Name Strategy",
+      "type": "object"
+    },
+    "stop_options": {
+      "additionalProperties": true,
+      "title": "Stop Options",
+      "type": "object"
+    },
+    "tool_versions": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Tool Versions",
+      "type": "object"
+    }
+  },
+  "title": "PrepareSequencesPayload",
+  "type": "object",
+  "x-binderdash-schema-version": "1.1"
+}

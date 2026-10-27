@@ -68,4 +68,6 @@ The same FastAPI backend + built frontend ship as a `pywebview` desktop app (`de
 
 ## Sequence prep specifics
 
-`PrepareSequencesView.vue` + `backend/tag_placement.py` + `backend/util/dna_optimization.py` handle N-/C-terminal affinity tags (His/FLAG/HA/etc., G4S linkers) and DNA codon optimisation (DnaChisel, `backend/util/codon_tables.py`) with GC/hairpin/restriction-site constraints. Tag-metric computation is lazy and cached. See `prepare_sequences_spec.md`.
+`PrepareSequencesView.vue` + `backend/tag_placement.py` + `backend/seq_prep/` handle N-/C-terminal affinity tags (His/FLAG/HA/etc., G4S linkers) and DNA codon optimisation (DnaChisel, `backend/seq_prep/optimize.py` + `backend/util/codon_tables.py`) with GC/hairpin/restriction-site constraints. Tag-metric computation is lazy and cached. See `prepare_sequences_spec.md`.
+
+`backend/seq_prep/` is the construct builder (tags, linkers, stops, padding, short names, exports) behind `POST /api/sequences/prepare`, the MCP `prepare_sequences` tool, and the downloadable Python script that `backend/seq_prep/script.py` generates by inlining this package's own source. **The same logic still exists in TypeScript** in `stores/seqPrep.ts`, `stores/shortName.ts` and `utils/protParam.ts`, which is what the live preview uses, so a change to tag presets, zone rules, short names or export columns must be made in both. `backend/tests/test_seq_prep_parity.py` is what catches it if you don't. Removing the TypeScript side is planned; see `plans/seq_prep_download_script.md`.

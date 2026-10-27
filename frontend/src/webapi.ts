@@ -3,6 +3,8 @@
  * All API calls should go through this module
  */
 
+import type { PrepareSequencesStateDto } from './session/types'
+
 /**
  * Thrown from every throw site inside apiRequest() so callers can distinguish
  * "server said no" (with a real HTTP status) from a network/parsing failure.
@@ -648,17 +650,29 @@ export interface DnaOptimizeRequestDto {
     codon_table_id: string
     method: string
     constraints: DnaOptConstraintSpecDto[]
+    /** Recorded seeds to replay, keyed by design_id. */
+    seeds?: Record<string, number>
 }
 
 export interface DnaOptResultRowDto {
     design_id: string
     optimized_dna?: string | null
     error?: string | null
+    /** The seed that produced optimized_dna; replay it to reproduce this result. */
+    seed?: number | null
 }
 
 export interface DnaOptimizeResponseDto {
     results: DnaOptResultRowDto[]
     elapsed_seconds: number
+    /** Seeds are only replayable against these exact dependency versions. */
+    tool_versions?: Record<string, string>
+}
+
+export interface PrepareScriptRequestDto {
+    /** The same payload a download bundle records; the script embeds it as CONFIG. */
+    config: PrepareSequencesStateDto
+    include_self_check?: boolean
 }
 
 export const sequencesApi = {
@@ -682,6 +696,15 @@ export const sequencesApi = {
             body: JSON.stringify(request),
             requireAuth: true
         })
+    },
+
+    /**
+     * The generated script is this server's own builder source plus a CONFIG
+     * dict, so it cannot drift from the app that produced it.
+     */
+    async prepareScript(request: PrepareScriptRequestDto): Promise<Blob> {
+        // postForBlob is declared below; function declarations hoist.
+        return await postForBlob(`${API_BASE}/api/sequences/prepare/script`, request)
     }
 }
 

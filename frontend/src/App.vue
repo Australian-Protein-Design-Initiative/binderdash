@@ -214,8 +214,8 @@ const shouldShowLoading = computed(() => {
             icon="pi pi-history"
             label="Restore session"
             severity="secondary"
-            text
             size="small"
+            class="restore-session-button"
             v-tooltip.bottom="'Load a session JSON from a downloaded design bundle'"
             @click="restoreDialogVisible = true"
           />
@@ -424,6 +424,25 @@ body {
   display: flex;
   align-items: center;
   justify-content: flex-end;
+}
+
+/* Text buttons disappear here: the banner is purple, and the later
+   `[class*="p-"]` colour override paints the label #495057. Match the
+   account trigger (UserMenu.vue). */
+.app-header .restore-session-button.p-button {
+  color: #fff !important;
+  background: rgba(0, 0, 0, 0.35) !important;
+  border: 1px solid rgba(255, 255, 255, 0.55) !important;
+}
+
+.app-header .restore-session-button.p-button .p-button-icon,
+.app-header .restore-session-button.p-button .p-button-label {
+  color: #fff !important;
+}
+
+.app-header .restore-session-button.p-button:hover {
+  background: rgba(0, 0, 0, 0.5) !important;
+  border-color: rgba(255, 255, 255, 0.75) !important;
 }
 
 .loading-container {

@@ -11,6 +11,18 @@ Binderdash is a single-page web app to explore results from de novo protein bind
 - Frontend fast inner loop for backend-served UI: `cd frontend && pnpm run watch:build` (rebuilds into `backend/static/`, so the FastAPI server at :8000 serves the latest UI). Use `pnpm run dev` (:5173) only when you don't need the built static path.
 - `pnpm test` from the repo root runs the full Playwright suite and auto-starts servers per `playwright.config.js`.
 
+## Cutting a release
+
+The authoritative procedure is the **Releasing** section of `AGENTS.md`: the four manifests that must move together (`package.json`, `frontend/package.json`, `backend/pyproject.toml`, `desktop/pyproject.toml`), the `CHANGELOG.md` handling, the `vX.Y.Z` tag that must match `backend/pyproject.toml`, and the pre-tag checklist. Follow it, don't re-derive it.
+
+Three things that section doesn't cover, all verified against the code:
+
+- **Where the running app gets its version** (`backend/version.py`, `build_identity()`), in precedence order: `BINDERDASH_VERSION` env var → **`backend/_build_info.json`** → `backend/pyproject.toml` → `"0.0.0"`. Note the middle one: `desktop/packaging/build-common.sh` writes `backend/_build_info.json`, it's gitignored, and nothing deletes it. A checkout that ever built the desktop app reports that stale version and commit hash forever, in the UI footer, `/health` and the generated sequence prep script. **Delete `backend/_build_info.json` after a desktop build** if you want a dev tree to report its real version.
+- `importlib.metadata` is tried before `pyproject.toml`, but `backend/uv.lock` declares the project `virtual`, so `binderdash-backend` is never installed and that lookup normally misses. If someone installs it, the dist-info version wins and will go stale.
+- The version string in `backend/uv.lock` (`name = "binderdash-backend"`) does **not** track `backend/pyproject.toml` and has been stale since 0.1.0. Harmless for a virtual project; don't "fix" it as part of a release.
+
+Build identity is only shown to authenticated callers (see `request_is_authenticated` in `backend/auth.py`): anonymous `/health` has no `build` key and `/openapi.json` reports `unversioned`. A release that appears not to have taken effect may just be an unauthenticated look at it.
+
 ## Architecture: the ingest → persist → cache → serve pipeline
 
 The backend's central job is turning heterogeneous run-output folders on disk into a queryable, sortable design table. The data flow is:

@@ -72,7 +72,9 @@ module.exports = defineConfig({
     webServer: process.env.BINDERDASH_BASE_URL
         ? undefined
         : {
-              command: 'source .venv/bin/activate && uv run uvicorn backend.main:app --host 0.0.0.0 --port 8000',
+              // `.` not `source`: Playwright spawns this via /bin/sh, which is dash
+              // on Debian/Ubuntu, where `source` does not exist (exit 127).
+              command: '. .venv/bin/activate && uv run uvicorn backend.main:app --host 0.0.0.0 --port 8000',
               url: 'http://localhost:8000',
               reuseExistingServer: !process.env.CI,
               timeout: 120 * 1000,

@@ -21,6 +21,7 @@ import UserMenu from './components/UserMenu.vue'
 import AccountView from './components/AccountView.vue'
 import ApiKeysView from './components/ApiKeysView.vue'
 import { useAppStore, useDesignsStore, usePlotsStore, useRunsStore, useAuthStore } from './stores'
+import { healthApi } from './webapi'
 
 // Use Pinia stores
 const appStore = useAppStore()
@@ -135,6 +136,22 @@ const tabNavGroupSecondaryPt = {
 // Track if authentication has been initialized
 const authInitialized = ref(false)
 const restoreDialogVisible = ref(false)
+
+// Build identity for the footer. /health only returns it to an authenticated
+// caller, so wait for the session rather than asking on mount and getting nothing.
+const buildLabel = ref('')
+watch(
+  () => authStore.canLoadData,
+  async (canLoad) => {
+    if (!canLoad || buildLabel.value) return
+    try {
+      buildLabel.value = (await healthApi.get()).build?.label ?? ''
+    } catch {
+      // A footer is never worth surfacing an error for.
+    }
+  },
+  { immediate: true }
+)
 
 // Initialize authentication on app start
 onMounted(async () => {
@@ -309,6 +326,10 @@ const shouldShowLoading = computed(() => {
       </main>
 
       <RestoreSessionDialog v-model:visible="restoreDialogVisible" />
+
+      <!-- Inside the authenticated branch: the build identity is not for the
+           login page, where anyone on the network can read it. -->
+      <footer v-if="buildLabel" class="app-footer">Binderdash {{ buildLabel }}</footer>
     </template>
 
     <Toast />
@@ -316,6 +337,18 @@ const shouldShowLoading = computed(() => {
 </template>
 
 <style>
+footer.app-footer {
+  /* Right padding matches .app-main's, so the text lines up with the right edge
+     of the tab panel above it. */
+  padding: 0.5rem 2rem 0.75rem;
+  text-align: right;
+  font-size: 0.68rem;
+  /* `footer` is required: the later `[class*="p-"]` override matches this
+     element because the class name contains "p-", and it uses !important. */
+  color: #b0b5ba !important;
+  user-select: text;
+}
+
 .binderdash-root {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   min-height: 100vh;

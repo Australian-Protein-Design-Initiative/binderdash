@@ -60,6 +60,44 @@ def test_git_failure_is_swallowed(monkeypatch, tmp_path) -> None:
     assert version_mod.build_identity().source == "unknown"
 
 
+def test_build_label_names_the_commit_and_whether_it_was_dirty(monkeypatch) -> None:
+    monkeypatch.setattr(
+        version_mod,
+        "build_identity",
+        lambda: version_mod.BuildIdentity("1.2.3", "cafebabe", True, "env"),
+    )
+    assert version_mod.build_label() == "1.2.3 (cafebabe, modified)"
+    assert version_mod.build_payload()["git_dirty"] is True
+
+
+def test_health_reports_the_build_to_an_authenticated_caller(api_client) -> None:
+    # The api_client fixture runs with auth disabled, which counts as authenticated.
+    body = api_client.get("/health").json()
+    assert body["status"] == "healthy"
+    assert body["build"]["version"]
+    assert set(body["build"]) == {"version", "git_commit", "git_dirty", "label"}
+    info = api_client.get("/openapi.json").json()["info"]
+    assert info["version"] == version_mod.build_label()
+
+
+def test_health_and_openapi_withhold_the_build_from_anonymous_callers(
+    api_client, monkeypatch
+) -> None:
+    """Version disclosure is the one thing an internet-facing scanner can reach."""
+    import backend.auth as auth_mod
+
+    monkeypatch.setattr(
+        auth_mod,
+        "settings",
+        auth_mod.settings.model_copy(update={"auth_disabled": False}),
+    )
+    body = api_client.get("/health").json()
+    assert body["status"] == "healthy"
+    assert "build" not in body
+    assert api_client.get("/openapi.json").json()["info"]["version"] == "unversioned"
+    assert api_client.get("/docs").status_code == 200
+
+
 def test_desktop_router_still_reports_a_version() -> None:
     """Regression guard on moving _app_version out of routers/desktop.py."""
     from backend.routers.desktop import _app_version

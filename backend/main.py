@@ -5,11 +5,12 @@ from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
-from .auth import CSRF_COOKIE_NAME, request_has_valid_api_key
+from .auth import CSRF_COOKIE_NAME, request_has_valid_api_key, request_is_authenticated
 from .mcp_server import MCP_MOUNT_PATH, build_mcp_http_app
 from .routers import api_keys as api_keys_routes
 from .routers import bundles as bundles_routes
@@ -25,6 +26,7 @@ from .routers import sequences as sequences_routes
 from .persistence.factory import default_sqlite_url, init_designs_repository_from_url
 from .runtime_paths import static_root
 from .settings import CORS_ALLOWED_ORIGINS, SECRET_KEY, raw_settings, settings
+from .version import build_label, build_payload
 
 
 _root_level = getattr(logging, settings.log_level, logging.INFO)
@@ -117,7 +119,18 @@ def _sync_admin_flags() -> None:
         logger.exception("Admin flag sync failed")
 
 
-app = FastAPI(lifespan=lifespan)
+_OPENAPI_URL = "/openapi.json"
+
+# The schema, Swagger UI and ReDoc routes are served by hand below (hence the three
+# Nones) so the reported version can depend on who is asking. "unversioned" is what
+# anonymous callers see; a signed-in caller gets the real build label.
+app = FastAPI(
+    lifespan=lifespan,
+    version="unversioned",
+    openapi_url=None,
+    docs_url=None,
+    redoc_url=None,
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -195,8 +208,34 @@ else:
 
 
 @app.get("/health")
-async def health_check():
-    return {"status": "healthy", "timestamp": datetime.now(timezone.utc).isoformat()}
+async def health_check(request: Request):
+    # Liveness is public; the build identity it would otherwise hand to any scanner
+    # on the internet is not. Signed-in callers (and auth-disabled installs) get both.
+    payload: dict[str, object] = {
+        "status": "healthy",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+    if await request_is_authenticated(request):
+        payload["build"] = build_payload()
+    return payload
+
+
+@app.get(_OPENAPI_URL, include_in_schema=False)
+async def openapi_schema(request: Request):
+    schema = app.openapi()  # cached on the app after the first call
+    if not await request_is_authenticated(request):
+        return schema
+    return {**schema, "info": {**schema["info"], "version": build_label()}}
+
+
+@app.get("/docs", include_in_schema=False)
+async def swagger_ui():
+    return get_swagger_ui_html(openapi_url=_OPENAPI_URL, title="Binderdash API")
+
+
+@app.get("/redoc", include_in_schema=False)
+async def redoc_ui():
+    return get_redoc_html(openapi_url=_OPENAPI_URL, title="Binderdash API")
 
 
 @app.get("/favicon.ico")

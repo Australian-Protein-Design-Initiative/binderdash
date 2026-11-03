@@ -17,6 +17,7 @@ import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from ..version import build_label
 from .config import PrepareConfig
 from .optimize import tool_versions
 
@@ -359,6 +360,7 @@ The input needs design_id, a sequence column, and tag (N or C). Tag placement
 comes from 3D structure analysis in Binderdash and cannot be recomputed here.
 
 Codon table: {payload.get("codon_table_id") or "E. coli (built-in fallback)"}
+Binderdash: {build_label()}
 Generated against: {", ".join(f"{k} {v}" for k, v in sorted(versions.items()))}
 """
 

@@ -223,6 +223,23 @@ async def get_current_user_optional(request: Request):
     return await get_current_user(request)
 
 
+async def request_is_authenticated(request: Request) -> bool:
+    """Non-raising "does this caller have a session or key?", for responses that
+    reveal more to a known user than to an anonymous one.
+
+    Auth being disabled counts as authenticated: there is nobody to withhold from.
+    """
+    if settings.auth_disabled:
+        return True
+    if request_has_valid_api_key(request):
+        return True
+    try:
+        await get_current_user(request)
+    except HTTPException:
+        return False
+    return True
+
+
 async def get_current_user_optional_with_query(
     request: Request,
     token: Optional[str] = None,

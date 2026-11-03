@@ -1546,6 +1546,20 @@ export const bundlesApi = {
     }
 }
 
+export interface BuildInfo {
+    version: string
+    git_commit: string | null
+    git_dirty: boolean | null
+    label: string
+}
+
+export const healthApi = {
+    // `build` is only returned to an authenticated caller.
+    async get(): Promise<{ status: string; timestamp: string; build?: BuildInfo }> {
+        return await apiRequest(`${API_BASE}/health`, { requireAuth: false })
+    }
+}
+
 /**
  * Default export with all API modules
  */
@@ -1560,5 +1574,6 @@ export default {
     auth: authApi,
     apiKeys: apiKeysApi,
     desktop: desktopApi,
-    bundles: bundlesApi
+    bundles: bundlesApi,
+    health: healthApi
 }

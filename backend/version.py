@@ -139,6 +139,26 @@ def build_identity() -> BuildIdentity:
     return BuildIdentity(app_version=version, source="unknown")
 
 
+def build_label() -> str:
+    """One-line build identity, as shown in the UI footer and generated scripts."""
+    identity = build_identity()
+    if not identity.git_commit:
+        return identity.app_version
+    suffix = ", modified" if identity.git_dirty else ""
+    return f"{identity.app_version} ({identity.git_commit}{suffix})"
+
+
+def build_payload() -> dict:
+    """Build identity as JSON, for /health and the UI footer."""
+    identity = build_identity()
+    return {
+        "version": identity.app_version,
+        "git_commit": identity.git_commit,
+        "git_dirty": identity.git_dirty,
+        "label": build_label(),
+    }
+
+
 def app_version() -> str:
     return build_identity().app_version
 

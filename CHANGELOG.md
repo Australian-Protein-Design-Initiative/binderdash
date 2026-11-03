@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-11-03
+
 ### Added
 
 - **Version**: The app version, git commit and whether that commit was modified now appear in a small grey footer, in the `/health` response as a `build` object, as the version on `/docs` and `/openapi.json`, and in the header comment of the downloadable sequence prep script. Everything but the script header is shown only to an authenticated caller: an anonymous `/health` omits `build`, the spec reports `unversioned`, and the login page has no footer, so an internet-facing instance gives a scanner nothing to match against a CVE list.

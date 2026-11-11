@@ -420,6 +420,8 @@ Preset tag **amino-acid sequences** are not stored as DNA on the server. The API
 | AviTag | `GLNDIFEAQKIEWHE` | N or C |
 | Strep-tag II | `WSHPQFEK` | N or C |
 | C-tag | `EPEA` | C only |
+| SNAC-tag | `GSHHW` (cleaved `G↓SHHW`) | N or C |
+| TEV-site | `ENLYFQS` (cleaved `ENLYFQ↓S`) | N or C |
 | G4S linker | `GGGGS` | N or C |
 | STOP* | `*` | N or C |
 

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Sequence prep**: **SNAC-tag** (`GSHHW`, shown as `G↓SHHW`) and **TEV-site** (`ENLYFQS`, shown as `ENLYFQ↓S`) on the N- and C-side palettes.
+
 ### Changed
 
 - **Docs**: README rewritten for users: hero screenshot, feature list, and Desktop / Server getting-started sections. Developer setup moved to `docs/development/setup.md`, with a new `docs/setup/desktop.md` for installing the desktop app. The docs are published to GitHub Pages and versioned with mike (`main` as `latest`, `develop`, and each `vX.Y.Z` tag) by a new `docs` workflow.

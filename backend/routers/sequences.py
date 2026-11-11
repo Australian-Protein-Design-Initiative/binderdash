@@ -97,6 +97,7 @@ async def optimize_dna_batch(
             request.method,
             request.fixed,
             request.seeds,
+            request.frame,
         )
     except Exception as e:
         logger.exception("dna optimization batch failed")

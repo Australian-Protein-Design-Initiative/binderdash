@@ -12,7 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **MCP / UI**: **Use Claude Science** on the new API key panel. Settings → Connectors → Add Connector (Local URL), with the connector name, server address and header `echo` command filled in, plus a screenshot of the form.
 - **MCP**: Structure downloads without the API key. `inspect_structures` returns an absolute `structure_url` with a short-lived token scoped to that file, and `export_structures` returns an absolute `GET /api/pdbs/tar` URL for a stashed tar. `list_runs` and `prepare_sequences` download URLs are absolute the same way. Set `PUBLIC_BASE_URL` when the request host is not the public origin; otherwise `DOMAIN` or the incoming request is used.
 - **Sequence prep**: **SNAC-tag** (`GSHHW`, shown as `G↓SHHW`) and **TEV-site** (`ENLYFQS`, shown as `ENLYFQ↓S`) on the N- and C-side palettes.
-- **Sequence prep / DNA optimisation**: New `AvoidInvertedRepeats` constraint (default `min_tm: 68`), added to the Twist-oriented defaults, which rejects sequences whose snapback hairpins melt at or above a Tm threshold scored with primer3/IDT-style thermodynamic alignment. Catches the short, GC-rich and imperfect inverted repeats that gene-synthesis vendors flag (e.g. "inverted repeat with ≥68°C Tm") and that `AvoidHairpins` (exact Watson-Crick stems only) misses. Existing persisted constraint lists are unaffected; reset to defaults in the DNA optimisation panel to pick it up.
+- **Sequence prep / DNA optimisation**: New `AvoidInvertedRepeats` constraint (default `min_tm: 68`), added to the DNA optimisation defaults, which rejects sequences whose snapback hairpins melt at or above a Tm threshold scored with primer3/IDT-style thermodynamic alignment. Catches the short, GC-rich and imperfect inverted repeats that gene-synthesis vendors flag (e.g. "inverted repeat with ≥68°C Tm") and that `AvoidHairpins` (exact Watson-Crick stems only) misses. Existing persisted constraint lists are unaffected; reset to defaults in the DNA optimisation panel to pick it up.
+- **Sequence prep / DNA optimisation**: New `AvoidConsecutiveCodons` constraint (on in the DNA optimisation defaults) rejects runs of more than two consecutive `CGG`, `CGA` or `CCC` codons — the Arg/Pro codons synthesis vendors flag. Runs are counted in the design and preset-tag reading frame, so a 5' nucleotide addition whose length is not a multiple of 3 does not shift which triplets count as codons.
 
 ### Changed
 
@@ -21,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **Downloads**: A design bundle zip unpacks into one folder named after the download (the order name, or `saved_set_<name>`), instead of scattering `designs.tsv`, `structures/` and the rest into the current directory.
+- **Sequence prep / DNA optimisation**: A custom nucleotide addition that is not a whole number of codons is kept as literal DNA during optimisation, instead of being recoded as amino acids, so the design and tag reading frame stays aligned with the construct.
 
 ## [0.4.2] - 2026-11-03
 

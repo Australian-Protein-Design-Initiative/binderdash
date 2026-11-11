@@ -247,6 +247,36 @@ def split_core_aa_segments(core: str) -> List[Segment]:
     return segments
 
 
+_IN_FRAME_KINDS = frozenset({
+    "his", "flag", "cmyc", "ha", "avi", "strep", "ctag", "pelb", "snac", "tev", "linker", KIND_STOP,
+})
+
+
+def coding_frame_offset(segments: List[Segment]) -> int:
+    """Nucleotide offset (0, 1 or 2) where design and preset-tag codons begin.
+
+    A leftover lowercase run (``nuc_remainder``) is raw bases and shifts the
+    frame shared by the design and preset tags. The design core anchors it;
+    with no core, the first preset tag does.
+    """
+
+    def anchor_at(kinds: frozenset) -> Optional[int]:
+        nt = 0
+        for seg in segments:
+            if seg.kind == KIND_NUC_REMAINDER:
+                nt += len(seg.text)
+                continue
+            if seg.kind in kinds and seg.text:
+                return nt % 3
+            nt += len(seg.text) * 3
+        return None
+
+    from_core = anchor_at(frozenset({KIND_CORE}))
+    if from_core is not None:
+        return from_core
+    return anchor_at(_IN_FRAME_KINDS) or 0
+
+
 def expand_fixed_from_segments(segments: List[Segment]) -> Tuple[str, List[bool]]:
     """Flatten segments to the AA string plus a per-residue fixed mask."""
     aa: List[str] = []

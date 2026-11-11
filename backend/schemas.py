@@ -317,6 +317,9 @@ class DnaOptimizeRequest(BaseModel):
     # Recorded seeds to replay, keyed by design_id. A design with a seed is
     # solved once with it instead of retrying with fresh seeds.
     seeds: Optional[Dict[str, int]] = None
+    # Coding-frame offset (0, 1 or 2) keyed by design_id. Nucleotide additions
+    # whose length is not a multiple of 3 shift where design and tag codons start.
+    frame: Optional[Dict[str, int]] = None
 
 
 class DnaOptResultRow(BaseModel):

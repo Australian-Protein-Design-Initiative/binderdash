@@ -278,12 +278,13 @@ def main(argv=None):
             OPTIMIZATION_ATTEMPTS = max(1, args.retries)
 
         base_rows = build_rows(designs, cfg)
-        coding, fixed = {}, {}
+        coding, fixed, frames = {}, {}, {}
         for row in base_rows:
             aa, mask = row.coding_aa_and_fixed()
             if aa:
                 coding[row.design_id] = aa
                 fixed[row.design_id] = mask
+                frames[row.design_id] = coding_frame_offset(row.segments_aa_display)
         print(f"Optimising {len(coding)} sequence(s); this is the slow part.", file=sys.stderr)
         results = optimize_sequences(
             coding,
@@ -292,6 +293,7 @@ def main(argv=None):
             cfg.optimization_method,
             fixed,
             seeds or None,
+            frames or None,
         )
         for design_id, res in results.items():
             if res.get("optimized_dna"):

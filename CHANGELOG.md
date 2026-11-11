@@ -10,7 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **Sequence prep**: **SNAC-tag** (`GSHHW`, shown as `G↓SHHW`) and **TEV-site** (`ENLYFQS`, shown as `ENLYFQ↓S`) on the N- and C-side palettes.
-- **Sequence prep / DNA optimisation**: New `AvoidInvertedRepeats` constraint (default `min_tm: 68`), added to the Twist-oriented defaults, which rejects sequences whose snapback hairpins melt at or above a Tm threshold scored with primer3/IDT-style thermodynamic alignment. Catches the short, GC-rich and imperfect inverted repeats that gene-synthesis vendors flag (e.g. "inverted repeat with ≥68°C Tm") and that `AvoidHairpins` (exact Watson-Crick stems only) misses. Existing persisted constraint lists are unaffected; reset to defaults in the DNA optimisation panel to pick it up.
+- **Sequence prep / DNA optimisation**: New `AvoidInvertedRepeats` constraint (default `min_tm: 68`), added to the DNA optimisation defaults, which rejects sequences whose snapback hairpins melt at or above a Tm threshold scored with primer3/IDT-style thermodynamic alignment. Catches the short, GC-rich and imperfect inverted repeats that gene-synthesis vendors flag (e.g. "inverted repeat with ≥68°C Tm") and that `AvoidHairpins` (exact Watson-Crick stems only) misses. Existing persisted constraint lists are unaffected; reset to defaults in the DNA optimisation panel to pick it up.
+- **Sequence prep / DNA optimisation**: New `AvoidConsecutiveCodons` constraint (on in the DNA optimisation defaults) rejects runs of more than two consecutive `CGG`, `CGA` or `CCC` codons — the Arg/Pro codons synthesis vendors flag. Runs are counted in the design and preset-tag reading frame, so a 5' nucleotide addition whose length is not a multiple of 3 does not shift which triplets count as codons.
 
 ### Changed
 
@@ -22,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **Sequence prep / DNA optimisation**: The default `RepeatedKmerPattern` constraint (`k_size: 20`, `n_repeats: 2`) never took effect — the backend passed `k_size` to dnachisel whose keyword is `kmer_size`, so the constraint failed to build and was silently dropped from every optimisation run. It is now enforced.
+- **Sequence prep / DNA optimisation**: A custom nucleotide addition that is not a whole number of codons is kept as literal DNA during optimisation, instead of being recoded as amino acids, so the design and tag reading frame stays aligned with the construct.
 
 ## [0.4.1] - 2026-09-30
 

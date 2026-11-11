@@ -279,6 +279,9 @@ class DnaOptimizeRequest(BaseModel):
     # Per-residue fixed mask keyed by design_id. Stops marked true stay as TAA.
     # When a design_id is omitted, every * in that protein is treated as fixed.
     fixed: Optional[Dict[str, List[bool]]] = None
+    # Coding-frame offset (0, 1 or 2) keyed by design_id. Nucleotide additions
+    # whose length is not a multiple of 3 shift where design and tag codons start.
+    frame: Optional[Dict[str, int]] = None
 
 
 class DnaOptResultRow(BaseModel):

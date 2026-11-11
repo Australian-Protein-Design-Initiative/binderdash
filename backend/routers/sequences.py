@@ -79,6 +79,7 @@ async def optimize_dna_batch(
             [c.model_dump() for c in request.constraints],
             request.method,
             request.fixed,
+            request.frame,
         )
     except Exception as e:
         logger.exception("dna optimization batch failed")

@@ -343,11 +343,14 @@ curl -sS -H "Authorization: Bearer $BINDERDASH_TOKEN" \
   "constraints": [
     { "type": "EnforceGCContent", "enabled": true, "params": { "mini": 0.25, "maxi": 0.64 } }
   ],
-  "fixed": { "design_id_1": [false, false, false, true] }
+  "fixed": { "design_id_1": [false, false, false, true] },
+  "frame": { "design_id_1": 0 }
 }
 ```
 
 Optional `fixed` maps each `design_id` to a per-residue boolean array the same length as that protein. Residues marked `true` must be stops (`*`, frozen as **TAA**) or a leading Met (`M`, frozen as **ATG**), and are excluded from codon optimisation and from user constraints. When a design id is omitted from `fixed` (or `fixed` is omitted entirely), every `*` in that protein is treated as fixed.
+
+Lowercase `a`/`c`/`g`/`t` in a sequence are literal nucleotides from a custom addition, not amino acids: they stay frozen and are not recoded. Optional `frame` maps each `design_id` to `0`, `1` or `2`, the nucleotide offset where design and preset-tag codons begin. A 5' addition whose length is not a multiple of 3 sets this to 1 or 2. `AvoidConsecutiveCodons` reads codons from that offset.
 ### Codon tables
 
 `GET /api/sequences/codon-tables` returns `{ "items": [ { "value", "label" }, ... ] }`.
@@ -386,10 +389,11 @@ Each constraint: `{ "type": "<name>", "enabled": true, "params": { ... } }`.
 | `AvoidRareCodons` | `min_frequency`; species injected from `codon_table_id` |
 | `UniquifyAllKmers` | `k` (e.g. 12) |
 | `AvoidInvertedRepeats` | `min_tm` (°C, default 68); optional `stride` (default 10) |
+| `AvoidConsecutiveCodons` | `codons` (default `CGG`, `CGA`, `CCC`), `max_run` (default 2). Runs are counted in the design/tag frame (`frame` on the request), not from nucleotide 0 |
 
 `EnforceTranslation` is always applied by the server; do not send it.
 
-The Prepare Sequences UI uses a Twist-oriented default set (`DEFAULT_TWIST_CONSTRAINTS` in `frontend/src/stores/seqPrep.ts`). The UI-only type `ExcludeRestrictionSite` with `params.enzyme` is serialised to `AvoidPattern` with `pattern: "<enzyme>_site"` before POST.
+The Prepare Sequences UI uses `DEFAULT_DNAOPT_CONSTRAINTS` in `frontend/src/stores/seqPrep.ts`, similar to the DNA optimisation/complexity rules used by Twist Biosciences for gene synthesis. The UI-only type `ExcludeRestrictionSite` with `params.enzyme` is serialised to `AvoidPattern` with `pattern: "<enzyme>_site"` before POST.
 
 `AvoidInvertedRepeats` rejects sequences whose self-complementary structures (snapback hairpins) melt at or above `min_tm`, computed the same way primer3 / IDT do (concentration-free nearest-neighbour thermodynamic alignment). This catches the short GC-rich and imperfect inverted repeats that gene-synthesis vendors flag and that `AvoidHairpins` (exact stems only) misses. primer3's alignment scores at most 60 bp per sequence, so hairpins are scored on sliding 60 bp windows; structures spanning more than ~50 nt (long arms and loop) may not be detected.
 

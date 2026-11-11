@@ -314,11 +314,14 @@ Body: {
   "codon_table_id": "e_coli_316407",
   "method":         "match_codon_usage",
   "constraints":    [ { "type": "...", "enabled": true, "params": {...} }, ... ],
-  "fixed":          { "design_id_1": [false, false, ..., true] }
+  "fixed":          { "design_id_1": [false, false, ..., true] },
+  "frame":          { "design_id_1": 0 }
 }
 ```
 
 Optional `fixed` is a per-residue boolean mask keyed by `design_id` (same length as that protein). Residues marked `true` must be stops (`*`, frozen as **TAA**) or a leading Met (`M`, frozen as **ATG**), and are excluded from codon optimisation and user constraints. When a design id is omitted from `fixed`, every `*` in that protein is treated as fixed. The Prepare Sequences UI always sends this mask from segment `fixed` flags.
+
+Lowercase `a`/`c`/`g`/`t` are literal nucleotides (a custom addition that is not a whole number of codons). They stay frozen. Optional `frame` is `0`, `1` or `2` per design: the offset where design and preset-tag codons begin after such an addition. `AvoidConsecutiveCodons` uses it; omit it and the frame is 0.
 #### `method` (codon optimisation objective)
 
 This is passed straight to DnaChisel's `CodonOptimize`. Common values:
@@ -339,9 +342,10 @@ Each entry is `{"type": "<DnaChisel name>", "enabled": true, "params": {...}}`. 
 | `AvoidRareCodons`          | `params: {min_frequency: 0.09}` - uses the same `codon_table_id` as the optimisation. Don't pass `species` yourself; the backend injects it.       |
 | `UniquifyAllKmers`         | `params: {k: 12}` - bans repeated k-mers (de-novo synthesis vendors love this).                                                                     |
 | `AvoidInvertedRepeats`     | `params: {min_tm: 68, stride?}` - rejects snapback hairpins whose Tm reaches `min_tm`, scored with primer3/IDT-style thermodynamic alignment. Catches the short GC-rich and imperfect inverted repeats vendors flag and `AvoidHairpins` misses. |
+| `AvoidConsecutiveCodons`   | `params: {codons: ["CGG","CGA","CCC"], max_run: 2}` - rejects a run of more than `max_run` of those Pro/Arg codons. Codons are read in the design/tag frame, not from nucleotide 0. |
 | `EnforceTranslation`       | Always added by the backend; do **not** include explicitly.                                                                                        |
 
-The frontend's `DEFAULT_TWIST_CONSTRAINTS` (a known-good profile for Twist Bioscience gene synthesis) is:
+The frontend's `DEFAULT_DNAOPT_CONSTRAINTS` (similar to the DNA optimisation/complexity rules used by Twist Biosciences for gene synthesis) is:
 
 ```json
 [
@@ -356,6 +360,7 @@ The frontend's `DEFAULT_TWIST_CONSTRAINTS` (a known-good profile for Twist Biosc
   { "type": "UniquifyAllKmers",  "params": { "k": 12 } },
   { "type": "AvoidPattern",      "params": { "pattern": { "type": "RepeatedKmerPattern", "params": { "n_repeats": 2, "k_size": 20 } } } },
   { "type": "AvoidInvertedRepeats", "params": { "min_tm": 68 } },
+  { "type": "AvoidConsecutiveCodons", "params": { "codons": ["CGG", "CGA", "CCC"], "max_run": 2 } },
   { "type": "AvoidPattern",      "params": { "pattern": "GGAGG" } },
   { "type": "AvoidPattern",      "params": { "pattern": "TAAGGAG" } }
 ]

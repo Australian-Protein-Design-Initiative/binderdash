@@ -67,12 +67,14 @@ export const OPTIMIZATION_CONSTRAINT_TYPES = [
     'AvoidPattern',
     'AvoidRareCodons',
     'UniquifyAllKmers',
-    'AvoidInvertedRepeats'
+    'AvoidInvertedRepeats',
+    'AvoidConsecutiveCodons'
 ] as const
 
 export type OptimizationConstraintType = (typeof OPTIMIZATION_CONSTRAINT_TYPES)[number]
 
-export const DEFAULT_TWIST_CONSTRAINTS: DnaOptConstraintSpecDto[] = [
+/** Default DNA optimisation constraints, similar to the DNA optimisation/complexity rules used by Twist Biosciences for gene synthesis. */
+export const DEFAULT_DNAOPT_CONSTRAINTS: DnaOptConstraintSpecDto[] = [
     { type: 'EnforceGCContent', enabled: true, params: { mini: 0.25, maxi: 0.64 } },
     { type: 'EnforceGCContent', enabled: true, params: { mini: 0.35, maxi: 0.75, window: 50 } },
     { type: 'AvoidHairpins', enabled: true, params: { stem_size: 20, hairpin_window: 48 } },
@@ -84,6 +86,7 @@ export const DEFAULT_TWIST_CONSTRAINTS: DnaOptConstraintSpecDto[] = [
     { type: 'UniquifyAllKmers', enabled: true, params: { k: 12 } },
     { type: 'AvoidPattern', enabled: true, params: { pattern: { type: 'RepeatedKmerPattern', params: { n_repeats: 2, k_size: 20 } } } },
     { type: 'AvoidInvertedRepeats', enabled: true, params: { min_tm: 68 } },
+    { type: 'AvoidConsecutiveCodons', enabled: true, params: { codons: ['CGG', 'CGA', 'CCC'], max_run: 2 } },
     { type: 'AvoidPattern', enabled: true, params: { pattern: 'GGAGG' } },
     { type: 'AvoidPattern', enabled: true, params: { pattern: 'TAAGGAG' } }
 ]
@@ -841,6 +844,48 @@ export function splitCoreAaSegments(core: string): PreparedSegment[] {
     }
     flush()
     return segments
+}
+
+const IN_FRAME_TAG_CLASSES = new Set([
+    'seq-seg-his',
+    'seq-seg-flag',
+    'seq-seg-cmyc',
+    'seq-seg-ha',
+    'seq-seg-avi',
+    'seq-seg-strep',
+    'seq-seg-ctag',
+    'seq-seg-snac',
+    'seq-seg-tev',
+    'seq-seg-linker',
+    'seq-seg-stop'
+])
+
+/**
+ * Nucleotide offset (0, 1 or 2) at which design and preset-tag codons begin.
+ *
+ * A custom addition is mixed: uppercase residues are codons (3 nt) and a
+ * leftover lowercase run (`seq-seg-nuc-remainder`) is raw bases. That leftover
+ * is what shifts the reading frame; the design and preset tags share whatever
+ * frame it leaves. When there is no design core, the first preset tag anchors it.
+ */
+export function codingFrameOffset(segments: PreparedSegment[]): number {
+    const anchorAt = (classes: Set<string>): number | null => {
+        let nt = 0
+        for (const seg of segments) {
+            if (seg.cssClass === 'seq-seg-nuc-remainder') {
+                nt += seg.text.length
+                continue
+            }
+            if (classes.has(seg.cssClass) && seg.text.length > 0) {
+                return ((nt % 3) + 3) % 3
+            }
+            nt += seg.text.length * 3
+        }
+        return null
+    }
+    const fromCore = anchorAt(new Set(['seq-seg-core']))
+    if (fromCore !== null) return fromCore
+    return anchorAt(IN_FRAME_TAG_CLASSES) ?? 0
 }
 
 /** Expand segment `fixed` flags to a per-residue mask matching the concatenated AA. */
@@ -1862,7 +1907,7 @@ export const useSeqPrepStore = defineStore('seqPrep', () => {
         }
     }
 
-    const optimizationConstraints = ref<DnaOptConstraintSpecDto[]>(JSON.parse(JSON.stringify(DEFAULT_TWIST_CONSTRAINTS)))
+    const optimizationConstraints = ref<DnaOptConstraintSpecDto[]>(JSON.parse(JSON.stringify(DEFAULT_DNAOPT_CONSTRAINTS)))
     const optimizationMethod = ref<string>('match_codon_usage')
     const optimizedDnaByDesign = ref<Record<string, string>>({})
     const optimizedErrorsByDesign = ref<Record<string, string>>({})
@@ -1898,6 +1943,7 @@ export const useSeqPrepStore = defineStore('seqPrep', () => {
     async function runOptimization() {
         const seqs: Record<string, string> = {}
         const fixedByDesign: Record<string, boolean[]> = {}
+        const frameByDesign: Record<string, number> = {}
         for (const row of preparedRows.value) {
             if (!row.segments_aa_display.length && !row.prepared_aa_display) continue
             const { aa, fixed } = expandFixedFromSegments(row.segments_aa_display)
@@ -1907,6 +1953,7 @@ export const useSeqPrepStore = defineStore('seqPrep', () => {
             fixedByDesign[row.design_id] = fixed.length === codingAa.length
                 ? fixed
                 : codingAa.split('').map(ch => ch === '*')
+            frameByDesign[row.design_id] = codingFrameOffset(row.segments_aa_display)
         }
         if (Object.keys(seqs).length === 0) {
             optimizationGlobalError.value = 'No sequences in scope to optimise.'
@@ -1924,6 +1971,7 @@ export const useSeqPrepStore = defineStore('seqPrep', () => {
             const req = {
                 sequences: seqs,
                 fixed: fixedByDesign,
+                frame: frameByDesign,
                 codon_table_id: selectedCodonTable.value || FALLBACK_ECOLLI_CODON_TABLE.label,
                 method: optimizationMethod.value,
                 constraints: optimizationConstraints.value.map(serializeConstraintForBackend)
@@ -1967,7 +2015,7 @@ export const useSeqPrepStore = defineStore('seqPrep', () => {
     }
 
     function resetConstraintsToDefaults() {
-        optimizationConstraints.value = JSON.parse(JSON.stringify(DEFAULT_TWIST_CONSTRAINTS))
+        optimizationConstraints.value = JSON.parse(JSON.stringify(DEFAULT_DNAOPT_CONSTRAINTS))
     }
 
     function addConstraint() {

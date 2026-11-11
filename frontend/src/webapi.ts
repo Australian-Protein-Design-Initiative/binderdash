@@ -645,6 +645,8 @@ export interface DnaOptimizeRequestDto {
     sequences: Record<string, string>
     /** Per-residue fixed mask keyed by design_id; stops marked true stay as TAA. */
     fixed?: Record<string, boolean[]>
+    /** Coding-frame offset (0, 1 or 2) keyed by design_id. */
+    frame?: Record<string, number>
     codon_table_id: string
     method: string
     constraints: DnaOptConstraintSpecDto[]

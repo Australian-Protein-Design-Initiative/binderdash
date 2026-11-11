@@ -379,3 +379,86 @@ def test_optimize_dna_resolves_inverted_repeats(api_client) -> None:
     assert dna is not None
     assert _hairpin_breaches(dna, 68.0, 1) == []
 
+
+def test_consecutive_codons_follow_the_coding_frame() -> None:
+    """Three CCC codons after a 2 nt addition are a run only in frame 2.
+
+    Reading from nucleotide 0 splits them into ACC/CCC/CCC and misses the run.
+    """
+    import dnachisel as dc
+
+    from backend.util.dna_optimization import AvoidConsecutiveCodons
+
+    seq = "AC" + "CCC" * 3
+    in_frame = AvoidConsecutiveCodons(frame=2, max_run=2)
+    from_start = AvoidConsecutiveCodons(frame=0, max_run=2)
+    problem = dc.DnaOptimizationProblem(sequence=seq, constraints=[in_frame])
+    assert not in_frame.evaluate(problem).passes
+    assert from_start.evaluate(problem).passes
+
+    # A CCC that straddles two codons (AAC|CCA) is not a CCC codon.
+    straddling = dc.DnaOptimizationProblem(
+        sequence="AACCCA", constraints=[from_start]
+    )
+    assert from_start.evaluate(straddling).passes
+
+    solvable = dc.DnaOptimizationProblem(
+        sequence=seq,
+        constraints=[
+            in_frame,
+            dc.AvoidChanges(indices=[0, 1]),
+            dc.EnforceTranslation(translation="PPP", location=dc.Location(2, 11)),
+        ],
+    )
+    solvable.resolve_constraints()
+    assert solvable.sequence[:2] == "AC"
+    assert in_frame.evaluate(solvable).passes
+    assert dc.translate(solvable.sequence[2:]) == "PPP"
+
+
+def test_optimize_dna_preserves_unframed_prefix_and_breaks_codon_runs(api_client) -> None:
+    payload = {
+        "sequences": {"d1": "acPPP"},
+        "frame": {"d1": 2},
+        "codon_table_id": "e_coli",
+        "method": "match_codon_usage",
+        "constraints": [
+            {
+                "type": "AvoidConsecutiveCodons",
+                "enabled": True,
+                "params": {"codons": ["CGG", "CGA", "CCC"], "max_run": 2},
+            }
+        ],
+    }
+    resp = api_client.post("/api/sequences/optimize-dna", json=payload)
+    assert resp.status_code == 200, resp.text
+    res = resp.json()["results"][0]
+    assert res["error"] is None, res["error"]
+    dna = res["optimized_dna"]
+    assert dna is not None
+    assert dna[:2] == "AC"
+    assert len(dna) == 11
+    import dnachisel as dc
+
+    from backend.util.dna_optimization import AvoidConsecutiveCodons
+
+    assert dc.translate(dna[2:]) == "PPP"
+    problem = dc.DnaOptimizationProblem(sequence=dna, constraints=[])
+    assert AvoidConsecutiveCodons(frame=2, max_run=2).evaluate(problem).passes
+
+
+def test_optimize_dna_rejects_bad_frame(api_client) -> None:
+    payload = {
+        "sequences": {"d1": "MGS"},
+        "frame": {"d1": 4},
+        "codon_table_id": "e_coli",
+        "method": "match_codon_usage",
+        "constraints": [],
+    }
+    resp = api_client.post("/api/sequences/optimize-dna", json=payload)
+    assert resp.status_code == 200, resp.text
+    res = resp.json()["results"][0]
+    assert res["optimized_dna"] is None
+    assert res["error"] is not None
+    assert "frame" in res["error"]
+

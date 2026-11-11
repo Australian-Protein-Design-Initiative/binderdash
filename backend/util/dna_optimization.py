@@ -129,6 +129,87 @@ class AvoidInvertedRepeats(dc.Specification):
         return "inverted repeat above %g C" % self.min_tm
 
 
+# Pro (CCC) and Arg (CGG, CGA) codons that synthesis vendors reject in runs.
+_DEFAULT_RUN_CODONS = ("CGG", "CGA", "CCC")
+# Lowercase acgt in a sequence are literal nucleotides (custom 5'/3' additions),
+# not amino acids. They are not recoded, and they shift the coding frame.
+_LITERAL_NT = set("acgt")
+
+
+class AvoidConsecutiveCodons(dc.Specification):
+    """Avoid runs of more than ``max_run`` codons drawn from ``codons``.
+
+    Codons are read in the design/tag reading frame (``frame`` is the
+    nucleotide offset of the first coding codon), not from nucleotide 0.
+    A 5' addition whose length is not a multiple of 3 leaves ``frame`` at
+    1 or 2; triplets that merely contain CGG/CGA/CCC across a codon
+    boundary are not runs.
+    """
+
+    best_possible_score = 0
+    # A run can cross a frozen codon, so this must not be split per free interval.
+    keep_global = True
+
+    def __init__(
+        self,
+        codons: Optional[Sequence[str]] = None,
+        max_run: int = 2,
+        frame: int = 0,
+        location: Any = None,
+        boost: float = 1.0,
+    ) -> None:
+        chosen = codons if codons is not None else _DEFAULT_RUN_CODONS
+        self.codons = tuple(str(c).upper() for c in chosen)
+        self.max_run = int(max_run)
+        self.frame = int(frame) % 3
+        self.boost = boost
+        self.location = dc.Location.from_data(location)
+
+    def initialized_on_problem(self, problem: Any, role: Optional[str] = None) -> "AvoidConsecutiveCodons":
+        return self._copy_with_full_span_if_no_location(problem)
+
+    def _violating_runs(self, sequence: str) -> List[Tuple[int, int, int]]:
+        bad = set(self.codons)
+        runs: List[Tuple[int, int, int]] = []
+        run_start = 0
+        run_len = 0
+        i = self.frame
+        while i + 3 <= len(sequence):
+            if sequence[i : i + 3] in bad:
+                if run_len == 0:
+                    run_start = i
+                run_len += 1
+            elif run_len > self.max_run:
+                runs.append((run_start, run_start + 3 * run_len, run_len))
+                run_len = 0
+            else:
+                run_len = 0
+            i += 3
+        if run_len > self.max_run:
+            runs.append((run_start, run_start + 3 * run_len, run_len))
+        if self.location is None:
+            return runs
+        kept: List[Tuple[int, int, int]] = []
+        for start, end, length in runs:
+            if self.location.overlap_region(dc.Location(start, end)) is not None:
+                kept.append((start, end, length))
+        return kept
+
+    def evaluate(self, problem: Any) -> dc.SpecEvaluation:
+        runs = self._violating_runs(problem.sequence)
+        locations = [dc.Location(start, end) for start, end, _ in runs]
+        score = -sum(length - self.max_run for _, _, length in runs)
+        return dc.SpecEvaluation(self, problem, score, locations=locations)
+
+    def label_parameters(self) -> List[Tuple[str, str]]:
+        return [("max_run", str(self.max_run)), ("frame", str(self.frame))]
+
+    def short_label(self) -> str:
+        return "No more than %d consecutive %s codons" % (self.max_run, "/".join(self.codons))
+
+    def breach_label(self) -> str:
+        return "more than %d consecutive %s codons" % (self.max_run, "/".join(self.codons))
+
 
 def _naive_translate_protein(protein_seq: str, table_id: str = "e_coli_316407") -> str:
     """Translates protein to DNA naively by picking the most frequent codon.
@@ -196,6 +277,8 @@ def build_dnachisel_constraint(
             return dc.UniquifyAllKmers(**clean)
         elif constraint_type == "AvoidInvertedRepeats":
             return AvoidInvertedRepeats(**clean)
+        elif constraint_type == "AvoidConsecutiveCodons":
+            return AvoidConsecutiveCodons(**clean)
         else:
             logger.warning(f"Unknown constraint type: {constraint_type}")
             return None
@@ -320,6 +403,10 @@ def _localize_constraints(
 ) -> List[Any]:
     localized: List[Any] = []
     for constraint in base_constraints:
+        # Runs and other sequence-wide specs must see the whole construct.
+        if getattr(constraint, "keep_global", False):
+            localized.append(constraint)
+            continue
         min_span = _constraint_min_span(constraint)
         for start, end in intervals:
             if end - start < min_span:
@@ -328,6 +415,26 @@ def _localize_constraints(
                 constraint.copy_with_changes(location=dc.Location(start, end))
             )
     return localized
+
+
+def _with_coding_frame(constraints: List[Any], frame: int) -> List[Any]:
+    """Pin AvoidConsecutiveCodons to this design's coding frame."""
+    bound: List[Any] = []
+    for constraint in constraints:
+        if isinstance(constraint, AvoidConsecutiveCodons):
+            bound.append(constraint.copy_with_changes(frame=frame))
+        else:
+            bound.append(constraint)
+    return bound
+
+
+def _coding_frame_of(design_id: str, frames: Dict[str, int]) -> int:
+    if design_id not in frames:
+        return 0
+    frame = int(frames[design_id])
+    if frame not in (0, 1, 2):
+        raise ValueError(f"coding frame for {design_id} must be 0, 1 or 2, got {frame}")
+    return frame
 
 
 def _codon_optimize_objectives(
@@ -394,12 +501,69 @@ def _optimize_with_retries(
     return {"optimized_dna": None, "error": _NO_SOLUTION_MESSAGE}
 
 
+def _pieces_from_mixed_sequence(
+    seq: str, fixed_mask: Optional[Sequence[bool]]
+) -> List[Tuple[str, str, bool, int, int]]:
+    """Split a construct into literal nucleotides and amino-acid codons.
+
+    Lowercase ``acgt`` are literal bases (one nucleotide, always frozen).
+    Every other character is one residue (three nucleotides). Returns
+    ``(kind, char, fixed, nt_start, nt_end)`` with ``kind`` ``"nt"`` or ``"aa"``.
+    """
+    if fixed_mask is not None and len(fixed_mask) != len(seq):
+        raise ValueError(
+            f"fixed mask length {len(fixed_mask)} does not match protein length {len(seq)}"
+        )
+    pieces: List[Tuple[str, str, bool, int, int]] = []
+    nt = 0
+    seen_aa = False
+    for i, ch in enumerate(seq):
+        if ch in _LITERAL_NT:
+            pieces.append(("nt", ch.upper(), True, nt, nt + 1))
+            nt += 1
+            continue
+        aa = ch.upper()
+        if fixed_mask is None:
+            is_fixed = aa == "*"
+        else:
+            is_fixed = bool(fixed_mask[i])
+        if is_fixed and aa != "*" and not (aa == "M" and not seen_aa):
+            raise ValueError(
+                f"Residue {i} is marked fixed but is '{aa}'; "
+                "only stop (*) or a leading Met (M) can be fixed"
+            )
+        seen_aa = True
+        pieces.append(("aa", aa, is_fixed, nt, nt + 3))
+        nt += 3
+    return pieces
+
+
+def _codon_intervals_for_blocks(
+    blocks: Sequence[Tuple[int, int]], free: Sequence[Tuple[int, int]]
+) -> List[Tuple[int, int]]:
+    """Free nucleotide spans snapped onto each coding block's codon grid."""
+    snapped: List[Tuple[int, int]] = []
+    for b0, b1 in blocks:
+        for start, end in free:
+            lo, hi = max(start, b0), min(end, b1)
+            if hi <= lo:
+                continue
+            offset = (lo - b0) % 3
+            if offset:
+                lo += 3 - offset
+            hi -= (hi - b0) % 3
+            if hi - lo >= 3:
+                snapped.append((lo, hi))
+    return snapped
+
+
 def optimize_sequences(
     sequences: Dict[str, str],
     codon_table_id: str,
     constraints: List[Dict[str, Any]],
     method: str = "match_codon_usage",
     fixed: Optional[Dict[str, List[bool]]] = None,
+    frame: Optional[Dict[str, int]] = None,
 ) -> Dict[str, Dict[str, Optional[str]]]:
     """
     Optimizes a batch of protein sequences.
@@ -410,12 +574,19 @@ def optimize_sequences(
     constraints. When a design_id is absent from ``fixed``, every ``*`` in that
     protein is treated as fixed.
 
+    Lowercase ``acgt`` in a sequence are literal nucleotides from a custom
+    addition (not amino acids). They stay frozen in the DNA and are not part of
+    the codon grid. ``frame`` maps design_id -> 0, 1 or 2, the offset at which
+    the design and preset-tag codons begin; ``AvoidConsecutiveCodons`` reads
+    codons from there. Other constraints still see the whole construct.
+
     A design that fails with ``NoSolutionError`` is solved again from the same
     starting sequence, up to ``OPTIMIZATION_ATTEMPTS`` times, before that error
     is returned. Other errors are returned on the first failure.
     """
     results: Dict[str, Dict[str, Optional[str]]] = {}
     fixed = fixed or {}
+    frame = frame or {}
 
     parsed_constraints: List[Any] = []
     for c in constraints:
@@ -431,37 +602,84 @@ def optimize_sequences(
             continue
 
         try:
-            protein = protein_seq.upper()
             design_fixed = fixed.get(design_id) if design_id in fixed else None
-            fixed_mask = resolve_fixed_mask(protein, design_fixed)
-            initial_dna = _apply_fixed_dna(
-                _naive_translate_protein(protein, codon_table_id),
-                protein,
-                fixed_mask,
-            )
-            fixed_indices = fixed_nt_indices(fixed_mask)
+            coding_frame = _coding_frame_of(design_id, frame)
+            user_constraints = _with_coding_frame(parsed_constraints, coding_frame)
+            has_literal = any(ch in _LITERAL_NT for ch in protein_seq)
+
+            if has_literal:
+                pieces = _pieces_from_mixed_sequence(protein_seq, design_fixed)
+                aa_only = "".join(char for kind, char, _fixed, _s, _e in pieces if kind == "aa")
+                naive_aa = _naive_translate_protein(aa_only, codon_table_id)
+                dna_chars: List[str] = []
+                aa_cursor = 0
+                for kind, char, is_fixed, _start, _end in pieces:
+                    if kind == "nt":
+                        dna_chars.append(char)
+                        continue
+                    codon = naive_aa[aa_cursor : aa_cursor + 3]
+                    aa_cursor += 3
+                    if is_fixed:
+                        codon = fixed_codon_dna(char)
+                    dna_chars.append(codon)
+                initial_dna = "".join(dna_chars)
+                fixed_indices = [
+                    i
+                    for kind, _char, is_fixed, start, end in pieces
+                    if kind == "nt" or is_fixed
+                    for i in range(start, end)
+                ]
+                blocks = []
+                block_start: Optional[int] = None
+                block_aa: List[str] = []
+                for kind, char, _is_fixed, start, end in pieces:
+                    if kind == "aa":
+                        if block_start is None:
+                            block_start = start
+                        block_aa.append(char)
+                    elif block_start is not None:
+                        blocks.append((block_start, start, "".join(block_aa)))
+                        block_start = None
+                        block_aa = []
+                if block_start is not None:
+                    blocks.append((block_start, len(initial_dna), "".join(block_aa)))
+            else:
+                protein = protein_seq.upper()
+                fixed_mask = resolve_fixed_mask(protein, design_fixed)
+                initial_dna = _apply_fixed_dna(
+                    _naive_translate_protein(protein, codon_table_id),
+                    protein,
+                    fixed_mask,
+                )
+                fixed_indices = fixed_nt_indices(fixed_mask)
+                blocks = [(0, len(initial_dna), protein)] if protein else []
+
             intervals = free_intervals(len(initial_dna), fixed_indices)
 
             if not intervals:
                 results[design_id] = {"optimized_dna": initial_dna, "error": None}
                 continue
 
+            translation_constraints = [
+                dc.EnforceTranslation(translation=aa, location=dc.Location(start, end))
+                for start, end, aa in blocks
+                if aa and (end - start) == 3 * len(aa)
+            ]
+            codon_intervals = _codon_intervals_for_blocks(
+                [(start, end) for start, end, _aa in blocks], intervals
+            )
+            objectives = _codon_optimize_objectives(codon_table_id, method, codon_intervals)
+
             if fixed_indices:
                 seq_constraints = [
-                    *_localize_constraints(parsed_constraints, intervals),
+                    *_localize_constraints(user_constraints, intervals),
                     dc.AvoidChanges(indices=fixed_indices),
-                    dc.EnforceTranslation(),
+                    *translation_constraints,
                 ]
-                objectives = _codon_optimize_objectives(
-                    codon_table_id, method, intervals
-                )
             else:
                 seq_constraints = [
-                    *parsed_constraints,
-                    dc.EnforceTranslation(),
-                ]
-                objectives = [
-                    dc.CodonOptimize(species=codon_table_id, method=method)
+                    *user_constraints,
+                    *translation_constraints,
                 ]
 
             if not objectives:

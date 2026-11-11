@@ -992,6 +992,9 @@ function onConstraintTypeChange(data: any, newType: string, index: number) {
     case 'AvoidInvertedRepeats':
       data.params = { min_tm: 68 }
       break
+    case 'AvoidConsecutiveCodons':
+      data.params = { codons: ['CGG', 'CGA', 'CCC'], max_run: 2 }
+      break
     default:
       data.params = {}
   }

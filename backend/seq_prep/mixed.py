@@ -34,6 +34,8 @@ _TAG_KIND_TO_SEGMENT = {
     "strep": "strep",
     "ctag": "ctag",
     "pelb": "pelb",
+    "snac": "snac",
+    "tev": "tev",
     "linker": "linker",
     "stop": KIND_STOP,
 }

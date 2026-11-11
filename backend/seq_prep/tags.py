@@ -29,6 +29,12 @@ TAG_PRESET_DEFS: List[Dict[str, Any]] = [
     # No leading Met: a start codon has to come from the vector (e.g. NdeI) or the design.
     {"kind": "pelb", "tag_name": "pelB", "sequence": "KYLLPTAAAGLLLLAAQPAMA", "color": "#c2185b",
      "background": "rgba(194, 24, 91, 0.12)", "foreground": "#880e4f", "zones": ["n"], "always": True},
+    {"kind": "snac", "tag_name": "SNAC-tag", "sequence": "GSHHW", "display_sequence": "G↓SHHW",
+     "color": "#00796b", "background": "rgba(0, 121, 107, 0.12)", "foreground": "#004d40",
+     "zones": ["n", "c"]},
+    {"kind": "tev", "tag_name": "TEV-site", "sequence": "ENLYFQS", "display_sequence": "ENLYFQ↓S",
+     "color": "#303f9f", "background": "rgba(48, 63, 159, 0.12)", "foreground": "#1a237e",
+     "zones": ["n", "c"]},
     {"kind": "linker", "tag_name": "G4S", "sequence": "GGGGS", "color": "#aaaaaa",
      "background": "rgba(48, 48, 48, 0.1)", "foreground": "#aaaaaa", "zones": ["n", "c"]},
     {"kind": "stop", "tag_name": "STOP*", "sequence": "*", "color": "#b23a3a",

@@ -38,7 +38,7 @@
             <Chip
               v-for="(t, i) in seqPrep.nTags"
               :key="t.id"
-              :label="`${t.label} ${t.sequence}`"
+              :label="`${t.label} ${tagSequenceDisplay(t.kind, t.sequence)}`"
               removable
               class="ps-tag-chip"
               :style="tagPresetChipCssVars(t.kind)"
@@ -46,7 +46,7 @@
             >
               <div class="ps-tag-chip-body">
                 <span class="ps-tag-chip-name">{{ t.label }}</span>
-                <span class="ps-tag-chip-seq">{{ t.sequence }}</span>
+                <span class="ps-tag-chip-seq">{{ tagSequenceDisplay(t.kind, t.sequence) }}</span>
                 <label
                   class="ps-tag-always"
                   title="Always add this to every design, ignoring its tag-end column"
@@ -66,7 +66,7 @@
             <Chip
               v-for="(t, i) in seqPrep.cTags"
               :key="t.id"
-              :label="`${t.label} ${t.sequence}`"
+              :label="`${t.label} ${tagSequenceDisplay(t.kind, t.sequence)}`"
               removable
               class="ps-tag-chip"
               :style="tagPresetChipCssVars(t.kind)"
@@ -74,7 +74,7 @@
             >
               <div class="ps-tag-chip-body">
                 <span class="ps-tag-chip-name">{{ t.label }}</span>
-                <span class="ps-tag-chip-seq">{{ t.sequence }}</span>
+                <span class="ps-tag-chip-seq">{{ tagSequenceDisplay(t.kind, t.sequence) }}</span>
                 <label
                   class="ps-tag-always"
                   title="Always add this to every design, ignoring its tag-end column"
@@ -98,7 +98,7 @@
             size="small"
             severity="secondary"
             outlined
-            :label="p.tag_name"
+            :label="p.display_sequence ? `${p.tag_name} ${p.display_sequence}` : p.tag_name"
             class="ps-preset-btn"
             :style="tagPresetChromeStyle(p.kind)"
             @click="seqPrep.addPreset('n', p)"
@@ -112,7 +112,7 @@
             size="small"
             severity="secondary"
             outlined
-            :label="p.tag_name"
+            :label="p.display_sequence ? `${p.tag_name} ${p.display_sequence}` : p.tag_name"
             class="ps-preset-btn"
             :style="tagPresetChromeStyle(p.kind)"
             @click="seqPrep.addPreset('c', p)"
@@ -894,6 +894,7 @@ import {
   preparedExportBasename,
   tagPresetChipCssVars,
   tagPresetChromeStyle,
+  tagSequenceDisplay,
   useSeqPrepStore,
   OPTIMIZATION_CONSTRAINT_TYPES,
   type PreparedRow,

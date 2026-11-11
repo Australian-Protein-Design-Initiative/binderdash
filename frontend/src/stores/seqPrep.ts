@@ -43,6 +43,8 @@ export type PresetTagKind =
     | 'strep'
     | 'ctag'
     | 'pelb'
+    | 'snac'
+    | 'tev'
     | 'linker'
     | 'stop'
     | 'custom'
@@ -154,6 +156,8 @@ export interface TagPresetDefinition {
     kind: PresetTagKind
     tag_name: string
     sequence: string
+    /** UI-only rendering of the sequence (e.g. cleavage site marked with ↓). */
+    display_sequence?: string
     color: string
     background: string
     foreground: string
@@ -248,6 +252,26 @@ export const TAG_PRESET_DEFS: readonly TagPresetDefinition[] = [
         always: true
     },
     {
+        kind: 'snac',
+        tag_name: 'SNAC-tag',
+        sequence: 'GSHHW',
+        display_sequence: 'G↓SHHW',
+        color: '#00796b',
+        background: 'rgba(0, 121, 107, 0.12)',
+        foreground: '#004d40',
+        zones: ['n', 'c']
+    },
+    {
+        kind: 'tev',
+        tag_name: 'TEV-site',
+        sequence: 'ENLYFQS',
+        display_sequence: 'ENLYFQ↓S',
+        color: '#303f9f',
+        background: 'rgba(48, 63, 159, 0.12)',
+        foreground: '#1a237e',
+        zones: ['n', 'c']
+    },
+    {
         kind: 'linker',
         tag_name: 'G4S',
         sequence: 'GGGGS',
@@ -266,6 +290,12 @@ export const TAG_PRESET_DEFS: readonly TagPresetDefinition[] = [
         zones: ['n', 'c']
     }
 ]
+
+/** Sequence as shown in the UI (cleavage sites marked with ↓, e.g. SNAC `G↓SHHW`). */
+export function tagSequenceDisplay(kind: PresetTagKind, sequence: string): string {
+    const def = TAG_PRESET_DEFS.find(p => p.kind === kind)
+    return def?.display_sequence && def.sequence === sequence ? def.display_sequence : sequence
+}
 
 export const CUSTOM_TAG_VISUAL = {
     color: '#aa0000',
@@ -475,6 +505,8 @@ function segmentClass(kind: PresetTagKind): string {
     if (kind === 'strep') return 'seq-seg-strep'
     if (kind === 'ctag') return 'seq-seg-ctag'
     if (kind === 'pelb') return 'seq-seg-pelb'
+    if (kind === 'snac') return 'seq-seg-snac'
+    if (kind === 'tev') return 'seq-seg-tev'
     if (kind === 'linker') return 'seq-seg-linker'
     if (kind === 'stop') return 'seq-seg-stop'
     return 'seq-seg-custom'

@@ -15,6 +15,7 @@ dependencies = [
     "biopython",
     "tmtools",
     "dnachisel",
+    "primer3-py",
     "authlib",
     "python-pam",
     "itsdangerous",

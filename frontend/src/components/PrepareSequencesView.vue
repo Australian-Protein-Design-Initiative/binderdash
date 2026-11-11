@@ -1009,6 +1009,9 @@ function onConstraintTypeChange(data: any, newType: string, index: number) {
     case 'UniquifyAllKmers':
       data.params = { k: 12 }
       break
+    case 'AvoidInvertedRepeats':
+      data.params = { min_tm: 68 }
+      break
     default:
       data.params = {}
   }

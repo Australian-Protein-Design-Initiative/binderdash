@@ -59,6 +59,7 @@ DEFAULT_TWIST_CONSTRAINTS: List[Dict[str, Any]] = [
     {"type": "UniquifyAllKmers", "enabled": True, "params": {"k": 12}},
     {"type": "AvoidPattern", "enabled": True,
      "params": {"pattern": {"type": "RepeatedKmerPattern", "params": {"n_repeats": 2, "k_size": 20}}}},
+    {"type": "AvoidInvertedRepeats", "enabled": True, "params": {"min_tm": 68}},
     {"type": "AvoidPattern", "enabled": True, "params": {"pattern": "GGAGG"}},
     {"type": "AvoidPattern", "enabled": True, "params": {"pattern": "TAAGGAG"}},
 ]

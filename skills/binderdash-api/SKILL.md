@@ -334,10 +334,11 @@ Each entry is `{"type": "<DnaChisel name>", "enabled": true, "params": {...}}`. 
 | `type`                     | Notes                                                                                                                                              |
 | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `EnforceGCContent`         | `params: {mini, maxi, window?}` - fractions in `[0,1]`. Add a `window` (e.g. 50) for local GC bounds.                                              |
-| `AvoidHairpins`            | `params: {stem_size, hairpin_window}` - e.g. `{20, 48}`.                                                                                           |
-| `AvoidPattern`             | `params.pattern` is either a literal sequence (`"AAAAAAAAA"`, `"GGAGG"`) or a structured `{"type":"RepeatedKmerPattern","params":{"k_size":20,"n_repeats":2}}`. Restriction-site shortcut: pass `"<EnzymeName>_site"` (e.g. `"BsaI_site"`) - DnaChisel resolves it via Biopython's restriction table. The frontend's `ExcludeRestrictionSite` UI helper rewrites `{"type":"ExcludeRestrictionSite","params":{"enzyme":"BsaI"}}` to this form before posting. |
+| `AvoidHairpins`            | `params: {stem_size, hairpin_window}` - e.g. `{20, 48}`. Exact Watson-Crick stems only.                                                            |
+| `AvoidPattern`             | `params.pattern` is either a literal sequence (`"AAAAAAAAA"`, `"GGAGG"`) or a structured `{"type":"RepeatedKmerPattern","params":{"k_size":20,"n_repeats":2}}` (bans tandem repeats of a k-mer). Restriction-site shortcut: pass `"<EnzymeName>_site"` (e.g. `"BsaI_site"`) - DnaChisel resolves it via Biopython's restriction table. The frontend's `ExcludeRestrictionSite` UI helper rewrites `{"type":"ExcludeRestrictionSite","params":{"enzyme":"BsaI"}}` to this form before posting. |
 | `AvoidRareCodons`          | `params: {min_frequency: 0.09}` - uses the same `codon_table_id` as the optimisation. Don't pass `species` yourself; the backend injects it.       |
-| `UniquifyAllKmers`         | `params: {k: 12}` - bans repeated k-mers (de-novo synthesis vendors love this).                                                                    |
+| `UniquifyAllKmers`         | `params: {k: 12}` - bans repeated k-mers (de-novo synthesis vendors love this).                                                                     |
+| `AvoidInvertedRepeats`     | `params: {min_tm: 68, stride?}` - rejects snapback hairpins whose Tm reaches `min_tm`, scored with primer3/IDT-style thermodynamic alignment. Catches the short GC-rich and imperfect inverted repeats vendors flag and `AvoidHairpins` misses. |
 | `EnforceTranslation`       | Always added by the backend; do **not** include explicitly.                                                                                        |
 
 The frontend's `DEFAULT_TWIST_CONSTRAINTS` (a known-good profile for Twist Bioscience gene synthesis) is:
@@ -354,6 +355,7 @@ The frontend's `DEFAULT_TWIST_CONSTRAINTS` (a known-good profile for Twist Biosc
   { "type": "AvoidRareCodons",   "params": { "min_frequency": 0.09 } },
   { "type": "UniquifyAllKmers",  "params": { "k": 12 } },
   { "type": "AvoidPattern",      "params": { "pattern": { "type": "RepeatedKmerPattern", "params": { "n_repeats": 2, "k_size": 20 } } } },
+  { "type": "AvoidInvertedRepeats", "params": { "min_tm": 68 } },
   { "type": "AvoidPattern",      "params": { "pattern": "GGAGG" } },
   { "type": "AvoidPattern",      "params": { "pattern": "TAAGGAG" } }
 ]

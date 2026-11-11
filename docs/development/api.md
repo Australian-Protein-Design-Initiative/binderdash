@@ -381,14 +381,17 @@ Each constraint: `{ "type": "<name>", "enabled": true, "params": { ... } }`.
 | Type | Parameters |
 | ---- | ------------ |
 | `EnforceGCContent` | `mini`, `maxi` (0–1); optional `window` for local GC |
-| `AvoidHairpins` | `stem_size`, `hairpin_window` |
+| `AvoidHairpins` | `stem_size`, `hairpin_window` (exact Watson-Crick stems only) |
 | `AvoidPattern` | `pattern`: literal string, `RepeatedKmerPattern`, or `"EnzymeName_site"` (e.g. `"BsaI_site"`) |
 | `AvoidRareCodons` | `min_frequency`; species injected from `codon_table_id` |
 | `UniquifyAllKmers` | `k` (e.g. 12) |
+| `AvoidInvertedRepeats` | `min_tm` (°C, default 68); optional `stride` (default 10) |
 
 `EnforceTranslation` is always applied by the server; do not send it.
 
 The Prepare Sequences UI uses a Twist-oriented default set (`DEFAULT_TWIST_CONSTRAINTS` in `frontend/src/stores/seqPrep.ts`). The UI-only type `ExcludeRestrictionSite` with `params.enzyme` is serialised to `AvoidPattern` with `pattern: "<enzyme>_site"` before POST.
+
+`AvoidInvertedRepeats` rejects sequences whose self-complementary structures (snapback hairpins) melt at or above `min_tm`, computed the same way primer3 / IDT do (concentration-free nearest-neighbour thermodynamic alignment). This catches the short GC-rich and imperfect inverted repeats that gene-synthesis vendors flag and that `AvoidHairpins` (exact stems only) misses. primer3's alignment scores at most 60 bp per sequence, so hairpins are scored on sliding 60 bp windows; structures spanning more than ~50 nt (long arms and loop) may not be detected.
 
 ### Optimisation response
 

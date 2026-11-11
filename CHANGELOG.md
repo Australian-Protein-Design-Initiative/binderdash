@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **Sequence prep**: **SNAC-tag** (`GSHHW`, shown as `G↓SHHW`) and **TEV-site** (`ENLYFQS`, shown as `ENLYFQ↓S`) on the N- and C-side palettes.
+- **Sequence prep / DNA optimisation**: New `AvoidInvertedRepeats` constraint (default `min_tm: 68`), added to the Twist-oriented defaults, which rejects sequences whose snapback hairpins melt at or above a Tm threshold scored with primer3/IDT-style thermodynamic alignment. Catches the short, GC-rich and imperfect inverted repeats that gene-synthesis vendors flag (e.g. "inverted repeat with ≥68°C Tm") and that `AvoidHairpins` (exact Watson-Crick stems only) misses. Existing persisted constraint lists are unaffected; reset to defaults in the DNA optimisation panel to pick it up.
 
 ### Changed
 
@@ -17,6 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Docker**: Removed the unused `./db.sqlite:/app/db.sqlite` volume from `docker-compose.yml`. The database is under the `./data` mount (`DATABASE="sqlite:///data/binderdash.sqlite"`), and when `./db.sqlite` was missing Docker created an empty root-owned directory in its place.
 - **Docker**: `data/` is now kept in git (its contents are ignored by `data/.gitignore`), so after cloning Docker Compose bind-mounts a directory owned by the user instead of creating one as root. The `chown` step is only needed when the host uid is not 1000.
 - **Docker**: The container uid/gid is configurable with `BINDERDASH_UID` / `BINDERDASH_GID` in `.env` (default 1000:1000, also in `docker-compose.dev.yml`). Setting them to the host user's ids removes the need to `chown` `./data` or the run directories.
+
+### Fixed
+
+- **Sequence prep / DNA optimisation**: The default `RepeatedKmerPattern` constraint (`k_size: 20`, `n_repeats: 2`) never took effect — the backend passed `k_size` to dnachisel whose keyword is `kmer_size`, so the constraint failed to build and was silently dropped from every optimisation run. It is now enforced.
 
 ## [0.4.1] - 2026-09-30
 

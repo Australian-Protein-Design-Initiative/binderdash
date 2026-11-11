@@ -59,7 +59,6 @@ cryptography==48.0.1
     #   joserfc
     #   pyjwt
     #   python-jose
-    #   secretstorage
 cyclopts==4.22.5
     # via fastmcp-slim
 dnachisel==3.2.16
@@ -119,10 +118,6 @@ jaraco-context==6.1.2
     # via keyring
 jaraco-functools==4.6.0
     # via keyring
-jeepney==0.9.0
-    # via
-    #   keyring
-    #   secretstorage
 joblib==1.5.3
     # via scikit-learn
 joserfc==1.7.1
@@ -132,7 +127,9 @@ joserfc==1.7.1
 jsonref==1.1.0
     # via fastmcp-slim
 jsonschema==4.26.0
-    # via mcp
+    # via
+    #   binderdash-backend (backend/pyproject.toml)
+    #   mcp
 jsonschema-path==0.5.0
     # via fastmcp-slim
 jsonschema-specifications==2025.9.1
@@ -187,6 +184,8 @@ polars==1.42.1
     # via binderdash-backend (backend/pyproject.toml)
 polars-runtime-32==1.42.1
     # via polars
+primer3-py==2.4.0
+    # via binderdash-backend (backend/pyproject.toml)
 proglog==0.1.12
     # via dnachisel
 py-key-value-aio==0.4.5
@@ -280,8 +279,6 @@ scipy==1.18.0
     # via
     #   biotraj
     #   scikit-learn
-secretstorage==3.5.0
-    # via keyring
 six==1.17.0
     # via
     #   ecdsa

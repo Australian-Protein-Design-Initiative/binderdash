@@ -2,6 +2,8 @@ import pytest
 
 from backend.util.dna_optimization import (
     FIXED_STOP_DNA,
+    _hairpin_breaches,
+    build_dnachisel_constraint,
     fixed_nt_indices,
     free_intervals,
     resolve_fixed_mask,
@@ -310,3 +312,70 @@ def test_optimize_dna_fixed_non_stop_residue(api_client) -> None:
     assert res["optimized_dna"] is None
     assert res["error"] is not None
     assert "stop" in res["error"].lower() or "met" in res["error"].lower()
+
+
+def test_repeated_kmer_pattern_builds_and_bans_tandem_repeats() -> None:
+    """Regression: the backend previously passed k_size straight to
+    RepeatedKmerPattern (whose kwarg is kmer_size), so the default tandem-repeat
+    constraint silently failed to build."""
+    import dnachisel as dc
+
+    constraint = build_dnachisel_constraint(
+        "AvoidPattern",
+        {"pattern": {"type": "RepeatedKmerPattern", "params": {"n_repeats": 2, "k_size": 6}}},
+    )
+    assert constraint is not None
+    problem = dc.DnaOptimizationProblem(
+        sequence="AC" + "GGCAAAGGCAAA" + "GT",
+        constraints=[constraint],
+    )
+    assert not constraint.evaluate(problem).passes
+
+    clean = dc.DnaOptimizationProblem(
+        sequence="ACGGCAAAGCACGGTTCAGCAATGTA",
+        constraints=[constraint],
+    )
+    assert constraint.evaluate(clean).passes
+
+
+def test_hairpin_breaches_detect_vendor_flagged_regions() -> None:
+    # GC-rich self-complementary stretch (Ala/Arg-rich VHH CDR region) that
+    # vendors reject as an "inverted repeat with >=68C Tm".
+    hot = "ACCTGCAGATGAACTCGCTGCGTGCCGAAGACACCGCGGTGTATTACTGTGCACGCAGCGATCATGTGATGTATATTCTC"
+    breaches = _hairpin_breaches(hot, 68.0, 10)
+    assert len(breaches) >= 1
+    assert max(tm for _, _, tm in breaches) >= 68.0
+
+    calm = "AACGTTACGATTCAGGACTTGACCAGTTCGAATCGTAAGCTTAACGATCGATTCAAGGACTTGA"
+    assert _hairpin_breaches(calm, 68.0, 10) == []
+
+
+def test_optimize_dna_resolves_inverted_repeats(api_client) -> None:
+    """The vendor-failed nanobody whose naive codon choice creates >=68C
+    hairpins must optimise to a sequence free of them."""
+    payload = {
+        "sequences": {
+            "d1": "KYLLPTAAAGLLLLAAQPAMAQVQLVESGGGLVQPGGSLRLSCAASPSSSNIFDYNALGWFRQAPGQGLEAVAALWLKYDTTYYADSVKGRFTISRDNSKNTLYLQMNSLRAEDTAVYYCARSDHVMYILCSYTSKIYWGQGTLVTVSSRGRGGGS*"
+        },
+        "codon_table_id": "e_coli",
+        "method": "match_codon_usage",
+        "constraints": [
+            {"type": "EnforceGCContent", "enabled": True, "params": {"mini": 0.25, "maxi": 0.64}},
+            {"type": "AvoidHairpins", "enabled": True, "params": {"stem_size": 20, "hairpin_window": 48}},
+            {"type": "UniquifyAllKmers", "enabled": True, "params": {"k": 12}},
+            {
+                "type": "AvoidPattern",
+                "enabled": True,
+                "params": {"pattern": {"type": "RepeatedKmerPattern", "params": {"n_repeats": 2, "k_size": 20}}},
+            },
+            {"type": "AvoidInvertedRepeats", "enabled": True, "params": {"min_tm": 68}},
+        ],
+    }
+    resp = api_client.post("/api/sequences/optimize-dna", json=payload)
+    assert resp.status_code == 200, resp.text
+    res = resp.json()["results"][0]
+    assert res["error"] is None, res["error"]
+    dna = res["optimized_dna"]
+    assert dna is not None
+    assert _hairpin_breaches(dna, 68.0, 1) == []
+

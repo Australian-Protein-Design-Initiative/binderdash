@@ -92,6 +92,8 @@ polars==1.42.1
     # via binderdash-backend (backend/pyproject.toml)
 polars-runtime-32==1.42.1
     # via polars
+primer3-py==2.4.0
+    # via binderdash-backend (backend/pyproject.toml)
 proglog==0.1.12
     # via dnachisel
 pyasn1==0.6.1

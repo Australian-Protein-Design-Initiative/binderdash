@@ -1,9 +1,12 @@
 import io
 import logging
+import threading
 from contextlib import redirect_stdout
+from functools import lru_cache
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import dnachisel as dc
+import primer3
 import python_codon_tables as pct
 
 logger = logging.getLogger(__name__)
@@ -14,6 +17,117 @@ FIXED_START_DNA = "ATG"
 # Re-run a design that fails with NoSolutionError this many times before reporting it.
 OPTIMIZATION_ATTEMPTS = 5
 _NO_SOLUTION_MESSAGE = "Constraints could not be resolved (No solution found)."
+
+# primer3's thermodynamic alignment scores at most 60 bp per sequence, so
+# hairpin / inverted-repeat Tm is computed on sliding windows of that width.
+_HAIRPIN_WINDOW = 60
+# primer3's module-level helpers share one mutable ThermoAnalysis object, so
+# concurrent optimisation batches (each runs in its own thread) must not call
+# it simultaneously.
+_PRIMER3_LOCK = threading.Lock()
+
+
+@lru_cache(maxsize=20000)
+def _hairpin_tm(window: str) -> float:
+    """Concentration-independent (IDT-style) hairpin Tm of a <= 60 nt window."""
+    if len(window) < 8:
+        return -99.0
+    try:
+        with _PRIMER3_LOCK:
+            return float(primer3.calc_hairpin(window).tm)
+    except Exception:
+        return -99.0
+
+
+def _hairpin_breaches(
+    sequence: str, min_tm: float, stride: int
+) -> List[Tuple[int, int, float]]:
+    """Windows whose hairpin Tm reaches ``min_tm``, merged into breach spans.
+
+    Returns ``(start, end, tm)`` tuples in local sequence coordinates. With a
+    stride of 10 any hairpin whose arms+loop span <= 50 nt is guaranteed to
+    fall entirely inside at least one window (primer3 cannot score structures
+    spanning more than 60 nt at all).
+    """
+    n = len(sequence)
+    if n == 0:
+        return []
+    starts = list(range(0, max(1, n - _HAIRPIN_WINDOW + 1), max(1, stride)))
+    if n > _HAIRPIN_WINDOW:
+        last = n - _HAIRPIN_WINDOW
+        if starts[-1] != last:
+            starts.append(last)
+
+    hot: List[Tuple[int, int, float]] = []
+    for start in starts:
+        window = sequence[start : start + _HAIRPIN_WINDOW]
+        tm = _hairpin_tm(window)
+        if tm >= min_tm:
+            hot.append((start, start + len(window), tm))
+
+    merged: List[List[Any]] = []
+    for start, end, tm in sorted(hot):
+        if merged and start <= merged[-1][1]:
+            merged[-1][1] = max(merged[-1][1], end)
+            merged[-1][2] = max(merged[-1][2], tm)
+        else:
+            merged.append([start, end, tm])
+    return [(s, e, t) for s, e, t in merged]
+
+
+class AvoidInvertedRepeats(dc.Specification):
+    """Avoid inverted repeats (snapback hairpins) with Tm >= ``min_tm``.
+
+    Gene synthesis vendors reject sequences whose self-complementary
+    structures melt at or above a threshold Tm, computed the same way
+    primer3 / IDT do (concentration-free nearest-neighbour alignment).
+    DnaChisel's ``AvoidHairpins`` misses these because it requires a long
+    exact Watson-Crick stem within a short window.
+    """
+
+    best_possible_score = 0
+
+    def __init__(
+        self,
+        min_tm: float = 68.0,
+        stride: int = 10,
+        location: Any = None,
+        boost: float = 1.0,
+    ) -> None:
+        self.min_tm = float(min_tm)
+        self.stride = max(1, int(stride))
+        self.boost = boost
+        self.location = dc.Location.from_data(location)
+
+    def initialized_on_problem(self, problem: Any, role: Optional[str] = None) -> "AvoidInvertedRepeats":
+        return self._copy_with_full_span_if_no_location(problem)
+
+    def evaluate(self, problem: Any) -> dc.SpecEvaluation:
+        offset = self.location.start if self.location is not None else 0
+        sequence = self.location.extract_sequence(problem.sequence)
+        breaches = _hairpin_breaches(sequence, self.min_tm, self.stride)
+        locations = [dc.Location(start + offset, end + offset) for start, end, _ in breaches]
+        score = -sum(tm - self.min_tm for _, _, tm in breaches)
+        return dc.SpecEvaluation(self, problem, score, locations=locations)
+
+    def localized(self, location: Any, problem: Any = None, with_righthand: bool = True) -> Optional["AvoidInvertedRepeats"]:
+        new_location = self.location.overlap_region(location)
+        if new_location is None:
+            return None
+        new_location.start = max(self.location.start, new_location.start - _HAIRPIN_WINDOW)
+        if with_righthand:
+            new_location.end = min(self.location.end, new_location.end + _HAIRPIN_WINDOW)
+        return self.copy_with_changes(location=new_location)
+
+    def label_parameters(self) -> List[Tuple[str, str]]:
+        return [("min_tm", str(self.min_tm))]
+
+    def short_label(self) -> str:
+        return "No inverted repeat above %g C" % self.min_tm
+
+    def breach_label(self) -> str:
+        return "inverted repeat above %g C" % self.min_tm
+
 
 
 def _naive_translate_protein(protein_seq: str, table_id: str = "e_coli_316407") -> str:
@@ -68,8 +182,10 @@ def build_dnachisel_constraint(
                     return None
                 from dnachisel.SequencePattern import RepeatedKmerPattern
 
+                # dnachisel names it kmer_size; callers (and the frontend
+                # defaults) use k_size.
                 return dc.AvoidPattern(
-                    RepeatedKmerPattern(k_size=int(k_size), n_repeats=int(n_repeats))
+                    RepeatedKmerPattern(n_repeats=int(n_repeats), kmer_size=int(k_size))
                 )
             else:
                 return dc.AvoidPattern(pattern)
@@ -78,6 +194,8 @@ def build_dnachisel_constraint(
             return dc.AvoidRareCodons(**merged)
         elif constraint_type == "UniquifyAllKmers":
             return dc.UniquifyAllKmers(**clean)
+        elif constraint_type == "AvoidInvertedRepeats":
+            return AvoidInvertedRepeats(**clean)
         else:
             logger.warning(f"Unknown constraint type: {constraint_type}")
             return None

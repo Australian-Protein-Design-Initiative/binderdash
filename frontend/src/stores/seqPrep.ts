@@ -66,7 +66,8 @@ export const OPTIMIZATION_CONSTRAINT_TYPES = [
     'AvoidHairpins',
     'AvoidPattern',
     'AvoidRareCodons',
-    'UniquifyAllKmers'
+    'UniquifyAllKmers',
+    'AvoidInvertedRepeats'
 ] as const
 
 export type OptimizationConstraintType = (typeof OPTIMIZATION_CONSTRAINT_TYPES)[number]
@@ -82,6 +83,7 @@ export const DEFAULT_TWIST_CONSTRAINTS: DnaOptConstraintSpecDto[] = [
     { type: 'AvoidRareCodons', enabled: true, params: { min_frequency: 0.09 } },
     { type: 'UniquifyAllKmers', enabled: true, params: { k: 12 } },
     { type: 'AvoidPattern', enabled: true, params: { pattern: { type: 'RepeatedKmerPattern', params: { n_repeats: 2, k_size: 20 } } } },
+    { type: 'AvoidInvertedRepeats', enabled: true, params: { min_tm: 68 } },
     { type: 'AvoidPattern', enabled: true, params: { pattern: 'GGAGG' } },
     { type: 'AvoidPattern', enabled: true, params: { pattern: 'TAAGGAG' } }
 ]

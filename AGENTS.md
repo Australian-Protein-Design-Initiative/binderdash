@@ -49,6 +49,7 @@
     2. **Recreate after any host account change.** These are single-*file* bind mounts, so they pin an inode, and `passwd(1)` replaces `/etc/shadow` rather than editing it. A running container keeps reading the pre-change file, so password changes and new users are silently invisible. `docker compose restart` does not help — `docker compose up -d --force-recreate` does. Compare `md5sum /etc/shadow` inside and outside the container to confirm.
   - `GOOGLE_AUTH_ENABLED`, `GOOGLE_AUTH_CLIENT_ID`, `GOOGLE_AUTH_CLIENT_SECRET`, `GOOGLE_AUTH_REDIRECT_URI`, `GOOGLE_AUTH_ALLOWED_USERS` (optional; Google OAuth; emails case-insensitive)
   - `SECRET_KEY`, `ACCESS_TOKEN_EXPIRE_MINUTES`, `DATABASE`, `CORS_ALLOWED_ORIGINS` as needed
+ - `PUBLIC_BASE_URL` (optional; origin with no trailing slash for absolute MCP download URLs. When unset, `https://$DOMAIN` is used if `DOMAIN` is a real hostname, otherwise the incoming request host)
 - When adding new env vars, update `.env.example` accordingly
 - Do not delete `.env`, but ensure it is in `.gitignore`
 

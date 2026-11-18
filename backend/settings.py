@@ -23,6 +23,7 @@ class RawSettings(BaseSettings):
     disable_authentication: str = ""
     access_token_expire_minutes: int = 60 * 24
     domain: str = ""
+    public_base_url: str = ""
     log_level: str = "INFO"
     pam_local_enabled: str = ""
     pam_local_allowed_users: str = ""
@@ -51,6 +52,8 @@ class AppSettings(BaseModel):
     local_users: List[LocalUser] = []
     auth_disabled: bool = False
     access_token_expire_minutes: int = 60 * 24
+    domain: str = ""
+    public_base_url: str = ""
     log_level: str = "INFO"
     pam_local_enabled: bool = False
     pam_local_allowed_users: List[str] = []
@@ -170,6 +173,8 @@ settings = AppSettings(
     local_users=parse_local_users(raw_settings.local_users),
     auth_disabled=raw_settings.disable_authentication.lower() == "true",
     access_token_expire_minutes=raw_settings.access_token_expire_minutes,
+    domain=(raw_settings.domain or "").strip(),
+    public_base_url=(raw_settings.public_base_url or "").strip().rstrip("/"),
     log_level=(raw_settings.log_level or "INFO").strip().upper(),
     pam_local_enabled=raw_settings.pam_local_enabled.lower() == "true",
     pam_local_allowed_users=_parse_csv_lower(raw_settings.pam_local_allowed_users),

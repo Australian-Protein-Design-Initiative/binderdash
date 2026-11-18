@@ -126,9 +126,9 @@ section fills these three values in and shows the form.
 | `select_diverse_designs` | Filter → rank → de-duplicate by sequence; optional Saved Set |
 | `saved_sets` | List, read, rename Saved Sets |
 | `extract_sequences` | Extract sequences from structures into the derived cache |
-| `inspect_structures` | Chains, roles, sequences, `binderdash_*` interface metrics |
-| `read_structure_file` | Raw structure text, size-capped |
-| `export_structures` | Manifest plus the tar endpoint to fetch many structures |
+| `inspect_structures` | Chains, roles, sequences, `binderdash_*` interface metrics, and a tokenised structure URL |
+| `read_structure_file` | Raw structure text, size-capped. Over the cap, the error includes a download URL |
+| `export_structures` | Manifest plus an absolute GET URL for a tar of the structures |
 | `list_target_residues` | Targets in a run scope, residue labels to filter on, contact coverage |
 | `target_contact_profile` | Per-residue mean ΔSASA / closest approach / contact frequency |
 | `prepare_sequences` | Add N/C tags, linkers, stops and short names; return a download URL for the ordering table |
@@ -136,10 +136,24 @@ section fills these three values in and shows the form.
 There is deliberately **no plotting tool**: `query_designs` returns column-selected
 tabular data and an agent charts it itself. For bulk dumps, `list_runs` includes
 `designs_json_url` / `designs_tsv_url` per run with a short-lived `download_token`
-(JWT claims bound to that `run_id` + format, ~10 minutes) — curl those REST paths
+(JWT claims bound to that `run_id` + format, ~10 minutes) — curl those URLs
 without the MCP API key rather than raising `query_designs` limits until the cell
-budget rejects you. Each run also reports `ingested_at` (first Binderdash ingest)
-and `folder_mtime` (run-directory mtime at ingest).
+budget rejects you. Download URLs are absolute when the server knows its public
+origin (`PUBLIC_BASE_URL`, else `https://` plus `DOMAIN`, else the incoming
+request). The same response includes `base_url`. Each run also reports
+`ingested_at` (first Binderdash ingest) and `folder_mtime` (run-directory mtime
+at ingest).
+
+`inspect_structures` returns one absolute `structure_url` per design, with a
+token scoped to that run and filename. `export_structures` stashes the file list
+and returns one absolute `GET /api/pdbs/tar?download_id=&download_token=` URL;
+curl it with no API key and no body. Both expire in about 10 minutes and the
+archive stash does not survive a restart. `read_structure_file` stays capped
+(20 KB default, 200 KB hard limit); over the cap the error includes that
+download URL so the file can be parsed locally. `structure_url` on
+`query_designs`, `rank_designs`, `select_diverse_designs` and `saved_sets` rows
+has no token and is not fetchable — call `inspect_structures` or
+`export_structures`.
 
 ### Target contacts
 

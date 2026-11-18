@@ -205,10 +205,11 @@ For BindCraft, ascending `Average_i_pTM` means lower values sort first in the AP
 
 | Method | Path | Description |
 | ------ | ---- | ----------- |
-| `GET` | `/api/runs/{run_id}/files/structure/{filename}` | PDB or mmCIF (`.gz` decompressed) |
+| `GET` | `/api/runs/{run_id}/files/structure/{filename}` | PDB or mmCIF (`.gz` decompressed). Optional `?download_token=` (short-lived JWT scoped to that run and filename; substitutes for Bearer/session). A present but invalid token is 403 and does not fall through to the session |
 | `GET` | `/api/runs/{run_id}/files/pdb/{filename}` | Legacy alias of structure route |
 | `GET` | `/api/runs/{run_id}/files/reference` | TM-aligned reference mmCIF (query params below) |
-| `POST` | `/api/pdbs/tar` | Stream tar of multiple structures |
+| `GET` | `/api/pdbs/tar` | Stream a tar stashed by MCP `export_structures`. Requires `download_id` and `download_token` (JWT scoped to that stash). Unknown or expired stash is 404 |
+| `POST` | `/api/pdbs/tar` | Stream tar of multiple structures (web UI; cookie or API key) |
 
 **Reference overlay query parameters:** `align_filename` (design structure basename), `mode` (`manual` or `input_target`), `source` (PDB ID or URL when `manual`), `input_target_id` (when `input_target`), optional `reference_chains` (comma/space-separated). Response headers include `X-Binderdash-TM-Norm-Design`, `X-Binderdash-RMSD`, `X-Binderdash-Aligned-Length`, and optional membrane plane headers.
 

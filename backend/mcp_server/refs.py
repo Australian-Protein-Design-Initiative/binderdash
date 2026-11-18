@@ -10,8 +10,10 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence
+from urllib.parse import quote
 
 from . import errors
+from .urls import absolute_url
 
 
 def structure_filename(design: Dict[str, Any]) -> Optional[str]:
@@ -31,30 +33,49 @@ def structure_format(filename: Optional[str]) -> Optional[str]:
 
 
 def structure_url(run_id: str, filename: Optional[str]) -> Optional[str]:
+    """Relative path with no download token.
+
+    Table rows use this. It is not fetchable by an MCP client; ``inspect_structures``
+    and ``export_structures`` mint a tokenised absolute URL instead.
+    """
     if not filename:
         return None
-    return f"/api/runs/{run_id}/files/structure/{filename}"
+    return f"/api/runs/{quote(run_id, safe='')}/files/structure/{quote(filename, safe='')}"
+
+
+def structure_download_url(run_id: str, filename: Optional[str]) -> Optional[str]:
+    """Absolute URL for one structure file, with a short-lived download token."""
+    if not filename:
+        return None
+    from ..download_tokens import mint_structure_file_token
+
+    token = mint_structure_file_token(run_id, filename)
+    path = (
+        f"/api/runs/{quote(run_id, safe='')}/files/structure/{quote(filename, safe='')}"
+        f"?download_token={quote(token, safe='')}"
+    )
+    return absolute_url(path)
 
 
 def designs_json_url(run_id: str) -> str:
-    """Relative URL for the JSON design table, with a short-lived download token."""
+    """URL for the JSON design table, with a short-lived download token."""
     from ..download_tokens import mint_designs_download_token
-    from urllib.parse import quote
 
     token = mint_designs_download_token(run_id, "json")
-    return f"/api/designs?run_ids={quote(run_id, safe='')}&download_token={quote(token, safe='')}"
+    path = f"/api/designs?run_ids={quote(run_id, safe='')}&download_token={quote(token, safe='')}"
+    return absolute_url(path)
 
 
 def designs_tsv_url(run_id: str) -> str:
-    """Relative URL for the TSV design table, with a short-lived download token."""
+    """URL for the TSV design table, with a short-lived download token."""
     from ..download_tokens import mint_designs_download_token
-    from urllib.parse import quote
 
     token = mint_designs_download_token(run_id, "tsv")
-    return (
+    path = (
         f"/api/designs?run_ids={quote(run_id, safe='')}"
         f"&format=tsv&download_token={quote(token, safe='')}"
     )
+    return absolute_url(path)
 
 
 def decorate_structure_fields(design: Dict[str, Any]) -> Dict[str, Any]:

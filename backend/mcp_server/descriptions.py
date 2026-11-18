@@ -23,10 +23,10 @@ just to learn sample sizes. `ingested_at` is when Binderdash first stored the ru
 every run.
 
 Each run includes `designs_json_url` and `designs_tsv_url` with a short-lived
-`download_token` in the query string (scoped to that run + format, ~10 minutes). Curl
-those REST paths directly — no MCP API key required — instead of pulling every design
-through MCP. Use `query_designs` / `summarize_designs` for filtered, sorted, or
-aggregated subsets.
+`download_token` in the query string (scoped to that run + format, ~10 minutes).
+The URLs are absolute when `base_url` is set. Curl them directly — no MCP API key
+required — instead of pulling every design through MCP. Use `query_designs` /
+`summarize_designs` for filtered, sorted, or aggregated subsets.
 
 Cheap; returns metadata only.
 """
@@ -89,6 +89,9 @@ Budget: `limit` defaults to 25 and caps at 200, and rows x columns may not excee
 4000 cells — an oversized request is rejected with a suggested narrower call rather
 than truncated, so what you receive is always the complete answer to what you asked.
 Ask for the columns you need; the default column set is deliberately small.
+
+`structure_url` on each row is a relative path with no download token and cannot
+be fetched. Call `inspect_structures` for one file or `export_structures` for many.
 """
 
 SUMMARIZE_DESIGNS = """Summarise metric distributions without returning individual designs.
@@ -124,6 +127,9 @@ criteria is worse than no ranking.
 
 Use `select_diverse_designs` instead when you want a non-redundant panel to order,
 rather than a leaderboard.
+
+`structure_url` on each row is a relative path with no download token and cannot
+be fetched. Call `inspect_structures` for one file or `export_structures` for many.
 """
 
 SELECT_DIVERSE_DESIGNS = """Select a diverse, high-quality panel of designs — filter, rank, then de-duplicate by sequence.
@@ -144,6 +150,9 @@ UI for a human to review — the natural way to hand a curated panel back.
 
 Returns only the selected designs, not the whole ranked pool. Selection is
 compute-heavy (pairwise alignment); expect seconds to a minute on large selections.
+
+`structure_url` on each row is a relative path with no download token and cannot
+be fetched. Call `inspect_structures` for one file or `export_structures` for many.
 """
 
 SAVED_SETS = """List, read, or rename Saved Sets — curated design panels shared with the Binderdash web UI.
@@ -158,6 +167,10 @@ pool, and page through it.
 
 Create saved sets with `select_diverse_designs(save_as=...)`. Deleting them is
 deliberately not available here — do that in the web UI.
+
+`structure_url` on a design row is a relative path with no download token and
+cannot be fetched. Call `inspect_structures` for one file or `export_structures`
+for many.
 """
 
 INSPECT_STRUCTURES = """Analyse the 3D structures of specific designs: chains, roles, sequences, and interface metrics.
@@ -169,12 +182,14 @@ plausible.
 Returns per design: chain IDs with binder/target roles, residue counts, sequences,
 Binderdash's own computed interface metrics (`binderdash_*`, computed from the
 as-generated structure and distinct from the pipeline's own reported values), and a
-`structure_url` for downloading the file. It never returns a server filesystem path.
+`structure_url`. That URL is absolute when `base_url` is set and already includes a
+short-lived `download_token` (~10 minutes). Curl it with no API key, then parse the
+file locally. It never returns a server filesystem path.
 
 Metrics are computed on demand and cached; expect seconds per structure the first
 time. Capped at 24 designs per call — a compute limit, not just a token one, so keep
-batches small when `include_metrics` is on. Use `read_structure_file` only if you
-genuinely need the atom records.
+batches small when `include_metrics` is on. Use `read_structure_file` only for a
+small file you must read as text. A larger file is downloaded from `structure_url`.
 """
 
 READ_STRUCTURE_FILE = """Return the raw text of one design's structure file (PDB or mmCIF).
@@ -184,15 +199,17 @@ interface metrics or anything you would otherwise derive by parsing, call
 `inspect_structures` — it is far cheaper and already computed.
 
 Structure files are large: a 2 MB mmCIF is roughly 600k tokens and will not fit. The
-default cap is 20 KB and the maximum is 200 KB; a file over the cap is an error naming
-its size, not a silent truncation that would leave you parsing half a molecule.
+default cap is 20 KB and the maximum is 200 KB; a file over the cap is an error that
+includes a download URL, not a silent truncation. Download that file and parse it
+locally. The cap is not raised.
 """
 
 EXPORT_STRUCTURES = """Bundle the structure files for a set of designs into a downloadable archive.
 
 Call this to hand a panel of structures to a human, or to fetch many structures at
-once for local analysis. Returns a URL and the manifest of what it contains, not the
-bytes — the archive is built by the same endpoint the web UI uses.
+once for local analysis. Returns an absolute `download_url` (GET) and the manifest
+of what the tar contains, not the bytes. Curl that URL with no API key and no
+request body. The link expires in ~10 minutes and does not survive a server restart.
 
 Use `saved_sets(action="get")` or `select_diverse_designs` to choose the designs first.
 """

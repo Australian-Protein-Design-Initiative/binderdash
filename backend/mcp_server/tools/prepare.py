@@ -13,6 +13,7 @@ from urllib.parse import quote
 from pydantic import Field
 
 from .. import errors, refs
+from ..urls import absolute_url, public_base_url, with_relative_note
 
 PREPARE_SEQUENCES = """\
 Prepare order-ready sequences for designs: add N-/C-terminal affinity tags and
@@ -146,7 +147,7 @@ def register(mcp: Any) -> None:
 
         prepare_id = prepare_stash.put(payload, usable)
         token = mint_prepare_download_token(prepare_id, format)  # type: ignore[arg-type]
-        download_url = (
+        download_url = absolute_url(
             f"/api/sequences/prepare/download?prepare_id={quote(prepare_id, safe='')}"
             f"&format={quote(format, safe='')}&download_token={quote(token, safe='')}"
         )
@@ -169,7 +170,12 @@ def register(mcp: Any) -> None:
             "dna_optimized": False,
             "format": format,
             "download_url": download_url,
+            "base_url": public_base_url(),
             "expires_in_seconds": prepare_stash.DEFAULT_TTL_SECONDS,
+            "note": with_relative_note(
+                "GET download_url for the constructs. No API key. The link expires "
+                "in ~10 minutes and does not survive a server restart."
+            ),
             "example": {
                 "design_id": rows[0].design_id,
                 "short_name": rows[0].short_name,

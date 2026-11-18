@@ -9,13 +9,19 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import requests
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import FileResponse, Response, StreamingResponse
 
 from ..auth import (
     get_current_user_optional,
     get_current_user_optional_with_query,
 )
+from ..download_tokens import (
+    DownloadTokenError,
+    verify_structure_archive_token,
+    verify_structure_file_token,
+)
+from ..structure_archive import get as get_structure_archive
 from ..cache import get_run_metadata
 from ..path_policy import is_allowed_path
 from ..auth_providers.base import AuthUser
@@ -182,11 +188,33 @@ async def get_pdb_file(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+async def _authorize_structure_file(
+    request: Request,
+    run_id: str,
+    filename: str,
+    download_token: Optional[str] = Query(None),
+    token: Optional[str] = Query(None),
+) -> Optional[AuthUser]:
+    """Session, API key, or a download token scoped to this exact file.
+
+    A present ``download_token`` is the only credential considered. Falling
+    through to the session cookie would let a query param skip CSRF on a
+    cookie-authenticated browser request.
+    """
+    if download_token:
+        try:
+            verify_structure_file_token(download_token, run_id=run_id, filename=filename)
+        except DownloadTokenError as e:
+            raise HTTPException(status_code=403, detail=str(e)) from e
+        return None
+    return await get_current_user_optional_with_query(request, token=token)
+
+
 @router.get("/{run_id}/files/structure/{filename}")
 async def get_structure_file(
     run_id: str,
     filename: str,
-    current_user: Optional[AuthUser] = Depends(get_current_user_optional_with_query),
+    current_user: Optional[AuthUser] = Depends(_authorize_structure_file),
 ):
     """Serve a structure file (PDB or mmCIF) for a run."""
     try:
@@ -324,6 +352,40 @@ def stream_tar_archive(file_entries: List[Tuple[str, Path]]):
             )
             continue
     yield b"\0" * 1024
+
+
+@pdbs_router.get("/tar")
+async def download_stashed_pdbs_tar(
+    download_id: Optional[str] = Query(None),
+    download_token: Optional[str] = Query(None),
+):
+    """Stream a tar stashed by the MCP ``export_structures`` tool.
+
+    The member list lives server-side. The token is bound to ``download_id``
+    and is the only credential this route accepts.
+    """
+    if not download_id or not download_token:
+        raise HTTPException(
+            status_code=401,
+            detail="Authentication required",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    try:
+        verify_structure_archive_token(download_token, download_id=download_id)
+    except DownloadTokenError as e:
+        raise HTTPException(status_code=403, detail=str(e)) from e
+    members = get_structure_archive(download_id)
+    if not members:
+        raise HTTPException(
+            status_code=404,
+            detail="Archive expired or unknown. Call export_structures again.",
+        )
+    headers = {"Content-Disposition": "attachment; filename=designs_pdbs.tar"}
+    return StreamingResponse(
+        stream_tar_archive(members),
+        media_type="application/x-tar",
+        headers=headers,
+    )
 
 
 @pdbs_router.post("/tar")

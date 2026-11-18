@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **MCP / UI**: **Use Claude Science** on the new API key panel. Settings → Connectors → Add Connector (Local URL), with the connector name, server address and header `echo` command filled in, plus a screenshot of the form.
+- **MCP**: Structure downloads without the API key. `inspect_structures` returns an absolute `structure_url` with a short-lived token scoped to that file, and `export_structures` returns an absolute `GET /api/pdbs/tar` URL for a stashed tar. `list_runs` and `prepare_sequences` download URLs are absolute the same way. Set `PUBLIC_BASE_URL` when the request host is not the public origin; otherwise `DOMAIN` or the incoming request is used.
+
+### Changed
+
+- **MCP**: `read_structure_file` stays size-capped. A file over the cap is an error that includes a download URL, so the file is parsed locally rather than returned in the tool result. `structure_url` on design-table rows has no download token.
 
 ### Fixed
 

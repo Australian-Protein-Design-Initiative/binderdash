@@ -18,6 +18,8 @@ from .settings import SECRET_KEY
 
 PURPOSE_DESIGNS_DOWNLOAD = "designs_download"
 PURPOSE_PREPARE_DOWNLOAD = "prepare_download"
+PURPOSE_STRUCTURE_FILE = "structure_file"
+PURPOSE_STRUCTURE_ARCHIVE = "structure_archive"
 DEFAULT_TTL_SECONDS = 600
 
 DesignsFormat = Literal["json", "tsv"]
@@ -111,3 +113,76 @@ def verify_prepare_download_token(token: str, *, prepare_id: str, fmt: str) -> N
         raise DownloadTokenError("download_token does not match prepare_id")
     if claims.get("format") != fmt:
         raise DownloadTokenError("download_token does not match format")
+
+
+def _mint(purpose: str, claims: Dict[str, Any], *, ttl_seconds: int) -> str:
+    now = datetime.now(timezone.utc)
+    payload: Dict[str, Any] = {
+        "purpose": purpose,
+        **claims,
+        "iat": now,
+        "exp": now + timedelta(seconds=ttl_seconds),
+        "jti": secrets.token_urlsafe(12),
+    }
+    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+
+
+def _decode(token: str) -> Dict[str, Any]:
+    try:
+        return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    except JWTError as e:
+        raise DownloadTokenError("Invalid or expired download_token") from e
+
+
+def mint_structure_file_token(
+    run_id: str,
+    filename: str,
+    *,
+    ttl_seconds: int = DEFAULT_TTL_SECONDS,
+) -> str:
+    """Scope a download to one structure file in one run.
+
+    A separate purpose from the designs and prepare tokens, so a token minted
+    for a table or an ordering file cannot be replayed against a structure.
+    """
+    return _mint(
+        PURPOSE_STRUCTURE_FILE,
+        {"run_id": str(run_id), "filename": str(filename)},
+        ttl_seconds=ttl_seconds,
+    )
+
+
+def verify_structure_file_token(token: str, *, run_id: str, filename: str) -> None:
+    claims = _decode(token)
+    if claims.get("purpose") != PURPOSE_STRUCTURE_FILE:
+        raise DownloadTokenError("download_token is not a structure file token")
+    if claims.get("run_id") != run_id:
+        raise DownloadTokenError("download_token does not match run_id")
+    if claims.get("filename") != filename:
+        raise DownloadTokenError("download_token does not match filename")
+
+
+def mint_structure_archive_token(
+    download_id: str,
+    *,
+    ttl_seconds: int = DEFAULT_TTL_SECONDS,
+) -> str:
+    """Scope a tar download to one stashed file list.
+
+    The member list is too large for a JWT, so the token carries only the stash
+    id. A file token cannot be replayed here, and this token cannot fetch a
+    single structure by path.
+    """
+    return _mint(
+        PURPOSE_STRUCTURE_ARCHIVE,
+        {"download_id": str(download_id)},
+        ttl_seconds=ttl_seconds,
+    )
+
+
+def verify_structure_archive_token(token: str, *, download_id: str) -> None:
+    claims = _decode(token)
+    if claims.get("purpose") != PURPOSE_STRUCTURE_ARCHIVE:
+        raise DownloadTokenError("download_token is not a structure archive token")
+    if claims.get("download_id") != download_id:
+        raise DownloadTokenError("download_token does not match download_id")

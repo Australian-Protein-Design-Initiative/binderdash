@@ -526,7 +526,10 @@ class TestDiscoveryTools:
         assert run["structure_count"] == 1
         assert run["design_count"] == 1  # no-DB/cache miss → structure_count fallback
         assert "download_token=" in run["designs_json_url"]
-        assert run["designs_json_url"].startswith("/api/designs?run_ids=run-1")
+        assert "/api/designs?run_ids=run-1" in run["designs_json_url"]
+        base = result.data.get("base_url")
+        if base:
+            assert run["designs_json_url"].startswith(base + "/api/designs?run_ids=run-1")
         assert "format=tsv" in run["designs_tsv_url"]
         assert "download_token=" in run["designs_tsv_url"]
 

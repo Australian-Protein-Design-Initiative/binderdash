@@ -150,15 +150,19 @@ def _summarise_runs(
             continue
         rows.append(row)
 
+    from ..urls import public_base_url, with_relative_note
+
     rows.sort(key=lambda r: (str(r["project_id"]), str(r["run_name"])))
     return {
         "runs": rows,
         "total_runs": len(rows),
         "methods": sorted({str(r["method"]) for r in rows if r["method"]}),
-        "note": (
+        "base_url": public_base_url(),
+        "note": with_relative_note(
             "designs_json_url / designs_tsv_url include a short-lived download_token "
             "scoped to that run and format — curl them without the MCP API key "
-            "(tokens expire in ~10 minutes). Prefer that over pulling every row through MCP."
+            "(tokens expire in ~10 minutes). They are absolute when base_url is set. "
+            "Prefer that over pulling every row through MCP."
         ),
     }
 

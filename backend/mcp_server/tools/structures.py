@@ -83,6 +83,9 @@ def _inspect(
             "size_bytes": path.stat().st_size,
             **refs.decorate_structure_fields(design),
         }
+        entry["structure_url"] = refs.structure_download_url(
+            run_id, entry.get("structure_filename")
+        )
         if include_sequences:
             sequences = get_chain_sequences(str(path))
             entry["chain_sequences"] = sequences
@@ -120,14 +123,19 @@ def _inspect(
                     )
                 )
 
+    from ..urls import public_base_url, with_relative_note
+
     return {
         "designs": resolved,
         "returned": len(resolved),
+        "base_url": public_base_url(),
         "warnings": warnings,
-        "note": (
+        "note": with_relative_note(
             "binderdash_* metrics are computed by Binderdash from the as-generated "
             "structure, and are deliberately distinct from the pipeline's own reported "
-            "values for similar quantities."
+            "values for similar quantities. structure_url is absolute when base_url is "
+            "set and already includes a short-lived download_token — curl it with no "
+            "API key. It expires in ~10 minutes."
         ),
     }
 
@@ -145,12 +153,14 @@ def _read_file(
     if len(text) > max_bytes:
         if size > MAX_READ_BYTES:
             # Raising max_bytes cannot help here, so do not suggest it.
+            download = refs.structure_download_url(run_id, refs.structure_filename(design))
             errors.fail(
                 errors.FILE_TOO_LARGE,
                 f"The structure is {size} bytes, above the {MAX_READ_BYTES}-byte hard "
-                "limit, so this tool cannot return it at all. Call inspect_structures "
-                "for chains, sequences and interface metrics, or download it from "
-                f"{refs.structure_url(run_id, refs.structure_filename(design))}.",
+                "limit, so this tool cannot return it. Download it and parse it locally: "
+                f"{download}. The link includes a short-lived download_token and needs "
+                "no API key. Call inspect_structures for chains, sequences and interface "
+                "metrics without the atoms.",
             )
         errors.fail(
             errors.FILE_TOO_LARGE,
@@ -168,16 +178,35 @@ def _read_file(
     }
 
 
+def _archive_name(run_id: str, filename: str) -> str:
+    from ...cache import get_run_metadata
+
+    run = get_run_metadata(run_id) or {}
+    project_id = run.get("project_id", "project") or "project"
+    run_name = (run.get("metadata") or {}).get("name", "run") or "run"
+    return f"{project_id}/{run_name}/{filename}"
+
+
 def _export(designs: List[Dict[str, Any]]) -> Dict[str, Any]:
+    from urllib.parse import quote
+
+    from ...download_tokens import DEFAULT_TTL_SECONDS, mint_structure_archive_token
+    from ...structure_archive import put as stash_archive
+    from ..urls import absolute_url, public_base_url, with_relative_note
+
     manifest = []
+    members = []
     missing = []
     for ref in designs:
         run_id = str(ref.get("run_id"))
         design = refs.resolve_design(run_id, str(ref.get("design_id")), ref.get("source_path"))
         filename = refs.structure_filename(design)
         try:
-            _structure_path(run_id, design)
+            path = _structure_path(run_id, design)
         except Exception:
+            missing.append({"run_id": run_id, "design_id": design.get("design_id")})
+            continue
+        if not filename:
             missing.append({"run_id": run_id, "design_id": design.get("design_id")})
             continue
         manifest.append(
@@ -187,18 +216,10 @@ def _export(designs: List[Dict[str, Any]]) -> Dict[str, Any]:
                 "structure_filename": filename,
             }
         )
+        members.append((_archive_name(run_id, filename), path))
 
-    return {
-        "download_url": "/api/pdbs/tar",
-        "method": "POST",
-        "body": {
-            "items": [
-                {"run_id": m["run_id"], "pdb_file": m["structure_filename"]} for m in manifest
-            ]
-        },
-        "manifest": manifest,
-        "count": len(manifest),
-        "warnings": [
+    warnings = (
+        [
             errors.warning(
                 errors.STRUCTURE_UNAVAILABLE,
                 f"{len(missing)} designs have no structure file on disk and are not in "
@@ -207,10 +228,36 @@ def _export(designs: List[Dict[str, Any]]) -> Dict[str, Any]:
             )
         ]
         if missing
-        else [],
-        "note": (
-            "POST the body above to download_url with your API key to receive the tar "
-            "archive; the response is a stream, not JSON."
+        else []
+    )
+    if not members:
+        return {
+            "download_url": None,
+            "base_url": public_base_url(),
+            "manifest": manifest,
+            "count": 0,
+            "expires_in_seconds": None,
+            "warnings": warnings,
+            "note": "No structure files were available to archive.",
+        }
+
+    download_id = stash_archive(members, ttl_seconds=DEFAULT_TTL_SECONDS)
+    token = mint_structure_archive_token(download_id)
+    path = (
+        f"/api/pdbs/tar?download_id={quote(download_id, safe='')}"
+        f"&download_token={quote(token, safe='')}"
+    )
+    return {
+        "download_url": absolute_url(path),
+        "base_url": public_base_url(),
+        "manifest": manifest,
+        "count": len(manifest),
+        "expires_in_seconds": DEFAULT_TTL_SECONDS,
+        "warnings": warnings,
+        "note": with_relative_note(
+            "GET download_url to receive the tar. No API key and no request body. "
+            "The link expires in ~10 minutes and does not survive a server restart — "
+            "call export_structures again if it fails."
         ),
     }
 

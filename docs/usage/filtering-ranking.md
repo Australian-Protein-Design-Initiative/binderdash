@@ -19,14 +19,15 @@ Each row is a column, an operator, and a value:
 | Numeric | `<`, `≤`, `>`, `≥` | threshold |
 | Text | contains, does not contain, starts with, ends with, equals, not equals, regex | text |
 | Either | is empty, is not empty | none |
+| Good | good, bad, unrated | none |
 
 Contains, starts with, and ends with are case-insensitive. Equals, not equals, and regex are case-sensitive. A null or blank value passes a "does not contain" / "not equals" check.
 
-The column picker offers canonical metric names (`iptm`, `ptm`, `rmsd`, `pae_interaction`, `hbonds`, `saltbridge`, `delta_sasa`) and raw columns, plus `design_id`, `project_id`, `run_name`, `method`, and `Sequence`. A canonical name is resolved per design from that design's method (`iptm` is `design_to_target_iptm` on BoltzGen, `Average_i_pTM` on BindCraft, `iptm` on RFdiffusion3, and `boltz_iptm` on RFdiffusion when a Boltz pulldown column is present). The mapping is `METRIC_ALIASES` in `backend/filtering/metrics.py`.
+The column picker offers canonical metric names (`iptm`, `ptm`, `rmsd`, `pae_interaction`, `hbonds`, `saltbridge`, `delta_sasa`) and raw columns, plus `design_id`, `project_id`, `run_name`, `method`, and `Sequence`, and the user-set columns **Good** and **Tag**. Good is the thumbs rating: **good**, **bad**, or **unrated** (designs never marked). Tag is the N- or C-terminus choice (`N`, `C`, or empty). Both stay in the picker when no design has been rated or tagged yet. A canonical name is resolved per design from that design's method (`iptm` is `design_to_target_iptm` on BoltzGen, `Average_i_pTM` on BindCraft, `iptm` on RFdiffusion3, and `boltz_iptm` on RFdiffusion when a Boltz pulldown column is present). The mapping is `METRIC_ALIASES` in `backend/filtering/metrics.py`.
 
 Canonical score metrics also carry a known direction in `METRIC_DIRECTIONS` (same module): higher-is-better metrics such as `iptm` default a new hard filter to `>`, and lower-is-better metrics such as `rmsd` / `pae_interaction` default to `<`. Adding or changing a ranking metric row sets the "Higher is better" checkbox from the same source. Unknown raw columns keep the previous defaults (`<` / higher-is-better). The columns API returns `higher_is_better` on each entry so the UI does not hardcode the map.
 
-A design whose method has no equivalent for a canonical metric is exempt from that filter. A design whose method has the metric, but whose value is null, fails it. A filter on a literal column name that is absent fails every row.
+A design whose method has no equivalent for a canonical metric is exempt from that filter. A design whose method has the metric, but whose value is null, fails it. A filter on a literal column name that is absent fails every row. **Good** and **Tag** are the exception: until a design is rated or tagged the column is missing, and that counts as unrated or empty rather than a failure.
 
 Per-replicate BindCraft columns (`1_pLDDT`, `2_i_pTM`, …) are omitted from the picker. They repeat the `Average_*` aggregates.
 

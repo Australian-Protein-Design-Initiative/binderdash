@@ -179,6 +179,53 @@ class TestStringOperators:
         assert not out["pass_filters"].any()
 
 
+class TestGoodAndTagFilters:
+    def test_good_true_false_and_unrated(self):
+        df = pl.DataFrame(
+            {
+                "design_id": ["a", "b", "c"],
+                "good": [True, False, None],
+                "tag": ["N", "C", None],
+            }
+        )
+        good = apply_hard_filters(
+            df, [FilterSpec(column="good", operator="equals", text_value="true")]
+        )
+        bad = apply_hard_filters(
+            df, [FilterSpec(column="good", operator="equals", text_value="false")]
+        )
+        unrated = apply_hard_filters(df, [FilterSpec(column="good", operator="is_empty")])
+        tagged_n = apply_hard_filters(
+            df, [FilterSpec(column="tag", operator="equals", text_value="N")]
+        )
+        assert good["pass_filters"].to_list() == [True, False, False]
+        assert bad["pass_filters"].to_list() == [False, True, False]
+        assert unrated["pass_filters"].to_list() == [False, False, True]
+        assert tagged_n["pass_filters"].to_list() == [True, False, False]
+
+    def test_missing_good_and_tag_are_unrated(self):
+        df = pl.DataFrame({"design_id": ["a", "b"]})
+        unrated = apply_hard_filters(df, [FilterSpec(column="good", operator="is_empty")])
+        good = apply_hard_filters(
+            df, [FilterSpec(column="good", operator="equals", text_value="true")]
+        )
+        empty_tag = apply_hard_filters(df, [FilterSpec(column="tag", operator="is_empty")])
+        assert unrated["pass_filters"].to_list() == [True, True]
+        assert good["pass_filters"].to_list() == [False, False]
+        assert empty_tag["pass_filters"].to_list() == [True, True]
+
+    def test_good_numeric_zero_one(self):
+        df = pl.DataFrame({"design_id": ["a", "b"], "good": [1, 0]})
+        good = apply_hard_filters(
+            df, [FilterSpec(column="good", operator="equals", text_value="true")]
+        )
+        bad = apply_hard_filters(
+            df, [FilterSpec(column="good", operator="equals", text_value="false")]
+        )
+        assert good["pass_filters"].to_list() == [True, False]
+        assert bad["pass_filters"].to_list() == [False, True]
+
+
 class TestEmptyOperators:
     def test_is_empty_matches_null_and_empty_string(self):
         df = _text_df()

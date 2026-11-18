@@ -115,6 +115,38 @@ def _resolve_canonical(
     return value_expr, applicable_expr
 
 
+def _good_text_expr(df: pl.DataFrame) -> pl.Expr:
+    """``good`` as ``"true"`` / ``"false"`` / null, whatever dtype the cache stored.
+
+    The column is a bool once it has been rated, but a merged table can leave it as
+    0/1 or the strings ``true``/``false``. String filters compare against ``"true"``
+    and ``"false"``.
+    """
+    if "good" not in df.columns:
+        return pl.lit(None, dtype=pl.Utf8)
+    expr = pl.col("good")
+    dtype = df.schema["good"]
+    if dtype == pl.Boolean or dtype.is_numeric():
+        flag = expr if dtype == pl.Boolean else expr.cast(pl.Boolean)
+        return (
+            pl.when(expr.is_null())
+            .then(pl.lit(None, dtype=pl.Utf8))
+            .when(flag)
+            .then(pl.lit("true"))
+            .otherwise(pl.lit("false"))
+        )
+    text = expr.cast(pl.Utf8).str.strip_chars().str.to_lowercase()
+    return (
+        pl.when(expr.is_null() | (text == ""))
+        .then(pl.lit(None, dtype=pl.Utf8))
+        .when(text.is_in(["true", "1", "yes"]))
+        .then(pl.lit("true"))
+        .when(text.is_in(["false", "0", "no"]))
+        .then(pl.lit("false"))
+        .otherwise(text)
+    )
+
+
 def _operator_mask(col: pl.Expr, spec: FilterSpec) -> pl.Expr:
     """Boolean expression for one filter's operator, given the (already-resolved) value
     expression to test. Nulls fail non-empty-checks (conservative default for a value
@@ -152,6 +184,17 @@ def _filter_mask(df: pl.DataFrame, spec: FilterSpec) -> pl.Expr:
     if resolved is not None:
         value_expr, applicable_expr = resolved
         return pl.when(applicable_expr).then(_operator_mask(value_expr, spec)).otherwise(pl.lit(True))
+
+    # Good/Tag are user annotations. Until anyone sets them the key is absent from
+    # every design dict, which is the same as all-null: "is empty" matches every row
+    # and a value match matches none. ``good`` is compared as "true"/"false" text so
+    # a boolean, 0/1, or "True" column all accept the same filter.
+    if spec.column == "good" and spec.operator in (*STRING_OPERATORS, *EMPTY_OPERATORS):
+        return _operator_mask(_good_text_expr(df), spec)
+    if spec.column == "tag" and spec.column not in df.columns:
+        if spec.operator in (*STRING_OPERATORS, *EMPTY_OPERATORS):
+            return _operator_mask(pl.lit(None, dtype=pl.Utf8), spec)
+        return pl.lit(False)
 
     if spec.column not in df.columns:
         return pl.lit(False)

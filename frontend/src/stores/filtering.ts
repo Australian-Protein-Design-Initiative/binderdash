@@ -10,7 +10,12 @@
 
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
-import { filteringApi, savedSetsApi } from '../webapi'
+import {
+    EMPTY_FILTER_OPERATORS,
+    STRING_FILTER_OPERATORS,
+    filteringApi,
+    savedSetsApi
+} from '../webapi'
 import type {
     ColumnInfoDto,
     DesignKeyDto,
@@ -872,22 +877,44 @@ export const useFilteringStore = defineStore('filtering', () => {
         scheduleApply()
     }
 
-    /** Column picker changed: reset operator to the metric's known direction default. */
+    /** Column picker changed: reset operator to one this column's dtype accepts. */
     const onFilterColumnChange = (index: number, column: string | null) => {
         const filter = filters.value[index]
         if (!filter) return
         filter.column = column ?? ''
-        if (column && isNumericDtype(column)) {
-            filter.operator = defaultOperatorForColumn(column)
+        if (column) {
+            const kind = columnKind(column)
+            if (kind === 'boolean') {
+                // good / bad / unrated. bad is the explicit false rating.
+                filter.operator = 'equals'
+                filter.text_value = 'true'
+                filter.threshold = null
+            } else if (kind === 'string') {
+                const stringOps = new Set<string>([
+                    ...STRING_FILTER_OPERATORS,
+                    ...EMPTY_FILTER_OPERATORS
+                ])
+                if (column === 'tag' || !stringOps.has(filter.operator)) {
+                    filter.operator = column === 'tag' ? 'equals' : 'contains'
+                    filter.text_value = ''
+                }
+                filter.threshold = null
+            } else {
+                filter.operator = defaultOperatorForColumn(column)
+                filter.text_value = null
+                if (filter.threshold == null) filter.threshold = 0
+            }
         }
         scheduleApply()
     }
 
-    const isNumericDtype = (column: string): boolean => {
+    const columnKind = (column: string): 'numeric' | 'boolean' | 'string' => {
         const info = availableColumns.value.find((c) => c.name === column)
-        if (!info) return true
+        if (!info) return 'numeric'
         const dtype = info.dtype.toLowerCase()
-        return !dtype.includes('str') && !dtype.includes('utf8')
+        if (dtype.includes('bool')) return 'boolean'
+        if (dtype.includes('str') || dtype.includes('utf8')) return 'string'
+        return 'numeric'
     }
 
     const addRankingMetric = () => {
@@ -1193,6 +1220,7 @@ export const useFilteringStore = defineStore('filtering', () => {
 
         // Getters
         activeRunIds,
+        columnKind,
         hasSelectedRuns,
         hasActiveFilters,
         activeTargetContactGroups,

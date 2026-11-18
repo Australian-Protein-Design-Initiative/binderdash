@@ -31,6 +31,7 @@ from .metrics import (
 )
 from .target_contacts_service import augment_with_target_contacts
 from .schemas import (
+    USER_ANNOTATION_COLUMNS,
     ColumnInfo,
     DesignKey,
     DiverseDesignRow,
@@ -129,7 +130,11 @@ def compute_available_columns(run_ids: List[str]) -> List[ColumnInfo]:
         all_numeric_cols = sorted({c for cols in by_method.values() for c in cols})
     else:
         all_numeric_cols = sorted(c for c, dt in zip(df.columns, df.dtypes) if dt.is_numeric())
-    all_numeric_cols = [c for c in all_numeric_cols if not is_excluded_metric_column(c)]
+    all_numeric_cols = [
+        c
+        for c in all_numeric_cols
+        if not is_excluded_metric_column(c) and c not in USER_ANNOTATION_COLUMNS
+    ]
 
     # Raw per-method columns that share a canonical concept (e.g. rfd's pae_interaction
     # and bindcraft's Average_i_pAE) are collapsed into a single entry named after the
@@ -201,6 +206,29 @@ def compute_available_columns(run_ids: List[str]) -> List[ColumnInfo]:
                     sample_values=None,
                 )
             )
+
+    # Good and Tag are set by the user (thumbs rating, N/C terminus), not written by
+    # a pipeline. They apply to every design, including ones not rated or tagged yet,
+    # so they stay in the picker when the key is still absent from the design dicts.
+    methods = (
+        sorted({str(m) for m in df["method"].drop_nulls().unique().to_list()})
+        if "method" in df.columns
+        else []
+    )
+    present = {c.name for c in columns}
+    annotation_dtypes = {"good": "Boolean", "tag": "String"}
+    for name in USER_ANNOTATION_COLUMNS:
+        if name in present:
+            continue
+        columns.append(
+            ColumnInfo(
+                name=name,
+                canonical_name=None,
+                present_in_runs=methods,
+                dtype=annotation_dtypes[name],
+                sample_values=None,
+            )
+        )
 
     return sorted(columns, key=lambda c: c.name)
 

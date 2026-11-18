@@ -29,19 +29,31 @@ export interface FilterLabelParts {
     label?: string
 }
 
+export function columnDisplayName(column: string): string {
+    if (column === 'good') return 'Good'
+    if (column === 'tag') return 'Tag'
+    return column
+}
+
 export function formatFilterLabel(item: FilterLabelParts): string {
     if (item.label) return item.label
+    if (item.column === 'good') {
+        if (item.operator === 'equals' && item.text_value === 'true') return 'good'
+        if (item.operator === 'equals' && item.text_value === 'false') return 'bad'
+        if (item.operator === 'is_empty') return 'unrated'
+    }
     const opLabel = OPERATOR_SYMBOLS[item.operator] ?? item.operator
+    const column = columnDisplayName(item.column)
     if (item.operator === 'is_empty' || item.operator === 'is_not_empty') {
-        return `${item.column} ${opLabel}`
+        return `${column} ${opLabel}`
     }
     if (item.text_value != null && item.text_value !== '') {
-        return `${item.column} ${opLabel} "${item.text_value}"`
+        return `${column} ${opLabel} "${item.text_value}"`
     }
     if (item.threshold != null) {
-        return `${item.column} ${opLabel} ${item.threshold}`
+        return `${column} ${opLabel} ${item.threshold}`
     }
-    return `${item.column} ${opLabel}`
+    return `${column} ${opLabel}`
 }
 
 /** Diversity-selection chain items use their own label (no threshold/operator symbol lookup). */

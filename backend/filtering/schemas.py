@@ -8,6 +8,9 @@ from ..session_state import SessionState
 
 
 NUMERIC_OPERATORS = ("<", "<=", ">", ">=")
+# Designs-table columns the user sets (Good / Tag), not pipeline metrics. Always
+# offered as hard filters; a missing column means every design is still unset.
+USER_ANNOTATION_COLUMNS = ("good", "tag")
 STRING_OPERATORS = (
     "contains",
     "not_contains",

@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import Select from 'primevue/select'
 import type { ColumnInfoDto } from '../webapi'
+import { columnDisplayName } from '../utils/filterLabel'
 
 const props = withDefaults(
   defineProps<{
@@ -36,10 +37,12 @@ const options = computed<ColumnOption[]>(() =>
     .sort((a, b) => a.name.localeCompare(b.name))
     .map((col) => ({
       name: col.name,
-      label:
-        col.canonical_name && col.canonical_name !== col.name
-          ? `${col.name}  (${col.canonical_name})`
-          : col.name
+      label: (() => {
+        const name = columnDisplayName(col.name)
+        return col.canonical_name && col.canonical_name !== col.name
+          ? `${name}  (${col.canonical_name})`
+          : name
+      })()
     }))
 )
 

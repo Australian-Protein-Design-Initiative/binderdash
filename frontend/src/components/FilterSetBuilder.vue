@@ -20,6 +20,7 @@ import MetricColumnSelector from './MetricColumnSelector.vue'
 import TargetContactFilters from './TargetContactFilters.vue'
 import type { FilterSpecDto, RankingMetricDto } from '../webapi'
 import type { InputNumberInputEvent } from 'primevue/inputnumber'
+import { columnDisplayName } from '../utils/filterLabel'
 
 const filteringStore = useFilteringStore()
 const designsStore = useDesignsStore()
@@ -50,9 +51,39 @@ const EMPTY_OPERATORS: { label: string; value: string }[] = [
 ]
 
 function isNumericColumn(column: string): boolean {
-  const info = filteringStore.availableColumns.find((c) => c.name === column)
-  if (!info) return true // default to numeric (matches prior single-operator-set behaviour when column not yet resolved)
-  return !info.dtype.toLowerCase().includes('str') && !info.dtype.toLowerCase().includes('utf8')
+  return filteringStore.columnKind(column) === 'numeric'
+}
+
+function isBooleanColumn(column: string): boolean {
+  return filteringStore.columnKind(column) === 'boolean'
+}
+
+// Good is good / bad / unrated. The choice encodes operator + text_value; there is
+// no separate threshold field. "true"/"false" match the engine's normalised text.
+const GOOD_OPERATORS: { label: string; value: string }[] = [
+  { label: 'good', value: 'good' },
+  { label: 'bad', value: 'bad' },
+  { label: 'unrated', value: 'unrated' }
+]
+
+function booleanChoice(filter: FilterSpecDto): string {
+  if (filter.operator === 'is_empty') return 'unrated'
+  if (filter.text_value === 'false') return 'bad'
+  return 'good'
+}
+
+function applyBooleanChoice(filter: FilterSpecDto, choice: string) {
+  if (choice === 'unrated') {
+    filter.operator = 'is_empty'
+    filter.text_value = null
+  } else if (choice === 'bad') {
+    filter.operator = 'equals'
+    filter.text_value = 'false'
+  } else {
+    filter.operator = 'equals'
+    filter.text_value = 'true'
+  }
+  filter.threshold = null
 }
 
 function operatorsForColumn(column: string): { label: string; value: string }[] {
@@ -355,7 +386,9 @@ const alphaLogSlider = computed<number>({
         data-key="name"
         class="fsb-columns-table"
       >
-        <Column field="name" header="Column" sortable />
+        <Column field="name" header="Column" sortable>
+          <template #body="{ data }">{{ columnDisplayName(data.name) }}</template>
+        </Column>
         <Column field="canonical_name" header="Canonical" sortable>
           <template #body="{ data }">
             <Tag v-if="data.canonical_name" :value="data.canonical_name" severity="info" />
@@ -409,6 +442,17 @@ const alphaLogSlider = computed<number>({
           @update:model-value="filteringStore.onFilterColumnChange(idx, $event)"
         />
         <Select
+          v-if="isBooleanColumn(filter.column)"
+          :model-value="booleanChoice(filter)"
+          :options="GOOD_OPERATORS"
+          option-label="label"
+          option-value="value"
+          :disabled="filter.enabled === false"
+          class="fsb-filter-row__operator"
+          @update:model-value="(value: string) => { applyBooleanChoice(filter, value); filteringStore.scheduleApply() }"
+        />
+        <Select
+          v-else
           v-model="filter.operator"
           :options="operatorsForColumn(filter.column)"
           option-label="label"
@@ -418,7 +462,7 @@ const alphaLogSlider = computed<number>({
           @update:model-value="filteringStore.scheduleApply()"
         />
         <InputNumber
-          v-if="!isEmptyOperator(filter.operator) && isNumericColumn(filter.column)"
+          v-if="!isBooleanColumn(filter.column) && !isEmptyOperator(filter.operator) && isNumericColumn(filter.column)"
           v-model="filter.threshold"
           :min-fraction-digits="0"
           :max-fraction-digits="4"
@@ -427,9 +471,9 @@ const alphaLogSlider = computed<number>({
           @input="handleThresholdInput(filter, $event)"
         />
         <InputText
-          v-else-if="!isEmptyOperator(filter.operator)"
+          v-else-if="!isBooleanColumn(filter.column) && !isEmptyOperator(filter.operator)"
           v-model="filter.text_value"
-          placeholder="Value…"
+          :placeholder="filter.column === 'tag' ? 'N or C' : 'Value…'"
           :disabled="filter.enabled === false"
           class="fsb-filter-row__threshold"
           @update:model-value="filteringStore.scheduleApply()"

@@ -84,6 +84,45 @@ class TestFilteringColumns:
         assert by_name["rmsd"]["raw_columns"] == {"bindcraft": "Binder_RMSD"}
         assert by_name["iptm"]["higher_is_better"] is True
         assert by_name["rmsd"]["higher_is_better"] is False
+        assert by_name["good"]["dtype"] == "Boolean"
+        assert by_name["tag"]["dtype"] == "String"
+
+    def test_good_and_tag_filters(self, api_client, sqlite_designs_repo) -> None:
+        _seed_run()
+        rows = cache_mod.designs_by_run_id["run-filt-1"]
+        rows[0]["good"] = True
+        rows[0]["tag"] = "N"
+        rows[1]["good"] = False
+        rows[1]["tag"] = "C"
+        resp = api_client.post(
+            "/api/filtering/apply",
+            json={
+                "run_ids": ["run-filt-1"],
+                "filters": [{"column": "good", "operator": "equals", "text_value": "true"}],
+            },
+        )
+        assert resp.status_code == 200, resp.text
+        assert [k["design_id"] for k in resp.json()["passing_keys"]] == ["d0"]
+        resp = api_client.post(
+            "/api/filtering/apply",
+            json={
+                "run_ids": ["run-filt-1"],
+                "filters": [{"column": "tag", "operator": "equals", "text_value": "C"}],
+            },
+        )
+        assert resp.status_code == 200, resp.text
+        assert [k["design_id"] for k in resp.json()["passing_keys"]] == ["d1"]
+        resp = api_client.post(
+            "/api/filtering/apply",
+            json={
+                "run_ids": ["run-filt-1"],
+                "filters": [{"column": "good", "operator": "is_empty"}],
+            },
+        )
+        assert resp.status_code == 200, resp.text
+        ids = {k["design_id"] for k in resp.json()["passing_keys"]}
+        assert "d0" not in ids and "d1" not in ids
+        assert "d2" in ids
 
 
 class TestFilteringApply:

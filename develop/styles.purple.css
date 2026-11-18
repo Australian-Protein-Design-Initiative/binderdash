@@ -1,0 +1,146 @@
+/* Custom CSS to change ReadTheDocs theme colors to purple, matching the app banner (rebeccapurple) */
+
+/* Primary color overrides */
+.rst-content a,
+.rst-content a:visited {
+    color: #663399;
+    /* Purple primary */
+}
+
+.rst-content a:hover {
+    color: #4B2470;
+    /* Darker purple on hover */
+}
+
+/* Navigation and header colors */
+.wy-side-nav-search {
+    background-color: #663399;
+    /* Purple primary */
+}
+
+.wy-side-nav-search input[type="text"] {
+    border-color: #4B2470;
+    /* Darker purple border */
+}
+
+.wy-side-nav-search input[type="text"]:focus {
+    border-color: #4B2470;
+    box-shadow: 0 0 5px rgba(102, 51, 153, 0.3);
+}
+
+/* Top navigation bar */
+.wy-nav-top {
+    background-color: #663399;
+    /* Purple primary */
+}
+
+/* Sidebar navigation. Top-level links sit on the dark sidebar, so they keep the
+ * theme's light text; only links on the light background of the expanded current
+ * section are purple. */
+.wy-menu-vertical p.caption {
+    color: #C9A8EB;
+    /* Light purple section captions */
+}
+
+.wy-menu-vertical a:hover {
+    background-color: rgba(102, 51, 153, 0.5);
+    /* Purple background on hover */
+}
+
+.wy-menu-vertical li.current a {
+    color: #663399;
+}
+
+.wy-menu-vertical li.current a:hover {
+    background-color: rgba(102, 51, 153, 0.1);
+}
+
+/* Current page indicator */
+.wy-menu-vertical li.current > a,
+.wy-menu-vertical li.current > a:hover {
+    background-color: #663399;
+    /* Purple for current page */
+    color: white;
+}
+
+/* Code blocks and syntax highlighting */
+.rst-content .highlight {
+    background-color: #f8f9fa;
+    border-left: 4px solid #663399;
+    /* Purple accent border */
+}
+
+/* Buttons and interactive elements */
+.rst-content .btn,
+.rst-content .btn:visited {
+    background-color: #663399;
+    border-color: #663399;
+}
+
+.rst-content .btn:hover {
+    background-color: #4B2470;
+    border-color: #4B2470;
+}
+
+/* Table headers */
+.rst-content table.docutils thead th {
+    background-color: #663399;
+    color: white;
+}
+
+/* Admonition boxes */
+.rst-content .admonition-title {
+    background-color: #663399;
+    color: white;
+}
+
+.rst-content .admonition {
+    border-left: 4px solid #663399;
+}
+
+/* Version and breadcrumb */
+.wy-breadcrumbs a {
+    color: #663399;
+}
+
+/* Footer links */
+.rst-footer-buttons a {
+    color: #663399;
+}
+
+.rst-footer-buttons a:hover {
+    color: #4B2470;
+}
+
+/*
+ * MkDocs theme_extra.css sets .rst-content .section .docutils to display:block +
+ * overflow:auto; RTD uses .wy-table-responsive with overflow-x:auto. Restore
+ * wrapping instead of nested scroll areas.
+ */
+.rst-content .wy-table-responsive {
+    overflow-x: visible;
+    overflow-y: visible;
+    max-width: 100%;
+}
+
+.rst-content .section table.docutils {
+    display: table;
+    width: 100%;
+    max-width: 100%;
+    overflow: visible;
+}
+
+.rst-content table.docutils th,
+.rst-content table.docutils td {
+    white-space: normal;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+blockquote {
+    padding: 10px 20px;
+    margin: 0 0 20px;
+    font-size: 17.5px;
+    border-left: 5px solid #eee; /* visible left bar */
+    color: #777;
+}

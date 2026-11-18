@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><link rel="canonical" href="https://australian-protein-design-initiative.github.io/binderdash/latest/development/pipeline-methods/" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>Pipeline method types - Binderdash</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+        <link href="../../styles.purple.css" rel="stylesheet" />
+        <link href="../../css/version-select.css" rel="stylesheet" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Pipeline method types";
+        var mkdocs_page_input_path = "development/pipeline-methods.md";
+        var mkdocs_page_url = "/binderdash/latest/development/pipeline-methods/";
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/yaml.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/json.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/python.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/bash.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/nginx.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/http.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> Binderdash
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../..">Home</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Getting started</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../setup/desktop/">Desktop app</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../setup/docker/">Docker deployment</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../setup/authentication/">Authentication</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Usage</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../usage/filtering-ranking/">Filtering and ranking</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Development</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../setup/">Development setup</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/">REST API</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../mcp/">MCP server</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Pipeline method types</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#backend">Backend</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#frontend">Frontend</a>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../sequence_preparation/">Sequence preparation</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../storage/">Storage architecture</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../download-bundles/">Download bundles</a>
+                  </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="" href="https://github.com/Australian-Protein-Design-Initiative/binderdash/blob/main/CHANGELOG.md">Release history</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">Binderdash</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Development</li>
+      <li class="breadcrumb-item active">Pipeline method types</li>
+    <li class="wy-breadcrumbs-aside">
+          <a href="https://github.com/Australian-Protein-Design-Initiative/binderdash/edit/main/docs/development/pipeline-methods.md" class="icon icon-github"> Edit on GitHub</a>
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="adding-a-pipeline-method-type">Adding a pipeline method type<a class="headerlink" href="#adding-a-pipeline-method-type" title="Permanent link">&para;</a></h1>
+<p>Binderdash recognises design pipelines by <strong>method</strong> string (e.g. <code>bindcraft</code>, <code>rfd</code>, <code>boltzgen</code>, <code>rfd3</code>). When you add a new one, keep the backend detection/metadata and the frontend display config in sync.</p>
+<h2 id="backend">Backend<a class="headerlink" href="#backend" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Location</th>
+<th>What to change</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>backend/config/run_signatures.py</code></td>
+<td><strong><code>run_folder_signatures</code></strong> — declarative entries: <code>method</code>, <code>submethod</code>, paths (<code>required_files</code>, <code>results_table</code>, <code>pdb_pattern</code>, …), <strong><code>primary_score_columns</code></strong>, design id columns, trajectory hints. New methods usually mean a <strong>new signature dict</strong> (and priority ordering).</td>
+</tr>
+<tr>
+<td><code>backend/config/method_paths.py</code></td>
+<td><strong><code>PIPELINE_METHOD_IDS</code></strong> — add the new id. Update <strong><code>_RUN_NAME_SEGMENT_BLOCKLIST</code></strong> / <strong><code>_PROJECT_ID_SEGMENT_BLOCKLIST</code></strong> if path segments for the new layout should be ignored when inferring run/project names.</td>
+</tr>
+<tr>
+<td><code>backend/run_discovery.py</code></td>
+<td>Search for <strong><code>method ==</code></strong> / <strong><code>get("method")</code></strong> — branches for target sequence, backbone id, dataframe standardisation, structure resolution, etc. Extend only where the new pipeline differs from the generic path.</td>
+</tr>
+<tr>
+<td><code>backend/config/score_labels.py</code></td>
+<td>Optional: <strong><code>SCORE_FIELD_LABELS</code></strong> for human-readable names of new score columns in API/UI.</td>
+</tr>
+</tbody>
+</table>
+<p><code>run_signatures</code> docstrings note alignment with the frontend primary-score config; <strong><code>primary_score_columns</code></strong> in each signature should match how you resolve “primary” scores for that method on the client.</p>
+<h2 id="frontend">Frontend<a class="headerlink" href="#frontend" title="Permanent link">&para;</a></h2>
+<p><code>frontend/src/config/pipelineDisplay.ts</code> is the main file. Touch the pieces that apply to your method:</p>
+<table>
+<thead>
+<tr>
+<th>Piece</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong><code>PIPELINE_METHOD_IDS</code></strong> / <strong><code>PipelineMethodId</code></strong></td>
+<td>Register the method id for filters, tags, and typing.</td>
+</tr>
+<tr>
+<td><strong><code>METHOD_TAG_PALETTE</code></strong>, <strong><code>METHOD_TAG_DISPLAY</code></strong></td>
+<td>Chip colour and icon for <strong>Select Runs</strong> method tags.</td>
+</tr>
+<tr>
+<td><strong><code>SCORE_FIELD_DEFS</code></strong></td>
+<td>Declares score columns (table, filters, colouring); add entries for new CSV/TSV fields.</td>
+</tr>
+<tr>
+<td><strong><code>METHOD_BEST_SCORE</code></strong></td>
+<td>Primary/secondary columns and direction for “best design” grouping within MPNN variants.</td>
+</tr>
+<tr>
+<td><strong><code>PRIMARY_SCORE_CHIP_RULES</code></strong></td>
+<td>Which column(s) drive the <strong>primary score</strong> chip on Select Runs (align with backend <strong><code>primary_score_columns</code></strong>).</td>
+</tr>
+<tr>
+<td><strong><code>getStructureFilenameFromDesign</code></strong> / <strong><code>designHasStructureFile</code></strong></td>
+<td>Only if structure path resolution is special-cased (see existing <strong><code>boltzgen</code></strong> handling).</td>
+</tr>
+</tbody>
+</table>
+<p>Other modules may import these exports; after changing method ids or score fields, run a quick search for the old method name or column names across <code>frontend/src</code>.</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../mcp/" class="btn btn-neutral float-left" title="MCP server"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../sequence_preparation/" class="btn btn-neutral float-right" title="Sequence preparation">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+        <span>
+          <a href="https://github.com/Australian-Protein-Design-Initiative/binderdash" class="fa fa-github" style="color: #fcfcfc"> GitHub</a>
+        </span>
+    
+    
+      <span><a href="../mcp/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../sequence_preparation/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+      <script src="../../js/mermaid-init.mjs" type="module"></script>
+      <script src="../../search/main.js"></script>
+      <script src="../../js/version-select.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

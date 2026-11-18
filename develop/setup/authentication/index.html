@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><link rel="canonical" href="https://australian-protein-design-initiative.github.io/binderdash/latest/setup/authentication/" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>Authentication - Binderdash</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+        <link href="../../styles.purple.css" rel="stylesheet" />
+        <link href="../../css/version-select.css" rel="stylesheet" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Authentication";
+        var mkdocs_page_input_path = "setup/authentication.md";
+        var mkdocs_page_url = "/binderdash/latest/setup/authentication/";
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/yaml.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/json.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/python.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/bash.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/nginx.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/http.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> Binderdash
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../..">Home</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Getting started</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../desktop/">Desktop app</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../docker/">Docker deployment</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Authentication</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#quick-reference">Quick Reference</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#environment-variables">Environment Variables</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#provider-precedence-and-coexistence">Provider Precedence and Coexistence</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#auth-type-1-disable-authentication-public-mode">Auth Type 1: Disable Authentication (Public Mode)</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#auth-type-2-local-usernamepassword-bcrypt">Auth Type 2: Local Username/Password (bcrypt)</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#step-1-generate-bcrypt-hashes">Step 1: Generate bcrypt hashes</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#step-2-set-local_users">Step 2: Set LOCAL_USERS</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#step-3-login">Step 3: Login</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#auth-type-3-pam-usernamepassword-unix-accounts">Auth Type 3: PAM Username/Password (Unix Accounts)</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#pam-with-docker-compose-required-host-account-binds">PAM with Docker Compose (required host account binds)</a>
+        <ul>
+    <li class="toctree-l4"><a class="reference internal" href="#the-shadow-group-is-not-optional">The shadow group is not optional</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#host-account-changes-need-a-container-recreate">Host account changes need a container recreate</a>
+    </li>
+        </ul>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#auth-type-4-google-oauth-oidc">Auth Type 4: Google OAuth (OIDC)</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#step-1-configure-google-credentials">Step 1: Configure Google credentials</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#step-2-configure-redirect-uri-in-google-cloud">Step 2: Configure redirect URI in Google Cloud</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#step-3-start-login-flow">Step 3: Start login flow</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#auth-type-5-per-user-api-key">Auth Type 5: Per-User API Key</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#user-model-and-admin-allowlist">User model and admin allowlist</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#pam_gecos_email">PAM_GECOS_EMAIL</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#session-and-csrf-behaviour">Session and CSRF Behaviour</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#verify-active-providers">Verify Active Providers</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#recommended-combinations">Recommended Combinations</a>
+    </li>
+    </ul>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Usage</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../usage/filtering-ranking/">Filtering and ranking</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Development</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../development/setup/">Development setup</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../development/api/">REST API</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../development/mcp/">MCP server</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../development/pipeline-methods/">Pipeline method types</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../development/sequence_preparation/">Sequence preparation</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../development/storage/">Storage architecture</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../development/download-bundles/">Download bundles</a>
+                  </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="" href="https://github.com/Australian-Protein-Design-Initiative/binderdash/blob/main/CHANGELOG.md">Release history</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">Binderdash</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Getting started</li>
+      <li class="breadcrumb-item active">Authentication</li>
+    <li class="wy-breadcrumbs-aside">
+          <a href="https://github.com/Australian-Protein-Design-Initiative/binderdash/edit/main/docs/setup/authentication.md" class="icon icon-github"> Edit on GitHub</a>
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="authentication-setup">Authentication Setup<a class="headerlink" href="#authentication-setup" title="Permanent link">&para;</a></h1>
+<p>Binderdash supports five authentication modes:</p>
+<ul>
+<li>Auth disabled (public API)</li>
+<li>Session auth via local bcrypt users</li>
+<li>Session auth via PAM (Unix accounts)</li>
+<li>Session auth via Google OAuth (OIDC)</li>
+<li>Per-user API key auth for scripted access</li>
+</ul>
+<p>You can enable multiple auth providers at the same time. The sections below describe how to configure each mode and how precedence works when multiple are enabled.</p>
+<h2 id="quick-reference">Quick Reference<a class="headerlink" href="#quick-reference" title="Permanent link">&para;</a></h2>
+<ul>
+<li><code>DISABLE_AUTHENTICATION="true"</code> makes all protected endpoints public and bypasses provider checks.</li>
+<li>Session auth uses cookies (<code>binderdash_session</code>) and CSRF protection for non-GET requests.</li>
+<li>API key auth uses either <code>Authorization: Bearer &lt;key&gt;</code> or <code>X-Binderdash-Api-Key: &lt;key&gt;</code>. Keys are per-user, named, expiring, and revocable — there is no single shared server secret — and require <code>DATABASE</code> to be configured.</li>
+<li>Username/password login (<code>POST /api/auth/login</code>) checks local users first, then PAM (if enabled).</li>
+<li>Google OAuth signs in through <code>/api/auth/google/login</code> and creates the same session cookies as local/PAM login.</li>
+<li>Every successful login resolves to a <strong>user</strong> (see "User model and admin allowlist" below); <code>BINDERDASH_ADMIN_USERS</code> is re-applied on every startup and login.</li>
+</ul>
+<h2 id="environment-variables">Environment Variables<a class="headerlink" href="#environment-variables" title="Permanent link">&para;</a></h2>
+<p>These are the auth-related variables currently supported in <code>.env.example</code>:</p>
+<ul>
+<li><code>DISABLE_AUTHENTICATION</code></li>
+<li><code>LOCAL_USERS</code></li>
+<li><code>PAM_LOCAL_ENABLED</code></li>
+<li><code>PAM_LOCAL_ALLOWED_USERS</code></li>
+<li><code>PAM_LOCAL_SERVICE</code></li>
+<li><code>PAM_GECOS_EMAIL</code></li>
+<li><code>GOOGLE_AUTH_ENABLED</code></li>
+<li><code>GOOGLE_AUTH_CLIENT_ID</code></li>
+<li><code>GOOGLE_AUTH_CLIENT_SECRET</code></li>
+<li><code>GOOGLE_AUTH_REDIRECT_URI</code></li>
+<li><code>GOOGLE_AUTH_ALLOWED_USERS</code></li>
+<li><code>SECRET_KEY</code></li>
+<li><code>ACCESS_TOKEN_EXPIRE_MINUTES</code></li>
+<li><code>BINDERDASH_ADMIN_USERS</code></li>
+<li><code>DATABASE</code> (required for per-user API keys to exist at all)</li>
+</ul>
+<h2 id="provider-precedence-and-coexistence">Provider Precedence and Coexistence<a class="headerlink" href="#provider-precedence-and-coexistence" title="Permanent link">&para;</a></h2>
+<p>When multiple options are enabled, behaviour is:</p>
+<ol>
+<li><strong>Global override</strong>: if <code>DISABLE_AUTHENTICATION="true"</code>, auth is bypassed for protected routes.</li>
+<li><strong>Protected API route auth</strong> (when auth is enabled):</li>
+<li>API key is checked first.</li>
+<li>If no valid API key, session cookie auth is checked.</li>
+<li><strong>Username/password login flow</strong> (<code>POST /api/auth/login</code>):</li>
+<li>Local bcrypt users are checked first.</li>
+<li>PAM is checked only if local auth did not match and <code>PAM_LOCAL_ENABLED="true"</code>.</li>
+<li><strong>Google OAuth flow</strong>:</li>
+<li>Independent login path; if successful, issues session cookies.</li>
+<li>Then protected routes use normal cookie/API-key precedence above.</li>
+</ol>
+<h2 id="auth-type-1-disable-authentication-public-mode">Auth Type 1: Disable Authentication (Public Mode)<a class="headerlink" href="#auth-type-1-disable-authentication-public-mode" title="Permanent link">&para;</a></h2>
+<p>Use this for local development only.</p>
+<pre class="highlight"><code class="language-bash">DISABLE_AUTHENTICATION="true"</code></pre>
+<p>Notes:</p>
+<ul>
+<li>Protected endpoints no longer require login, API key, or CSRF.</li>
+<li>You can leave other auth variables set; they are effectively bypassed while this is <code>true</code>.</li>
+</ul>
+<h2 id="auth-type-2-local-usernamepassword-bcrypt">Auth Type 2: Local Username/Password (bcrypt)<a class="headerlink" href="#auth-type-2-local-usernamepassword-bcrypt" title="Permanent link">&para;</a></h2>
+<p>Enable local session login with bcrypt hashes in <code>LOCAL_USERS</code>.</p>
+<h3 id="step-1-generate-bcrypt-hashes">Step 1: Generate bcrypt hashes<a class="headerlink" href="#step-1-generate-bcrypt-hashes" title="Permanent link">&para;</a></h3>
+<pre class="highlight"><code class="language-bash">python backend/scripts/encrypt_password.py alice
+python backend/scripts/encrypt_password.py bob</code></pre>
+<h3 id="step-2-set-local_users">Step 2: Set <code>LOCAL_USERS</code><a class="headerlink" href="#step-2-set-local_users" title="Permanent link">&para;</a></h3>
+<pre class="highlight"><code class="language-bash">LOCAL_USERS="alice:$2b$12$...,bob:$2b$12$..."
+DISABLE_AUTHENTICATION="false"</code></pre>
+<h3 id="step-3-login">Step 3: Login<a class="headerlink" href="#step-3-login" title="Permanent link">&para;</a></h3>
+<pre class="highlight"><code class="language-http">POST /api/auth/login
+Content-Type: application/json
+
+{
+  "username": "alice",
+  "password": "your-password"
+}</code></pre>
+<p>Successful login returns user details plus <code>csrf_token</code>, and sets session cookies.</p>
+<h2 id="auth-type-3-pam-usernamepassword-unix-accounts">Auth Type 3: PAM Username/Password (Unix Accounts)<a class="headerlink" href="#auth-type-3-pam-usernamepassword-unix-accounts" title="Permanent link">&para;</a></h2>
+<p>Enable PAM-based login for allowed system users.</p>
+<pre class="highlight"><code class="language-bash">PAM_LOCAL_ENABLED="true"
+PAM_LOCAL_ALLOWED_USERS="ubuntu,bob,alice"   # comma-separated list, or "*" for any PAM-valid user
+PAM_LOCAL_SERVICE="common-auth"
+DISABLE_AUTHENTICATION="false"</code></pre>
+<p>Important:</p>
+<ul>
+<li>PAM login is attempted only after local user auth fails.</li>
+<li><code>PAM_LOCAL_ALLOWED_USERS</code> is required in practice (<code>*</code> or a comma-separated allowlist; case-insensitive).</li>
+<li>In containers, host users usually do not exist unless explicitly provided.</li>
+</ul>
+<h3 id="pam-with-docker-compose-required-host-account-binds">PAM with Docker Compose (required host account binds)<a class="headerlink" href="#pam-with-docker-compose-required-host-account-binds" title="Permanent link">&para;</a></h3>
+<p>When Binderdash runs in Docker, PAM checks the container's user database by default.<br />
+That usually includes only container users (for example <code>app</code>), not host users like <code>perry</code>.</p>
+<p>To authenticate host Linux users through PAM in Docker, you must bind host account files read-only:</p>
+<pre class="highlight"><code class="language-yaml">services:
+  binderdash:
+    volumes:
+      - /etc/passwd:/etc/passwd:ro
+      - /etc/group:/etc/group:ro
+      - /etc/shadow:/etc/shadow:ro
+    group_add:
+      - "42"          # gid `shadow` — see below; without it every login fails</code></pre>
+<p>The mounts are active in <code>docker-compose.dev.yml</code> and commented out in <code>docker-compose.yml</code>.</p>
+<h4 id="the-shadow-group-is-not-optional">The <code>shadow</code> group is not optional<a class="headerlink" href="#the-shadow-group-is-not-optional" title="Permanent link">&para;</a></h4>
+<p><code>pam_unix</code> does not read <code>/etc/shadow</code> itself — it shells out to <code>/sbin/unix_chkpwd</code>,
+which is setgid <code>shadow</code> but <strong>refuses to use that privilege to check any user other than
+its caller</strong>, so that an unprivileged process cannot brute-force other people's passwords.
+A container running as a non-root <code>user:</code> is therefore always making a cross-user request,
+and the helper returns <code>PAM_AUTHINFO_UNAVAIL</code>. <code>pam_unix</code> surfaces that as an ordinary
+failure, so the symptom is an indistinguishable <em>"Incorrect username or password"</em> even
+when the password is right.</p>
+<p>Adding gid 42 lets the process read <code>/etc/shadow</code> in its own right. To confirm which
+failure you have, run the helper by hand inside the container:</p>
+<pre class="highlight"><code class="language-bash">docker compose exec binderdash sh -c 'printf %s "$PW" | /sbin/unix_chkpwd someuser nullok; echo $?'
+# 9 = cannot read /etc/shadow (missing shadow group)
+# 7 = read it fine, password genuinely wrong</code></pre>
+<h4 id="host-account-changes-need-a-container-recreate">Host account changes need a container recreate<a class="headerlink" href="#host-account-changes-need-a-container-recreate" title="Permanent link">&para;</a></h4>
+<p>These are single-<em>file</em> bind mounts, which pin an inode. <code>passwd(1)</code> replaces
+<code>/etc/shadow</code> rather than editing it in place, so a running container keeps reading the
+file as it was at start: password changes and newly added users are silently invisible,
+and logins fail against a stale hash. <code>docker compose restart</code> does <strong>not</strong> fix it, since
+the container is not recreated. Compare <code>md5sum /etc/shadow</code> inside and outside the
+container to confirm, then:</p>
+<pre class="highlight"><code class="language-bash">docker compose up -d --force-recreate</code></pre>
+<p>Recommended matching env:</p>
+<pre class="highlight"><code class="language-bash">PAM_LOCAL_ENABLED="true"
+PAM_LOCAL_ALLOWED_USERS="bob,alice"   # comma-separated list, or "*" for broader access
+PAM_LOCAL_SERVICE="common-auth"
+DISABLE_AUTHENTICATION="false"</code></pre>
+<p>After changing compose mounts or env values, recreate the container so PAM sees the updated runtime:</p>
+<pre class="highlight"><code class="language-bash">docker compose up -d --build</code></pre>
+<p>Security note:</p>
+<ul>
+<li>Mounting <code>/etc/shadow</code> into a container exposes password-hash data to that container.</li>
+<li>Use this only on trusted development hosts, with minimal container access.</li>
+<li>For safer container auth in many cases, prefer <code>LOCAL_USERS</code> (bcrypt) instead of PAM.</li>
+</ul>
+<h2 id="auth-type-4-google-oauth-oidc">Auth Type 4: Google OAuth (OIDC)<a class="headerlink" href="#auth-type-4-google-oauth-oidc" title="Permanent link">&para;</a></h2>
+<p>Enable Google sign-in and restrict it to allowed emails.</p>
+<h3 id="step-1-configure-google-credentials">Step 1: Configure Google credentials<a class="headerlink" href="#step-1-configure-google-credentials" title="Permanent link">&para;</a></h3>
+<pre class="highlight"><code class="language-bash">GOOGLE_AUTH_ENABLED="true"
+GOOGLE_AUTH_CLIENT_ID="..."
+GOOGLE_AUTH_CLIENT_SECRET="..."
+GOOGLE_AUTH_REDIRECT_URI="http://localhost:8000/api/auth/google/callback"
+GOOGLE_AUTH_ALLOWED_USERS="user1@example.com,user2@example.com"
+DISABLE_AUTHENTICATION="false"</code></pre>
+<h3 id="step-2-configure-redirect-uri-in-google-cloud">Step 2: Configure redirect URI in Google Cloud<a class="headerlink" href="#step-2-configure-redirect-uri-in-google-cloud" title="Permanent link">&para;</a></h3>
+<p>Your Google OAuth client must include the same callback URI as <code>GOOGLE_AUTH_REDIRECT_URI</code>.</p>
+<h3 id="step-3-start-login-flow">Step 3: Start login flow<a class="headerlink" href="#step-3-start-login-flow" title="Permanent link">&para;</a></h3>
+<p>Open:</p>
+<pre class="highlight"><code class="language-text">/api/auth/google/login</code></pre>
+<p>Notes:</p>
+<ul>
+<li>Google auth is considered configured only when enabled and client ID/secret/redirect URI are all non-empty.</li>
+<li>If <code>GOOGLE_AUTH_ALLOWED_USERS</code> is empty, Google sign-in is effectively denied for everyone.</li>
+<li>Successful callback issues the same session cookies as local/PAM login.</li>
+</ul>
+<h2 id="auth-type-5-per-user-api-key">Auth Type 5: Per-User API Key<a class="headerlink" href="#auth-type-5-per-user-api-key" title="Permanent link">&para;</a></h2>
+<p>Use this for scripts/agents without browser session or CSRF handling.</p>
+<p>Unlike the other four modes, this isn't a server-wide toggle — it's a capability of the user model, gated on persistence:</p>
+<pre class="highlight"><code class="language-bash">DATABASE="sqlite:///./binderdash.db"   # or Postgres URL; keys live in the DB
+DISABLE_AUTHENTICATION="false"</code></pre>
+<p>Create a user and a key for them, either via the web UI (account menu, top-right → "API keys") or the CLI:</p>
+<pre class="highlight"><code class="language-bash">python -m backend.cli user create --email you@example.org --admin
+python -m backend.cli key create you@example.org --name bootstrap</code></pre>
+<p>The token prints to stdout alone (a warning goes to stderr) and is shown <strong>once</strong> — the server stores only a SHA-256 hash. Other CLI subcommands: <code>user list|show|link-identity|set-admin</code>, <code>key list|revoke</code>.</p>
+<p>Use either header format:</p>
+<pre class="highlight"><code class="language-http">Authorization: Bearer &lt;token&gt;</code></pre>
+<p>or</p>
+<pre class="highlight"><code class="language-http">X-Binderdash-Api-Key: &lt;token&gt;</code></pre>
+<p>Notes:</p>
+<ul>
+<li>For state-changing requests, API key auth bypasses CSRF checks.</li>
+<li>On protected routes, a valid API key is accepted before cookie auth.</li>
+<li><code>/api/auth/me</code> requires cookie session auth (it does not accept API key auth).</li>
+<li>Keys are named, can have an expiry (<code>--expires-days</code>), and are individually revocable (<code>key revoke &lt;id&gt;</code>); revocation takes effect immediately.</li>
+<li>With no <code>DATABASE</code> configured, <code>GET /api/auth/status</code> reports <code>api_keys.enabled: false, reason: "persistence_disabled"</code> and the key-management endpoints return <code>503</code>.</li>
+<li><strong>Key management is session-only.</strong> <code>GET/POST /api/api-keys</code> and <code>PATCH/DELETE /api/api-keys/{id}</code> reject API-key-authenticated requests with <code>403</code> — a leaked key must not be able to mint its own replacement or see other keys. <code>GET /api/users</code> is additionally admin-only.</li>
+</ul>
+<h2 id="user-model-and-admin-allowlist">User model and admin allowlist<a class="headerlink" href="#user-model-and-admin-allowlist" title="Permanent link">&para;</a></h2>
+<p>A <strong>user</strong> is a person. An <strong>identity</strong> is one login method, keyed on <code>(provider, identifier)</code> — e.g. <code>local:alice</code>, <code>pam:alice</code>, <code>google:alice@example.org</code>. A user is auto-created on first successful login. Two identities are merged onto the same user only when they share a <strong>verified email</strong> (so, for example, PAM login for <code>alice</code> and Google login for <code>alice@example.org</code> merge only if <code>PAM_GECOS_EMAIL</code> resolves the same address — see below — otherwise they stay separate users).</p>
+<p><code>BINDERDASH_ADMIN_USERS</code> is a comma-separated allowlist granting <code>is_admin</code>. Each entry matches against a login's email, its <code>provider:identifier</code> pair, or a bare username/identifier — there is deliberately <strong>no <code>*</code> wildcard</strong> (unlike <code>PAM_LOCAL_ALLOWED_USERS</code>, "everyone is an admin" should never be a one-character mistake). The allowlist is re-applied at every startup and at every login, so revoking admin access just means removing the entry and waiting for the next login (or restart) — <code>is_admin</code> set only via <code>python -m backend.cli user set-admin</code> will not stick if the user isn't also in <code>BINDERDASH_ADMIN_USERS</code>.</p>
+<h3 id="pam_gecos_email"><code>PAM_GECOS_EMAIL</code><a class="headerlink" href="#pam_gecos_email" title="Permanent link">&para;</a></h3>
+<p>Default <code>false</code>. When <code>true</code>, PAM login resolves the user's email from the <strong>5th GECOS field only</strong> ("other"), never fields 1–4 ("full name", "room", "work phone", "home phone").</p>
+<p>This is a security boundary, not a formatting preference: <code>chfn</code> lets ordinary users rewrite their own GECOS, and <code>/etc/login.defs</code>'s <code>CHFN_RESTRICT</code> commonly ships as <code>"rwh"</code> — meaning room, work phone, and home phone are user-writable, but there is no <code>chfn</code> flag for the 5th field, so only root can set it (and <code>chfn</code> rejects commas in input, so a user can't smuggle extra fields in). Trusting an earlier, user-writable field would let any shell user run <code>chfn</code> to claim a colleague's email address and get merged into their Binderdash account — inheriting their API keys and admin rights.</p>
+<h2 id="session-and-csrf-behaviour">Session and CSRF Behaviour<a class="headerlink" href="#session-and-csrf-behaviour" title="Permanent link">&para;</a></h2>
+<p>When auth is enabled and you use session cookies:</p>
+<ul>
+<li>Server sets:</li>
+<li><code>binderdash_session</code> (HttpOnly session token)</li>
+<li><code>binderdash_csrf</code> (readable cookie)</li>
+<li>For non-GET/HEAD/OPTIONS requests, send <code>X-CSRF-Token</code> matching <code>binderdash_csrf</code>.</li>
+</ul>
+<p>CSRF checks are skipped for:</p>
+<ul>
+<li><code>/api/auth/login</code></li>
+<li><code>/api/auth/logout</code></li>
+<li><code>/api/auth/status</code></li>
+<li><code>/api/auth/google/login</code></li>
+<li><code>/api/auth/google/callback</code></li>
+<li>Any request with a valid API key</li>
+</ul>
+<h2 id="verify-active-providers">Verify Active Providers<a class="headerlink" href="#verify-active-providers" title="Permanent link">&para;</a></h2>
+<p>Use:</p>
+<pre class="highlight"><code class="language-http">GET /api/auth/status</code></pre>
+<p>Response shape:</p>
+<pre class="highlight"><code class="language-json">{
+  "auth_disabled": false,
+  "desktop_mode": false,
+  "providers": {
+    "local": { "enabled": true },
+    "pam": { "enabled": false },
+    "google": { "enabled": true, "login_url": "/api/auth/google/login" }
+  },
+  "api_keys": { "enabled": true, "reason": null }
+}</code></pre>
+<p><code>api_keys.reason</code> is <code>null</code> when keys are usable, <code>"auth_disabled"</code> when <code>DISABLE_AUTHENTICATION=true</code> (there is nothing to scope a key to), or <code>"persistence_disabled"</code> when no <code>DATABASE</code> is configured.</p>
+<h2 id="recommended-combinations">Recommended Combinations<a class="headerlink" href="#recommended-combinations" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Local dev (public)</strong>: <code>DISABLE_AUTHENTICATION="true"</code></li>
+<li><strong>Team dev (session login)</strong>: local users and/or PAM, <code>DISABLE_AUTHENTICATION="false"</code></li>
+<li><strong>Production user login</strong>: Google OAuth + allowlist, <code>DISABLE_AUTHENTICATION="false"</code></li>
+<li><strong>Automation access</strong>: configure <code>DATABASE</code>, then mint per-user keys via the UI or <code>python -m backend.cli key create</code> (coexists with any session provider)</li>
+</ul>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../docker/" class="btn btn-neutral float-left" title="Docker deployment"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../../usage/filtering-ranking/" class="btn btn-neutral float-right" title="Filtering and ranking">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+        <span>
+          <a href="https://github.com/Australian-Protein-Design-Initiative/binderdash" class="fa fa-github" style="color: #fcfcfc"> GitHub</a>
+        </span>
+    
+    
+      <span><a href="../docker/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../../usage/filtering-ranking/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+      <script src="../../js/mermaid-init.mjs" type="module"></script>
+      <script src="../../search/main.js"></script>
+      <script src="../../js/version-select.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

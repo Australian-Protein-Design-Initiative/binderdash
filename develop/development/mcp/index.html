@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><link rel="canonical" href="https://australian-protein-design-initiative.github.io/binderdash/latest/development/mcp/" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>MCP server - Binderdash</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+        <link href="../../styles.purple.css" rel="stylesheet" />
+        <link href="../../css/version-select.css" rel="stylesheet" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "MCP server";
+        var mkdocs_page_input_path = "development/mcp.md";
+        var mkdocs_page_url = "/binderdash/latest/development/mcp/";
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/yaml.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/json.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/python.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/bash.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/nginx.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/http.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> Binderdash
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../..">Home</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Getting started</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../setup/desktop/">Desktop app</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../setup/docker/">Docker deployment</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../setup/authentication/">Authentication</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Usage</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../usage/filtering-ranking/">Filtering and ranking</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Development</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../setup/">Development setup</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/">REST API</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">MCP server</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#installing">Installing</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#authenticating">Authenticating</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#client-configuration">Client configuration</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#tools">Tools</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#target-contacts">Target contacts</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#preparing-sequences-for-ordering">Preparing sequences for ordering</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#how-the-tool-surface-differs-from-rest">How the tool surface differs from REST</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#response-shape">Response shape</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#implementation-notes">Implementation notes</a>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../pipeline-methods/">Pipeline method types</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../sequence_preparation/">Sequence preparation</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../storage/">Storage architecture</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../download-bundles/">Download bundles</a>
+                  </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="" href="https://github.com/Australian-Protein-Design-Initiative/binderdash/blob/main/CHANGELOG.md">Release history</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">Binderdash</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Development</li>
+      <li class="breadcrumb-item active">MCP server</li>
+    <li class="wy-breadcrumbs-aside">
+          <a href="https://github.com/Australian-Protein-Design-Initiative/binderdash/edit/main/docs/development/mcp.md" class="icon icon-github"> Edit on GitHub</a>
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="mcp-server">MCP server<a class="headerlink" href="#mcp-server" title="Permanent link">&para;</a></h1>
+<p>Binderdash exposes a <a href="https://modelcontextprotocol.io">Model Context Protocol</a> server so
+an AI agent can analyse binder design campaigns directly — filter and rank designs,
+select diverse panels, inspect interfaces, and hand curated Saved Sets back to a human in
+the web UI.</p>
+<p>The server is <strong>stateless streamable-HTTP</strong>, mounted into the same FastAPI process as the
+REST API at <strong><code>/api/mcp/</code></strong> (note the trailing slash; <code>POST /api/mcp</code> 307-redirects to
+it). Because it runs in-process it shares the same in-memory design cache as the REST
+API — one cache, no drift.</p>
+<h2 id="installing">Installing<a class="headerlink" href="#installing" title="Permanent link">&para;</a></h2>
+<p><strong>Docker (dev and prod compose): already on.</strong> <code>backend/Dockerfile</code> compiles with
+<code>--extra mcp</code>, so every image built from it has <code>fastmcp</code> and mounts the endpoint. Both
+<code>docker-compose.yml</code> and <code>docker-compose.dev.yml</code> build from that Dockerfile, so there is
+nothing to configure. Note that Compose does <strong>not</strong> rebuild on a Dockerfile change on its
+own — an existing stack needs <code>docker compose up -d --build</code> once to pick it up.</p>
+<p><strong>Local venv: opt in.</strong> <code>fastmcp</code> is an optional extra, so a plain install does not get
+it; the app runs exactly as before and the endpoint is simply not mounted (an INFO line
+says so at startup).</p>
+<pre class="highlight"><code class="language-bash">uv pip install -r backend/requirements.txt
+uv pip install "fastmcp&gt;=3.4,&lt;4"     # or: uv pip install -e "backend[mcp]"</code></pre>
+<p><strong>Desktop: deliberately excluded.</strong> The PyInstaller build installs from the checked-in
+<code>backend/requirements.txt</code>, which does not carry the extra — see below for why. Do not
+"fix" that inconsistency by regenerating <code>requirements.txt</code> with <code>--extra mcp</code>; it is
+what keeps the desktop bundle working.</p>
+<p>There is <strong>no env var</strong> to turn it on or off — the mount is gated purely on whether
+<code>fastmcp</code> imports. A flag would be untestable (the mount happens at module import,
+before tests can patch settings) and would add a second way for the endpoint to be
+silently missing.</p>
+<p>It is an extra rather than a plain dependency because it pulls roughly thirty transitive
+distributions (<code>keyring</code>, <code>jeepney</code>/<code>SecretStorage</code>, <code>aiofile</code>/<code>caio</code>, …) that resolve
+backends through entry points and D-Bus and are not declared in
+<code>desktop/binderdash.spec</code>'s <code>hiddenimports</code>. Containers have no such constraint, which is
+why they opt in at build time while the desktop bundle does not.</p>
+<h2 id="authenticating">Authenticating<a class="headerlink" href="#authenticating" title="Permanent link">&para;</a></h2>
+<p>MCP uses the same <strong>per-user API keys</strong> as scripted REST access (see
+<a href="../../setup/authentication/">Authentication</a>). Mint one with:</p>
+<pre class="highlight"><code class="language-bash">python -m backend.cli key create alice --name mcp</code></pre>
+<p>Send it as <code>Authorization: Bearer bd_…</code> (canonical) or <code>X-Binderdash-Api-Key: bd_…</code>.
+Keys are validated through the same TTL cache as REST, so revoking a key takes effect
+for both at the same moment.</p>
+<p>Requires <code>DATABASE</code>; without persistence there is no key store and every request is
+rejected with 401 (the startup log warns about this explicitly). With
+<code>DISABLE_AUTHENTICATION=true</code> the server mounts with no auth at all and logs a warning.</p>
+<h3 id="client-configuration">Client configuration<a class="headerlink" href="#client-configuration" title="Permanent link">&para;</a></h3>
+<p>The web UI does this for you: <strong>account menu → API keys → Create</strong>, then expand
+<em>"Use with Claude Code or another AI agent (MCP)"</em> or <em>"Use Claude Science"</em> on the
+new-key panel. Both fill in this server's URL and the new key. The sections only appear
+when the server actually has MCP mounted (<code>GET /api/auth/status</code> reports <code>mcp.enabled</code>).</p>
+<p>Claude Code, in one command:</p>
+<pre class="highlight"><code class="language-bash">claude mcp add --transport http --scope user binderdash \
+  https://binderdash.example.org/api/mcp/ \
+  --header "Authorization: Bearer bd_your_key_here"</code></pre>
+<p>Or edit <code>~/.claude.json</code> (all projects) or <code>.mcp.json</code> (one project) directly — this is
+exactly what the command above writes, and other MCP clients take the same shape:</p>
+<pre class="highlight"><code class="language-json">{
+  "mcpServers": {
+    "binderdash": {
+      "type": "http",
+      "url": "https://binderdash.example.org/api/mcp/",
+      "headers": { "Authorization": "Bearer bd_your_key_here" }
+    }
+  }
+}</code></pre>
+<p>The key is stored in that file in plain text, so prefer a dedicated expiring key per
+agent and revoke it from the UI when finished. A project-scoped <code>.mcp.json</code> is shared
+with anyone who clones the repo, and Claude Code asks each of them to approve the server
+before first use.</p>
+<p>Claude Science uses its own connector form. Open <strong>Settings → Connectors → Add
+Connector</strong> and choose <strong>Local URL</strong>, then:</p>
+<ul>
+<li><strong>Name:</strong> <code>binderdash</code></li>
+<li><strong>Server address:</strong> <code>https://binderdash.example.org/api/mcp/</code></li>
+<li><strong>Advanced settings:</strong> leave OAuth Client ID, OAuth Server URL and Scopes empty, and
+  paste this into the header command field. Claude Science runs it on your machine on
+  each connect and sends the JSON it prints as request headers:</li>
+</ul>
+<pre class="highlight"><code class="language-bash">echo '{"Authorization": "Bearer bd_your_key_here"}'</code></pre>
+<ul>
+<li><strong>Type:</strong> Streamable HTTP</li>
+</ul>
+<p>The key is inside that command in plain text. The new-key panel's <strong>Use Claude Science</strong>
+section fills these three values in and shows the form.</p>
+<h2 id="tools">Tools<a class="headerlink" href="#tools" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>list_runs</code></td>
+<td>Projects, runs, methods, <strong>design counts</strong>, filters, timestamps, signed download URLs, merge groups</td>
+</tr>
+<tr>
+<td><code>describe_methods</code></td>
+<td>Canonical metrics, <strong>sort directions</strong>, ranking presets</td>
+</tr>
+<tr>
+<td><code>describe_columns</code></td>
+<td>Columns for a selection, per-method coverage and ranges</td>
+</tr>
+<tr>
+<td><code>query_designs</code></td>
+<td>Filter, sort, page and project the design table</td>
+</tr>
+<tr>
+<td><code>summarize_designs</code></td>
+<td>Quantiles and histograms without returning rows</td>
+</tr>
+<tr>
+<td><code>rank_designs</code></td>
+<td>Multi-metric rank-based scoring with a filter cascade</td>
+</tr>
+<tr>
+<td><code>select_diverse_designs</code></td>
+<td>Filter → rank → de-duplicate by sequence; optional Saved Set</td>
+</tr>
+<tr>
+<td><code>saved_sets</code></td>
+<td>List, read, rename Saved Sets</td>
+</tr>
+<tr>
+<td><code>extract_sequences</code></td>
+<td>Extract sequences from structures into the derived cache</td>
+</tr>
+<tr>
+<td><code>inspect_structures</code></td>
+<td>Chains, roles, sequences, <code>binderdash_*</code> interface metrics, and a tokenised structure URL</td>
+</tr>
+<tr>
+<td><code>read_structure_file</code></td>
+<td>Raw structure text, size-capped. Over the cap, the error includes a download URL</td>
+</tr>
+<tr>
+<td><code>export_structures</code></td>
+<td>Manifest plus an absolute GET URL for a tar of the structures</td>
+</tr>
+<tr>
+<td><code>list_target_residues</code></td>
+<td>Targets in a run scope, residue labels to filter on, contact coverage</td>
+</tr>
+<tr>
+<td><code>target_contact_profile</code></td>
+<td>Per-residue mean ΔSASA / closest approach / contact frequency</td>
+</tr>
+<tr>
+<td><code>prepare_sequences</code></td>
+<td>Add N/C tags, linkers, stops and short names; return a download URL for the ordering table</td>
+</tr>
+</tbody>
+</table>
+<p>There is deliberately <strong>no plotting tool</strong>: <code>query_designs</code> returns column-selected
+tabular data and an agent charts it itself. For bulk dumps, <code>list_runs</code> includes
+<code>designs_json_url</code> / <code>designs_tsv_url</code> per run with a short-lived <code>download_token</code>
+(JWT claims bound to that <code>run_id</code> + format, ~10 minutes) — curl those URLs
+without the MCP API key rather than raising <code>query_designs</code> limits until the cell
+budget rejects you. Download URLs are absolute when the server knows its public
+origin (<code>PUBLIC_BASE_URL</code>, else <code>https://</code> plus <code>DOMAIN</code>, else the incoming
+request). The same response includes <code>base_url</code>. Each run also reports
+<code>ingested_at</code> (first Binderdash ingest) and <code>folder_mtime</code> (run-directory mtime
+at ingest).</p>
+<p><code>inspect_structures</code> returns one absolute <code>structure_url</code> per design, with a
+token scoped to that run and filename. <code>export_structures</code> stashes the file list
+and returns one absolute <code>GET /api/pdbs/tar?download_id=&amp;download_token=</code> URL;
+curl it with no API key and no body. Both expire in about 10 minutes and the
+archive stash does not survive a restart. <code>read_structure_file</code> stays capped
+(20 KB default, 200 KB hard limit); over the cap the error includes that
+download URL so the file can be parsed locally. <code>structure_url</code> on
+<code>query_designs</code>, <code>rank_designs</code>, <code>select_diverse_designs</code> and <code>saved_sets</code> rows
+has no token and is not fetchable — call <code>inspect_structures</code> or
+<code>export_structures</code>.</p>
+<h3 id="target-contacts">Target contacts<a class="headerlink" href="#target-contacts" title="Permanent link">&para;</a></h3>
+<p><code>query_designs</code>, <code>rank_designs</code> and <code>select_diverse_designs</code> take an optional
+<code>target_contact_groups</code> alongside <code>filters</code>. A contact condition is a threshold on a
+target residue rather than a design-table column - "A166 within 5 Å of the binder
+(heavy atoms)", "the epitope buries at least 30% of its surface on binding" - evaluated
+from the design's structure and applied as a hard filter.</p>
+<pre class="highlight"><code class="language-json">{"target_key": "…", "label": "PD-L1", "filters": [
+  {"residues": ["A54", "A56"], "scope": "any", "metric": "distance",
+   "distance_type": "heavy", "operator": "&lt;=", "value": 5.0}
+]}</code></pre>
+<p><code>metric</code> is <code>distance</code> (with <code>distance_type</code> <code>ca</code>/<code>cb</code>/<code>heavy</code>), <code>sasa_bound</code> or
+<code>delta_sasa</code>; <code>unit</code> is <code>angstrom</code> or <code>percent</code> of the residue's theoretical maximum
+(Tien et al. 2013); <code>scope</code> is <code>any</code>/<code>all</code> of the listed residues, <code>count</code> (with
+<code>min_count</code>) or <code>site_percent</code> (the metric summed over them). One group per target lets
+a single call name equivalent residues under two different constructs' numbering; a
+design whose run is outside a group's scope is exempt from that group.</p>
+<p>Call <code>list_target_residues</code> first for the <code>target_key</code> and the residue labels, and
+<code>target_contact_profile</code> to see what the binders actually touch before choosing
+residues to filter on. Runs are grouped into targets by <strong>sequence</strong>, not chain ID, so
+one target spans runs that letter its chain differently.</p>
+<p>Computing the per-residue records is deliberately <strong>not</strong> a tool: it parses every
+structure in the selection and takes minutes, so it stays behind the web UI's Compute
+button in the Filtering tab. A design with no record fails every contact condition, so
+tools emit a <code>TARGET_CONTACTS_UNAVAILABLE</code> warning and an empty result explains that
+contacts may be uncomputed rather than reporting it as a real answer.</p>
+<h3 id="preparing-sequences-for-ordering">Preparing sequences for ordering<a class="headerlink" href="#preparing-sequences-for-ordering" title="Permanent link">&para;</a></h3>
+<p><code>prepare_sequences</code> runs the same construct builder as the Prepare Sequences tab
+(<code>backend/seq_prep/</code>): N/C-terminal tags and linkers, start methionine, stop codons,
+post-stop padding and short names. It takes a run/design selection plus a <code>config</code>
+matching the tab's settings, and <code>format</code> picks <code>twist</code> (default), <code>fasta</code>, <code>tsv</code>,
+<code>csv</code> or <code>json</code>.</p>
+<p>It deliberately does <strong>not</strong> run DnaChisel: constraint solving takes minutes for a few
+hundred designs, which is too long for a tool call. With DNA enabled the result is a
+plain reverse translation (what the UI shows before Optimize DNA is pressed), flagged
+as <code>dna_optimized: false</code> with a warning, since a reverse translation is
+indistinguishable from an optimised one by eye and the difference only shows up after
+ordering. Constraint-checked DNA comes from the UI or its downloaded script.</p>
+<p>The rows are <strong>not</strong> returned in the tool result - an ordering table for a few hundred
+designs would swamp the context. The result carries counts, warnings and a
+<code>download_url</code> with a short-lived token scoped to that request and format; fetch it
+without the MCP API key. Nothing is written to disk: the request is held in memory and
+rendered when the URL is fetched, so the URL stops working after the TTL or a restart.</p>
+<p>Designs without a placed tag are skipped and listed, so a selection that was never set
+up in the UI returns an explicit skip list rather than untagged constructs; <code>default_tag</code>
+overrides that for designs with no tag recorded.</p>
+<p><strong>Write scope</strong> is read + analysis + Saved Sets, plus the compute-and-cache writes
+(sequence extraction, structural metrics) that only populate derived caches. Scanning,
+ingesting, deleting, cache refresh and merge-table upload are not exposed.</p>
+<h2 id="how-the-tool-surface-differs-from-rest">How the tool surface differs from REST<a class="headerlink" href="#how-the-tool-surface-differs-from-rest" title="Permanent link">&para;</a></h2>
+<p>The MCP layer deliberately does not mirror the REST API — it is where the problems
+catalogued in <code>BINDERDASH_API_OVERHAUL.md</code> get fixed without changing existing REST
+consumers.</p>
+<ul>
+<li><strong>Sort direction is never guessed.</strong> <code>iptm</code>/<code>ptm</code> are higher-is-better;
+  <code>pae_interaction</code>/<code>rmsd</code> are lower-is-better. <code>order="auto"</code> applies the known
+  direction, and asking for the opposite produces a <code>SORT_DIRECTION_OVERRIDE</code> warning
+  rather than a confidently reversed leaderboard.</li>
+<li><strong>Canonical column names resolve per method.</strong> <code>iptm</code> is <code>Average_i_pTM</code> for
+  bindcraft and <code>design_to_target_iptm</code> for boltzgen. Canonical resolution takes
+  precedence over a same-named raw column — <code>pae_interaction</code> is <em>also</em> rfd's own column
+  name, and preferring the literal would null out every other method.</li>
+<li><strong>Server paths never leave the server.</strong> <code>pdb_file</code> is replaced by
+  <code>structure_filename</code> / <code>structure_format</code> / <code>structure_url</code>; <code>params</code>,
+  <code>target_sequence</code>, <code>run_path</code> and per-replicate <code>^\d+_</code> columns are never returned.</li>
+<li><strong>Server-side sort, limit, offset and column selection</strong>, which REST does not have.</li>
+<li><strong>Silent failures become loud.</strong> A ranking metric that resolves for no design is an
+  error, not a skipped term. A diverse set short of its budget always says why.</li>
+<li><strong>Oversized responses are refused, not truncated</strong> (<code>RESPONSE_TOO_LARGE</code>), because
+  silent truncation reads as a complete answer.</li>
+</ul>
+<h2 id="response-shape">Response shape<a class="headerlink" href="#response-shape" title="Permanent link">&para;</a></h2>
+<p>Data-returning tools share one envelope. Rows are arrays rather than objects (40–55%
+fewer tokens on a wide table) and floats are rounded to four significant figures:</p>
+<pre class="highlight"><code class="language-json">{
+  "columns": ["run_id", "design_id", "method", "iptm", "structure_filename"],
+  "rows": [["bc", "d1", "bindcraft", 0.9123, "d1.pdb"]],
+  "total_matching": 1240, "returned": 25, "offset": 0, "truncated": true,
+  "methods": {"bindcraft": {"columns": ["Average_i_pTM"], "higher_is_better": true}},
+  "warnings": [{"code": "MERGED_RUN", "message": "..."}]
+}</code></pre>
+<p>Errors are raised as <code>[CODE] message</code>, always ending in a concrete next call —
+<code>UNKNOWN_COLUMN</code> (with the nearest names), <code>AMBIGUOUS_DESIGN_REF</code>,
+<code>NO_RANKABLE_METRICS</code>, <code>RESPONSE_TOO_LARGE</code>, <code>EMPTY_SELECTION</code>, <code>SEQUENCES_REQUIRED</code>,
+<code>INVALID_TARGET_CONTACT_FILTER</code>.</p>
+<h2 id="implementation-notes">Implementation notes<a class="headerlink" href="#implementation-notes" title="Permanent link">&para;</a></h2>
+<p><code>backend/mcp_server/</code> — named <code>mcp_server</code>, not <code>mcp</code>, because pytest puts <code>backend/</code> on
+<code>sys.path</code> where a package called <code>mcp</code> shadows the SDK that fastmcp imports.</p>
+<ul>
+<li><code>server.py</code> — FastMCP instance, <code>TokenVerifier</code>, the ASGI app, the
+  <code>X-Binderdash-Api-Key</code> header shim, and <code>run_blocking</code> (service-layer calls go through
+  <code>asyncio.to_thread</code>, with a semaphore for the heavy ones so an agent's tool loop cannot
+  starve the interactive web UI sharing the process).</li>
+<li><code>vocab.py</code> — canonical metrics, directions, ranking presets (moved server-side from
+  <code>frontend/src/config/rankingPresets.ts</code>).</li>
+<li><code>columns.py</code>, <code>refs.py</code>, <code>tables.py</code>, <code>errors.py</code>, <code>descriptions.py</code> — the shared spine.</li>
+<li><code>contacts.py</code> — the shared target-contact path: conditions are evaluated into boolean
+  <code>__tc_*</code> columns by <code>filtering.service.build_filter_inputs</code> (the same entry point the
+  REST filtering endpoints use) and appended to the hard filters, so every tool treats
+  them as ordinary filters and only has to strip the virtual columns before returning
+  rows.</li>
+<li><code>tools/</code> — <code>discovery.py</code>, <code>designs.py</code>, <code>selection.py</code>, <code>structures.py</code>,
+  <code>target_contacts.py</code>.</li>
+</ul>
+<p>Two integration points in <code>backend/main.py</code> are load-bearing:</p>
+<ol>
+<li><strong>CSRF exemption</strong> for the mount path. The MCP sub-app authenticates only via
+   <code>Authorization</code> and never reads a cookie, so there is no ambient credential to abuse;
+   without the exemption a missing key yields a <code>text/plain</code> 403 "CSRF token missing"
+   that no MCP client can interpret.</li>
+<li><strong>Lifespan chaining.</strong> Mounting does not start the streamable-HTTP session manager —
+   that happens in the sub-app's own lifespan, which Starlette does not run for mounted
+   apps. Without it every tool call fails at runtime with "Task group is not
+   initialized", never at import.</li>
+</ol>
+<p>Tool descriptions in <code>descriptions.py</code> are the agent's only documentation; treat edits to
+them as behaviour changes.</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../api/" class="btn btn-neutral float-left" title="REST API"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../pipeline-methods/" class="btn btn-neutral float-right" title="Pipeline method types">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+        <span>
+          <a href="https://github.com/Australian-Protein-Design-Initiative/binderdash" class="fa fa-github" style="color: #fcfcfc"> GitHub</a>
+        </span>
+    
+    
+      <span><a href="../api/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../pipeline-methods/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+      <script src="../../js/mermaid-init.mjs" type="module"></script>
+      <script src="../../search/main.js"></script>
+      <script src="../../js/version-select.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

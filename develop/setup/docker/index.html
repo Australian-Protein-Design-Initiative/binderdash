@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><link rel="canonical" href="https://australian-protein-design-initiative.github.io/binderdash/latest/setup/docker/" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>Docker deployment - Binderdash</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+        <link href="../../styles.purple.css" rel="stylesheet" />
+        <link href="../../css/version-select.css" rel="stylesheet" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Docker deployment";
+        var mkdocs_page_input_path = "setup/docker.md";
+        var mkdocs_page_url = "/binderdash/latest/setup/docker/";
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/yaml.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/json.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/python.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/bash.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/nginx.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/http.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> Binderdash
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../..">Home</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Getting started</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../desktop/">Desktop app</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Docker deployment</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#overview">Overview</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#prerequisites">Prerequisites</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#host-directory-setup">Host Directory Setup</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#environment-configuration">Environment Configuration</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#mounting-your-run-directories">Mounting your run directories</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#database-directory">Database directory</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#container-user">Container user</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#https-with-caddy">HTTPS with Caddy</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#building-and-running">Building and Running</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#production-mode">Production Mode</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#health-checks">Health Checks</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#resource-limits">Resource Limits</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#security-considerations">Security Considerations</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#troubleshooting">Troubleshooting</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#common-issues">Common Issues</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#debugging">Debugging</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#production-deployment">Production Deployment</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#example-nginx-configuration">Example nginx configuration</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#environment-variables-reference">Environment Variables Reference</a>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../authentication/">Authentication</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Usage</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../usage/filtering-ranking/">Filtering and ranking</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Development</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../development/setup/">Development setup</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../development/api/">REST API</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../development/mcp/">MCP server</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../development/pipeline-methods/">Pipeline method types</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../development/sequence_preparation/">Sequence preparation</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../development/storage/">Storage architecture</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../development/download-bundles/">Download bundles</a>
+                  </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="" href="https://github.com/Australian-Protein-Design-Initiative/binderdash/blob/main/CHANGELOG.md">Release history</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">Binderdash</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Getting started</li>
+      <li class="breadcrumb-item active">Docker deployment</li>
+    <li class="wy-breadcrumbs-aside">
+          <a href="https://github.com/Australian-Protein-Design-Initiative/binderdash/edit/main/docs/setup/docker.md" class="icon icon-github"> Edit on GitHub</a>
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="docker-deployment">Docker deployment<a class="headerlink" href="#docker-deployment" title="Permanent link">&para;</a></h1>
+<p>This page describes running Binderdash as a shared server with Docker Compose.</p>
+<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
+<p>The application is containerized using a single Docker image that:</p>
+<ul>
+<li>Builds the frontend (Vue.js + Vite) during the Docker build process</li>
+<li>Serves both the backend API and frontend static files via FastAPI</li>
+<li>Mounts data directories as read-only volumes for security</li>
+<li>Includes health checks and resource limits</li>
+</ul>
+<p>For PAM authentication inside Docker (bind-mounting <code>/etc/passwd</code>/<code>/etc/group</code>/<code>/etc/shadow</code>, the <code>shadow</code> group requirement, and container-recreate gotchas), see <a href="../authentication/#auth-type-3-pam-usernamepassword-unix-accounts">Authentication setup</a>.</p>
+<h2 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">&para;</a></h2>
+<h3 id="host-directory-setup">Host Directory Setup<a class="headerlink" href="#host-directory-setup" title="Permanent link">&para;</a></h3>
+<p>Before running the containerized application, ensure the directories specified in <code>RUN_BASE_DIRS</code> exist and are accessible on the host. They should contain your protein binder design run data; the container mounts them as read-only volumes.</p>
+<pre class="highlight"><code class="language-bash"># Example: make directories readable by the container user (see "Container user" below)
+sudo chmod -R a+rX /data/runs /data2/runs</code></pre>
+<h3 id="environment-configuration">Environment Configuration<a class="headerlink" href="#environment-configuration" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>Create <code>.env</code> file</strong>: copy from <code>.env.example</code> and configure:</li>
+</ol>
+<pre class="highlight"><code class="language-bash">cp .env.example .env</code></pre>
+<ol>
+<li><strong>Set the container user</strong> to your own uid and gid (see <a href="#container-user">Container user</a> for why):</li>
+</ol>
+<pre class="highlight"><code class="language-bash">printf 'BINDERDASH_UID=%s\nBINDERDASH_GID=%s\n' "$(id -u)" "$(id -g)" &gt;&gt; .env</code></pre>
+<ol>
+<li><strong>Configure your environment variables</strong> in the <code>.env</code> file:</li>
+</ol>
+<pre class="highlight"><code class="language-bash"># Required: set the paths to your data directories
+RUN_BASE_DIRS="/data/runs,/data2/runs"
+
+# Optional: Google OAuth allowlist (use with GOOGLE_AUTH_* vars)
+GOOGLE_AUTH_ALLOWED_USERS="user1@example.com,user2@example.com"
+
+# Optional: for local authentication (dev only)
+LOCAL_USERS="alice:$2b$12$...,bob:$2b$12$..."</code></pre>
+<p>Docker Compose automatically loads all environment variables from the <code>.env</code> file.</p>
+<h3 id="mounting-your-run-directories">Mounting your run directories<a class="headerlink" href="#mounting-your-run-directories" title="Permanent link">&para;</a></h3>
+<p><code>RUN_BASE_DIRS</code> is read inside the container, so each directory must be mounted into the <code>binderdash</code> service and listed by its <strong>container</strong> path. For example, to serve runs from <code>/data/runs</code> on the host, add a volume in <code>docker-compose.yml</code>:</p>
+<pre class="highlight"><code class="language-yaml">services:
+  binderdash:
+    volumes:
+      - /data/runs:/data/runs:ro</code></pre>
+<p>and set <code>RUN_BASE_DIRS="/data/runs"</code> in <code>.env</code>. Binderdash only reads run folders, so a read-only mount is sufficient.</p>
+<h3 id="database-directory">Database directory<a class="headerlink" href="#database-directory" title="Permanent link">&para;</a></h3>
+<p>The SQLite database lives under <code>./data</code> on the host (mounted at <code>/app/data</code>) and is created on first start. The <code>data/</code> directory is part of the repository, so it exists after cloning, owned by you.</p>
+<h3 id="container-user">Container user<a class="headerlink" href="#container-user" title="Permanent link">&para;</a></h3>
+<p>The <code>binderdash</code> container never runs as root. It runs as the numeric user and group given by two variables in <code>.env</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Meaning</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>BINDERDASH_UID</code></td>
+<td>User ID the container process runs as</td>
+<td><code>1000</code></td>
+</tr>
+<tr>
+<td><code>BINDERDASH_GID</code></td>
+<td>Group ID the container process runs as</td>
+<td><code>1000</code></td>
+</tr>
+</tbody>
+</table>
+<p>Files the container creates in <code>./data</code> (the SQLite database and its <code>-wal</code>/<code>-shm</code> files) are owned by this uid and gid on the host. The same ids need read access to your run directories. Setting them to your own ids means:</p>
+<ul>
+<li><code>./data</code>, which you own after cloning, is writable without a <code>chown</code></li>
+<li>run directories you can read, the container can read</li>
+<li>the database files on the host belong to you, so you can back up, copy or delete them without <code>sudo</code></li>
+</ul>
+<p>To set them to the user you are logged in as:</p>
+<pre class="highlight"><code class="language-bash">printf 'BINDERDASH_UID=%s\nBINDERDASH_GID=%s\n' "$(id -u)" "$(id -g)" &gt;&gt; .env</code></pre>
+<p>This writes literal numbers into <code>.env</code>, for example <code>BINDERDASH_UID=1001</code>. Use numbers, not <code>$UID</code>: Compose substitutes variables in <code>.env</code> only from its own environment, and bash does not export <code>UID</code> and does not define a <code>GID</code> variable at all. A <code>$UID</code> in <code>.env</code> therefore resolves to an empty string, Compose prints a <code>"UID" variable is not set</code> warning, and the container falls back to 1000.</p>
+<p>Check the result with:</p>
+<pre class="highlight"><code class="language-bash">docker compose config | grep 'user:'</code></pre>
+<p>If you change the ids after the database exists, give <code>./data</code> to the new owner and recreate the container (<code>docker compose restart</code> keeps the old user):</p>
+<pre class="highlight"><code class="language-bash">sudo chown -R &lt;uid&gt;:&lt;gid&gt; data
+docker compose up -d</code></pre>
+<p>The variables are read by Docker Compose only; the Binderdash backend ignores them. They apply to <code>docker-compose.dev.yml</code> too.</p>
+<h3 id="https-with-caddy">HTTPS with Caddy<a class="headerlink" href="#https-with-caddy" title="Permanent link">&para;</a></h3>
+<p><code>docker-compose.yml</code> runs a <a href="https://caddyserver.com/">Caddy</a> reverse proxy on ports 80 and 443 in front of Binderdash. Set <code>DOMAIN</code> in <code>.env</code> to the server's public hostname and Caddy obtains a TLS certificate automatically. With <code>DOMAIN</code> unset, Caddy serves <code>https://localhost</code> with a locally issued certificate. Also set <code>CORS_ALLOWED_ORIGINS</code> to your site URL, and set a fixed <code>SECRET_KEY</code> so sign-in sessions survive restarts.</p>
+<h2 id="building-and-running">Building and Running<a class="headerlink" href="#building-and-running" title="Permanent link">&para;</a></h2>
+<h3 id="production-mode">Production Mode<a class="headerlink" href="#production-mode" title="Permanent link">&para;</a></h3>
+<pre class="highlight"><code class="language-bash"># Build the Docker image
+docker compose build
+# Or build with no cache (if you need a fresh build)
+docker compose build --no-cache
+
+# Start the application
+docker compose up
+# Run in detached mode
+docker compose up -d
+# View logs
+docker compose logs -f
+# Stop the application
+docker compose down</code></pre>
+<p>Development with live reloading (<code>docker-compose.dev.yml</code>) is covered in <a href="../../development/setup/#docker-development-mode">Development setup</a>.</p>
+<h2 id="health-checks">Health Checks<a class="headerlink" href="#health-checks" title="Permanent link">&para;</a></h2>
+<p>The application includes health checks that verify the FastAPI server is responding on <code>/health</code>, run every 30 seconds with a 10-second timeout.</p>
+<pre class="highlight"><code class="language-bash"># View health status
+docker compose ps
+
+# Test health endpoint directly
+curl http://localhost:8000/health</code></pre>
+<h2 id="resource-limits">Resource Limits<a class="headerlink" href="#resource-limits" title="Permanent link">&para;</a></h2>
+<p>The container is configured with resource limits:</p>
+<ul>
+<li><strong>Memory</strong>: 2GB limit, 512MB reservation</li>
+<li><strong>CPU</strong>: 1.0 CPU limit, 0.5 CPU reservation</li>
+</ul>
+<p>Adjust these in <code>docker-compose.yml</code> if needed for your environment.</p>
+<h2 id="security-considerations">Security Considerations<a class="headerlink" href="#security-considerations" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>Non-root user</strong>: the container runs as <code>BINDERDASH_UID</code>:<code>BINDERDASH_GID</code> (default 1000:1000), never root</li>
+<li><strong>Read-only volumes</strong>: data directories are mounted as read-only</li>
+<li><strong>Environment variables</strong>: sensitive configuration is passed via environment variables, not baked into the image</li>
+<li><strong>Network</strong>: only Caddy (ports 80 and 443) is exposed to the host; the Binderdash container listens on port 8000 on the internal Compose network</li>
+</ol>
+<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
+<h3 id="common-issues">Common Issues<a class="headerlink" href="#common-issues" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>Permission denied on data directories</strong>: the container user (see <a href="#container-user">Container user</a>) must be able to read the run directories and write <code>./data</code>. Either set <code>BINDERDASH_UID</code>/<code>BINDERDASH_GID</code> to the owner, or make the directories readable:</li>
+</ol>
+<pre class="highlight"><code class="language-bash">sudo chmod -R a+rX /data/runs /data2/runs</code></pre>
+<ol>
+<li><strong>Container won't start</strong>:</li>
+</ol>
+<pre class="highlight"><code class="language-bash">docker compose logs binderdash
+netstat -tulpn | grep :8000
+cat .env</code></pre>
+<ol>
+<li><strong>Health check failing</strong>:</li>
+</ol>
+<pre class="highlight"><code class="language-bash">curl -v http://localhost:8000/health
+docker compose logs -f binderdash</code></pre>
+<ol>
+<li><strong>Frontend not loading</strong>:</li>
+<li>Ensure the frontend was built during the Docker build process</li>
+<li>Check that static files are being served correctly</li>
+<li>Verify the build output in the container: <code>docker compose exec binderdash ls -la /app/backend/static/</code></li>
+</ol>
+<h3 id="debugging">Debugging<a class="headerlink" href="#debugging" title="Permanent link">&para;</a></h3>
+<pre class="highlight"><code class="language-bash"># Access the container shell
+docker compose exec binderdash /bin/bash
+
+# Check application status
+docker compose exec binderdash ps aux</code></pre>
+<h2 id="production-deployment">Production Deployment<a class="headerlink" href="#production-deployment" title="Permanent link">&para;</a></h2>
+<p>For production deployment:</p>
+<ol>
+<li><strong>Use a reverse proxy</strong> (nginx, traefik, or Caddy — see <code>Caddyfile</code> and <code>DOMAIN</code> in <code>.env.example</code>) in front of the container</li>
+<li><strong>Set up SSL/TLS</strong> termination at the reverse proxy</li>
+<li><strong>Configure proper logging</strong> and log rotation</li>
+<li><strong>Set up monitoring</strong> and alerting</li>
+<li><strong>Use secrets management</strong> for sensitive environment variables</li>
+<li><strong>Consider using Docker Swarm or Kubernetes</strong> for orchestration</li>
+</ol>
+<h3 id="example-nginx-configuration">Example nginx configuration<a class="headerlink" href="#example-nginx-configuration" title="Permanent link">&para;</a></h3>
+<pre class="highlight"><code class="language-nginx">server {
+    listen 80;
+    server_name your-domain.com;
+
+    location / {
+        proxy_pass http://localhost:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}</code></pre>
+<h2 id="environment-variables-reference">Environment Variables Reference<a class="headerlink" href="#environment-variables-reference" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Description</th>
+<th>Default</th>
+<th>Required</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>RUN_BASE_DIRS</code></td>
+<td>Comma-separated list of base directories to scan</td>
+<td><code>/data/runs,/data2/runs</code></td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>BINDERDASH_UID</code></td>
+<td>Numeric uid the container runs as (see <a href="#container-user">Container user</a>)</td>
+<td><code>1000</code></td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>BINDERDASH_GID</code></td>
+<td>Numeric gid the container runs as</td>
+<td><code>1000</code></td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>GOOGLE_AUTH_ALLOWED_USERS</code></td>
+<td>Comma-separated allowed Google sign-in emails (with Google OAuth)</td>
+<td>Empty</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>LOCAL_USERS</code></td>
+<td>Comma-separated list of local users with bcrypt hashes</td>
+<td>Empty</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>SECRET_KEY</code></td>
+<td>JWT secret key (auto-generated if not provided)</td>
+<td>Auto-generated</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>CORS_ALLOWED_ORIGINS</code></td>
+<td>Comma-separated list of allowed CORS origins</td>
+<td><code>*</code></td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>DISABLE_AUTHENTICATION</code></td>
+<td>Set to <code>true</code> to disable all authentication</td>
+<td><code>false</code></td>
+<td>No</td>
+</tr>
+</tbody>
+</table>
+<p>See <code>.env.example</code> for the full, current list of supported variables.</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../desktop/" class="btn btn-neutral float-left" title="Desktop app"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../authentication/" class="btn btn-neutral float-right" title="Authentication">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+        <span>
+          <a href="https://github.com/Australian-Protein-Design-Initiative/binderdash" class="fa fa-github" style="color: #fcfcfc"> GitHub</a>
+        </span>
+    
+    
+      <span><a href="../desktop/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../authentication/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+      <script src="../../js/mermaid-init.mjs" type="module"></script>
+      <script src="../../search/main.js"></script>
+      <script src="../../js/version-select.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

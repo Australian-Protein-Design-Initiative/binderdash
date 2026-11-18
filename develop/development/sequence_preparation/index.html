@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><link rel="canonical" href="https://australian-protein-design-initiative.github.io/binderdash/latest/development/sequence_preparation/" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>Sequence preparation - Binderdash</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+        <link href="../../styles.purple.css" rel="stylesheet" />
+        <link href="../../css/version-select.css" rel="stylesheet" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Sequence preparation";
+        var mkdocs_page_input_path = "development/sequence_preparation.md";
+        var mkdocs_page_url = "/binderdash/latest/development/sequence_preparation/";
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/yaml.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/json.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/python.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/bash.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/nginx.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/http.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> Binderdash
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../..">Home</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Getting started</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../setup/desktop/">Desktop app</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../setup/docker/">Docker deployment</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../setup/authentication/">Authentication</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Usage</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../usage/filtering-ranking/">Filtering and ranking</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Development</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../setup/">Development setup</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/">REST API</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../mcp/">MCP server</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../pipeline-methods/">Pipeline method types</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Sequence preparation</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#short-names-base52-hashes-uid-length-and-hash-length">Short names: base52 hashes (UID length and hash length)</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#1-hash-primitive-utf-8-fnv-1a-64-base52">1. Hash primitive: UTF-8 → FNV-1a 64 → base52</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#2-prefix-sorted-dna-set-uid-index-uid-length">2. “Prefix + sorted DNA-set uid + index” (UID length)</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#3-other-strategies-that-hash-only-the-original-aa-per-row">3. Other strategies that hash only the original AA (per row)</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#4-summary-table">4. Summary table</a>
+    </li>
+        </ul>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../storage/">Storage architecture</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../download-bundles/">Download bundles</a>
+                  </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="" href="https://github.com/Australian-Protein-Design-Initiative/binderdash/blob/main/CHANGELOG.md">Release history</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">Binderdash</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Development</li>
+      <li class="breadcrumb-item active">Sequence preparation</li>
+    <li class="wy-breadcrumbs-aside">
+          <a href="https://github.com/Australian-Protein-Design-Initiative/binderdash/edit/main/docs/development/sequence_preparation.md" class="icon icon-github"> Edit on GitHub</a>
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="sequence-preparation-development-notes">Sequence preparation (development notes)<a class="headerlink" href="#sequence-preparation-development-notes" title="Permanent link">&para;</a></h1>
+<h2 id="short-names-base52-hashes-uid-length-and-hash-length">Short names: base52 hashes (UID length and hash length)<a class="headerlink" href="#short-names-base52-hashes-uid-length-and-hash-length" title="Permanent link">&para;</a></h2>
+<p>Prepare Sequences builds short names (≤32 characters by default) in the frontend (<code>frontend/src/stores/shortName.ts</code>). Several strategies embed a <strong>fixed-length base52</strong> token from <strong><code>hashBase52</code></strong>. The <strong>pattern</strong> strategy uses one <strong>set-wide</strong> uid from sorted <strong>prepared DNA</strong> strings; <strong>stem / regex / split</strong> hashes use the row’s <strong><code>original_aa</code></strong> (pre-tag amino acid sequence), or <strong><code>design_id</code></strong> if that is empty.</p>
+<p>The following describes how those tokens are produced and how <strong>length</strong> (UID length or hash length) affects the output.</p>
+<h3 id="1-hash-primitive-utf-8-fnv-1a-64-base52">1. Hash primitive: UTF-8 → FNV-1a 64 → base52<a class="headerlink" href="#1-hash-primitive-utf-8-fnv-1a-64-base52" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>Input string</strong> is encoded as <strong>UTF-8</strong> bytes.</li>
+<li><strong>FNV-1a</strong> over 64 bits (offset basis <code>14695981039346656037</code>, prime <code>1099511628211</code>), XOR/multiply per byte, result <strong>masked to 64 bits</strong>.</li>
+<li><strong><code>base52(value, L)</code></strong> maps the masked integer to exactly <strong><code>L</code></strong> characters from the alphabet<br />
+<code>ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz</code> (52 symbols).<br />
+   It repeatedly takes <code>value mod 52</code> as the next digit (least-significant side of the radix expansion), integer-divides by 52, then <strong>reverses</strong> the digit order so the string reads <strong>most significant digit first</strong> for a fixed width <strong><code>L</code></strong>.</li>
+</ol>
+<p>The exported helper is:</p>
+<pre class="highlight"><code class="language-text">hashBase52(input: string, length: number) := base52(fnv1a64(input), length)</code></pre>
+<p>In code, <code>base52</code> clamps <strong><code>L</code></strong> to <strong><code>1 … 32</code></strong>. Strategies that expose “hash length” or “UID length” in the UI use <strong><code>clampHashLen</code></strong>, which further restricts those lengths to <strong><code>3 … 10</code></strong> for Prepare Sequences short-name use.</p>
+<p>So <strong>changing UID / hash length only changes how many base52 characters are emitted</strong>; it does <strong>not</strong> change the hash algorithm. A longer length exposes more of the 64-bit digest in base 52 (more distinguishing power, longer strings). A shorter length truncates to the leading (most significant) base52 digits of the same underlying 64-bit value.</p>
+<h3 id="2-prefix-sorted-dna-set-uid-index-uid-length">2. “Prefix + sorted DNA-set uid + index” (UID length)<a class="headerlink" href="#2-prefix-sorted-dna-set-uid-index-uid-length" title="Permanent link">&para;</a></h3>
+<p>For the <strong>pattern</strong> strategy, the middle token (<strong>uid</strong>) is <strong>identical for every row</strong> in the current prepared set. It is the base52 digest of the ** multiset of nucleotide strings** for that set:</p>
+<ol>
+<li>Take each row’s <strong><code>prepared_dna</code></strong>, or <strong><code>''</code></strong> if DNA is not available yet.</li>
+<li><strong>Sort</strong> those strings lexicographically (<code>localeCompare</code>).</li>
+<li>Join with record separator <strong><code>\x1e</code></strong>.</li>
+<li><strong><code>uid = hashBase52(joined, uidLength)</code></strong> with <strong><code>uidLength</code></strong> clamped to <strong>3–10</strong>.</li>
+</ol>
+<p>So the uid changes when <strong>any</strong> row’s prepared DNA changes, when rows are added or removed, or when duplicate counts of identical DNA strings change. It does <strong>not</strong> use amino acid sequence or <code>design_id</code> for the uid.</p>
+<p>The final short name is <strong><code>prefix_uid_index</code></strong> (optional prefix, same <strong>uid</strong>, 1-based row index with optional zero padding), then truncated to the global max length.</p>
+<h3 id="3-other-strategies-that-hash-only-the-original-aa-per-row">3. Other strategies that hash <strong>only</strong> the original AA (per row)<a class="headerlink" href="#3-other-strategies-that-hash-only-the-original-aa-per-row" title="Permanent link">&para;</a></h3>
+<p>These use <strong><code>hashBase52(original_aa || design_id, hashLen)</code></strong> with <strong><code>hashLen</code></strong> clamped <strong>3–10</strong>:</p>
+<ul>
+<li><strong>Smart: stem + hash</strong> (when “Include hash” is on)</li>
+<li><strong>Smart: Regex drop prefix / suffix</strong> (suffix hash after stem)</li>
+<li><strong>Split + take indices</strong> (when “Add hash” is on)</li>
+</ul>
+<p>So for the same sequence and same <code>hashLen</code>, two rows with the same <code>design_id</code> / <code>original_aa</code> would yield the <strong>same</strong> hash segment; deduplication of final short names is handled elsewhere (<code>uniqueify</code> in the same module).</p>
+<p>A repeated <code>design_id</code> in the current set warns <strong>Long name not unique</strong>. A repeated pre-suffix short name warns <strong>Short name not unique</strong> on every row in that group (including the one that kept the unsuffixed name). Both appear in the warnings column and the “less than ideal” banner, and turn the Short name panel border red. Rows that received an <code>_N</code> suffix also show the auto-dedupe warning inside that panel.</p>
+<h3 id="4-summary-table">4. Summary table<a class="headerlink" href="#4-summary-table" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Concept</th>
+<th>UI / field</th>
+<th>Clamped length</th>
+<th><code>hashBase52</code> input</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Pattern uid</td>
+<td>UID length</td>
+<td>3–10</td>
+<td>Sorted list of <code>prepared_dna</code> (empty if missing), joined with <code>\x1e</code></td>
+</tr>
+<tr>
+<td>Stem / regex / split hash</td>
+<td>Hash length (base52)</td>
+<td>3–10</td>
+<td><code>original_aa</code> or <code>design_id</code> if AA missing</td>
+</tr>
+</tbody>
+</table>
+<p><code>computeSetFingerprint</code> remains in <code>shortName.ts</code> as an exported helper for other stable-set digests if needed; <strong>pattern</strong> uids do not use it.</p>
+<p>Implementation reference: <code>frontend/src/stores/shortName.ts</code> (<code>fnv1a64</code>, <code>base52</code>, <code>hashBase52</code>, <code>computeShortNames</code>, <code>rawNameForRow</code>).</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../pipeline-methods/" class="btn btn-neutral float-left" title="Pipeline method types"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../storage/" class="btn btn-neutral float-right" title="Storage architecture">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+        <span>
+          <a href="https://github.com/Australian-Protein-Design-Initiative/binderdash" class="fa fa-github" style="color: #fcfcfc"> GitHub</a>
+        </span>
+    
+    
+      <span><a href="../pipeline-methods/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../storage/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+      <script src="../../js/mermaid-init.mjs" type="module"></script>
+      <script src="../../search/main.js"></script>
+      <script src="../../js/version-select.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

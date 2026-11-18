@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **MCP / UI**: **Use Claude Science** on the new API key panel. Settings → Connectors → Add Connector (Local URL), with the connector name, server address and header `echo` command filled in, plus a screenshot of the form.
+
 ## [0.4.2] - 2026-11-03
 
 ### Added

@@ -63,10 +63,9 @@ rejected with 401 (the startup log warns about this explicitly). With
 ### Client configuration
 
 The web UI does this for you: **account menu → API keys → Create**, then expand
-*"Use with Claude Code or another AI agent (MCP)"* on the new-key panel for a ready-made
-command and JSON snippet with the key and this server's URL already filled in. The
-section only appears when the server actually has MCP mounted (`GET /api/auth/status`
-reports `mcp.enabled`).
+*"Use with Claude Code or another AI agent (MCP)"* or *"Use Claude Science"* on the
+new-key panel. Both fill in this server's URL and the new key. The sections only appear
+when the server actually has MCP mounted (`GET /api/auth/status` reports `mcp.enabled`).
 
 Claude Code, in one command:
 
@@ -95,6 +94,24 @@ The key is stored in that file in plain text, so prefer a dedicated expiring key
 agent and revoke it from the UI when finished. A project-scoped `.mcp.json` is shared
 with anyone who clones the repo, and Claude Code asks each of them to approve the server
 before first use.
+
+Claude Science uses its own connector form. Open **Settings → Connectors → Add
+Connector** and choose **Local URL**, then:
+
+- **Name:** `binderdash`
+- **Server address:** `https://binderdash.example.org/api/mcp/`
+- **Advanced settings:** leave OAuth Client ID, OAuth Server URL and Scopes empty, and
+  paste this into the header command field. Claude Science runs it on your machine on
+  each connect and sends the JSON it prints as request headers:
+
+```bash
+echo '{"Authorization": "Bearer bd_your_key_here"}'
+```
+
+- **Type:** Streamable HTTP
+
+The key is inside that command in plain text. The new-key panel's **Use Claude Science**
+section fills these three values in and shows the form.
 
 ## Tools
 

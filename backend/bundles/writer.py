@@ -27,6 +27,7 @@ from .models import (
     BundleFileEntry,
     BundleManifest,
 )
+from .sources import safe_label
 from .spec import BundleSpec
 from ..settings import settings
 
@@ -122,33 +123,47 @@ def _media_type(arcname: str) -> str:
     return _MEDIA_TYPES.get(Path(arcname).suffix.lower(), "application/octet-stream")
 
 
-def _describe(arcname: str) -> str:
-    if arcname in _DESCRIPTIONS:
-        return _DESCRIPTIONS[arcname]
-    if arcname.startswith("structures/"):
+def bundle_root(label: str) -> str:
+    """Single path segment every zip member lives under.
+
+    The segment is the download name (order name, or saved-set name). Without it,
+    extracting the archive scatters designs.tsv, structures/ and the rest into the
+    current directory.
+    """
+    return safe_label(label)
+
+
+def _describe(relative: str) -> str:
+    if relative in _DESCRIPTIONS:
+        return _DESCRIPTIONS[relative]
+    if relative.startswith("structures/"):
         return "Design structure file, as produced by the pipeline."
-    if arcname.startswith("schemas/"):
+    if relative.startswith("schemas/"):
         return "JSON Schema for the correspondingly named JSON file."
     return ""
 
 
 class _Inventory:
-    def __init__(self) -> None:
+    def __init__(self, root: str) -> None:
+        self.root = root
         self.entries: List[BundleFileEntry] = []
 
-    def add(self, arcname: str, digest: MemberDigest) -> None:
+    def member(self, relative: str) -> str:
+        return f"{self.root}/{relative}"
+
+    def add(self, relative: str, digest: MemberDigest) -> None:
         self.entries.append(
             BundleFileEntry(
-                path=arcname,
+                path=self.member(relative),
                 size_bytes=digest.size_bytes,
                 sha256=digest.sha256,
-                media_type=_media_type(arcname),
-                description=_describe(arcname),
+                media_type=_media_type(relative),
+                description=_describe(relative),
             )
         )
 
 
-def _readme(spec: BundleSpec) -> str:
+def _readme(spec: BundleSpec, root: str) -> str:
     lines = [
         "Binderdash design bundle",
         "========================",
@@ -156,6 +171,10 @@ def _readme(spec: BundleSpec) -> str:
         f"bundle_id:  {spec.bundle_id}",
         f"created:    {spec.created_at}",
         f"kind:       {spec.kind}",
+        f"folder:     {root}",
+        "",
+        "Extracting the zip creates that one folder. Everything listed below is inside it.",
+        "Paths in manifest.json include the folder name, matching the names inside the zip.",
         "",
         "Contents",
         "--------",
@@ -184,7 +203,8 @@ def write_bundle(spec: BundleSpec) -> BuiltBundle:
     """Build the zip. Synchronous; call under asyncio.to_thread."""
     spool = bundle_spool_dir()
     tmp = tempfile.SpooledTemporaryFile(max_size=SPOOL_THRESHOLD_BYTES, dir=spool)
-    inventory = _Inventory()
+    root = bundle_root(spec.label)
+    inventory = _Inventory(root)
     warnings: List[str] = list(spec.warnings)
 
     try:
@@ -195,11 +215,19 @@ def write_bundle(spec: BundleSpec) -> BuiltBundle:
             compresslevel=COMPRESS_LEVEL,
             allowZip64=True,
         ) as zf:
-            inventory.add(README_ARCNAME, M.write_text_member(zf, README_ARCNAME, _readme(spec)))
+            inventory.add(
+                README_ARCNAME,
+                M.write_text_member(zf, inventory.member(README_ARCNAME), _readme(spec, root)),
+            )
 
             if spec.rows:
-                inventory.add("designs.tsv", M.write_designs_table(zf, "designs.tsv", spec.rows))
-                digest, _written, skipped = M.write_binders_fasta(zf, "binders.fasta", spec.rows)
+                inventory.add(
+                    "designs.tsv",
+                    M.write_designs_table(zf, inventory.member("designs.tsv"), spec.rows),
+                )
+                digest, _written, skipped = M.write_binders_fasta(
+                    zf, inventory.member("binders.fasta"), spec.rows
+                )
                 inventory.add("binders.fasta", digest)
                 if skipped:
                     warnings.append(
@@ -210,7 +238,9 @@ def write_bundle(spec: BundleSpec) -> BuiltBundle:
             if spec.contacts and spec.contacts.rows:
                 inventory.add(
                     "target_contacts.tsv",
-                    M.write_contacts_table(zf, "target_contacts.tsv", spec.contacts),
+                    M.write_contacts_table(
+                        zf, inventory.member("target_contacts.tsv"), spec.contacts
+                    ),
                 )
                 if spec.contacts.reference is not None:
                     reference = spec.contacts.reference.model_copy(
@@ -218,13 +248,17 @@ def write_bundle(spec: BundleSpec) -> BuiltBundle:
                     )
                     inventory.add(
                         "target_contacts_reference.json",
-                        M.write_json_member(zf, "target_contacts_reference.json", reference),
+                        M.write_json_member(
+                            zf, inventory.member("target_contacts_reference.json"), reference
+                        ),
                     )
 
             if spec.session is not None:
                 inventory.add(
                     "binderdash_session.json",
-                    M.write_json_member(zf, "binderdash_session.json", spec.session),
+                    M.write_json_member(
+                        zf, inventory.member("binderdash_session.json"), spec.session
+                    ),
                 )
 
             if spec.prepared is not None:
@@ -232,10 +266,14 @@ def write_bundle(spec: BundleSpec) -> BuiltBundle:
                     update={"generated_at": spec.created_at, "binderdash": build_info()}
                 )
                 inventory.add(
-                    "constructs.tsv", M.write_constructs_table(zf, "constructs.tsv", prepared)
+                    "constructs.tsv",
+                    M.write_constructs_table(zf, inventory.member("constructs.tsv"), prepared),
                 )
                 aa_digest, dna_digest, _n = M.write_construct_fastas(
-                    zf, "constructs_aa.fasta", "constructs_dna.fasta", prepared
+                    zf,
+                    inventory.member("constructs_aa.fasta"),
+                    inventory.member("constructs_dna.fasta"),
+                    prepared,
                 )
                 inventory.add("constructs_aa.fasta", aa_digest)
                 if dna_digest is not None:
@@ -246,7 +284,7 @@ def write_bundle(spec: BundleSpec) -> BuiltBundle:
                         "constructs_twist_dna.csv are absent"
                     )
                 aa_twist_digest, aa_twist_skipped = M.write_constructs_twist_csv(
-                    zf, "constructs_twist_aa.csv", prepared, "prepared_aa"
+                    zf, inventory.member("constructs_twist_aa.csv"), prepared, "prepared_aa"
                 )
                 inventory.add("constructs_twist_aa.csv", aa_twist_digest)
                 if aa_twist_skipped:
@@ -256,7 +294,7 @@ def write_bundle(spec: BundleSpec) -> BuiltBundle:
                     )
                 if dna_digest is not None:
                     dna_twist_digest, dna_twist_skipped = M.write_constructs_twist_csv(
-                        zf, "constructs_twist_dna.csv", prepared, "prepared_dna"
+                        zf, inventory.member("constructs_twist_dna.csv"), prepared, "prepared_dna"
                     )
                     inventory.add("constructs_twist_dna.csv", dna_twist_digest)
                     if dna_twist_skipped:
@@ -268,7 +306,7 @@ def write_bundle(spec: BundleSpec) -> BuiltBundle:
                     "prepare_sequences.json",
                     M.write_json_member(
                         zf,
-                        "prepare_sequences.json",
+                        inventory.member("prepare_sequences.json"),
                         prepared,
                         exclude={"rows": {"__all__": M.PREPARED_ROW_EXCLUDE}},
                     ),
@@ -276,7 +314,9 @@ def write_bundle(spec: BundleSpec) -> BuiltBundle:
 
             for ref in spec.structures:
                 try:
-                    inventory.add(ref.arcname, write_file_member(zf, ref.arcname, ref.path))
+                    inventory.add(
+                        ref.arcname, write_file_member(zf, inventory.member(ref.arcname), ref.path)
+                    )
                 except (OSError, ValueError) as e:
                     # A file removed between path resolution and here, or a pre-1980
                     # mtime that zipfile refuses. Neither is worth losing the bundle.
@@ -284,11 +324,13 @@ def write_bundle(spec: BundleSpec) -> BuiltBundle:
                     logger.warning("skipping structure %s: %s", ref.path, e)
 
             for name in schema_names_for_kind(spec.kind):
-                arcname = schema_arcname(name)
+                relative = schema_arcname(name)
                 inventory.add(
-                    arcname,
+                    relative,
                     M.write_text_member(
-                        zf, arcname, json.dumps(schema_document(name), indent=2) + "\n"
+                        zf,
+                        inventory.member(relative),
+                        json.dumps(schema_document(name), indent=2) + "\n",
                     ),
                 )
 
@@ -303,14 +345,14 @@ def write_bundle(spec: BundleSpec) -> BuiltBundle:
                 files=sorted(inventory.entries, key=lambda e: e.path),
                 warnings=warnings,
             )
-            M.write_json_member(zf, MANIFEST_ARCNAME, manifest)
+            M.write_json_member(zf, inventory.member(MANIFEST_ARCNAME), manifest)
 
         size = tmp.tell()
         tmp.seek(0)
         return BuiltBundle(
             fileobj=tmp,  # type: ignore[arg-type]
             size_bytes=size,
-            filename=f"{spec.label}.zip",
+            filename=f"{root}.zip",
             manifest=manifest,
         )
     except BaseException:

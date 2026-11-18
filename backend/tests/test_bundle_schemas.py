@@ -99,17 +99,21 @@ def test_bundle_json_validates_against_its_own_shipped_schema(sqlite_designs_rep
     """The point of shipping schemas: each JSON member validates against the schema in
     the same archive, with no reference to anything outside it."""
     with zipfile.ZipFile(BytesIO(_bundle_bytes())) as zf:
+        root = "binderdash_designs"
+        assert {name.split("/", 1)[0] for name in zf.namelist()} == {root}
         for member, schema_name in (
             ("manifest.json", "manifest"),
             ("binderdash_session.json", "binderdash_session"),
         ):
-            payload = json.loads(zf.read(member))
-            schema = json.loads(zf.read(f"schemas/{schema_name}.schema.json"))
+            payload = json.loads(zf.read(f"{root}/{member}"))
+            schema = json.loads(zf.read(f"{root}/schemas/{schema_name}.schema.json"))
             jsonschema.validate(payload, schema)
 
 
 def test_manifest_round_trips_through_its_model(sqlite_designs_repo) -> None:
     with zipfile.ZipFile(BytesIO(_bundle_bytes())) as zf:
-        manifest = BundleManifest.model_validate(json.loads(zf.read("manifest.json")))
+        manifest = BundleManifest.model_validate(
+            json.loads(zf.read("binderdash_designs/manifest.json"))
+        )
     assert manifest.bundle_kind == "designs"
     assert manifest.coverage.designs == 2

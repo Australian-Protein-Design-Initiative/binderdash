@@ -23,16 +23,23 @@ any, otherwise the filtered designs. It is not every design in the selected runs
 
 ## Contents
 
+Everything sits in one folder named after the download — the same name as the zip
+file. That name is the order name (Prepare Sequences) or the saved-set name
+(`saved_set_<name>`). A Designs-tab download that is neither uses `binderdash_designs`.
+Extracting the archive creates that folder instead of scattering files into the
+current directory.
+
 ```
-manifest.json                   build info, file inventory with sha256, coverage counts
-designs.tsv                     one row per design, every column Binderdash holds
-binders.fasta                   binder sequences, >design_id
-binderdash_session.json         the UI state that produced the bundle
-target_contacts.tsv             cached per-residue distances and SASA (if computed)
-target_contacts_reference.json  per-run apo SASA reference and compute parameters
-structures/rank0001_<run>_<name>.pdb
-schemas/*.schema.json           JSON Schema for each JSON member
-README.txt
+<order_or_set_name>/
+  manifest.json                   build info, file inventory with sha256, coverage counts
+  designs.tsv                     one row per design, every column Binderdash holds
+  binders.fasta                   binder sequences, >design_id
+  binderdash_session.json         the UI state that produced the bundle
+  target_contacts.tsv             cached per-residue distances and SASA (if computed)
+  target_contacts_reference.json  per-run apo SASA reference and compute parameters
+  structures/rank0001_<run>_<name>.pdb
+  schemas/*.schema.json           JSON Schema for each JSON member
+  README.txt
 ```
 
 Prepare Sequences adds `constructs.tsv`, `constructs_aa.fasta`, `constructs_dna.fasta`,

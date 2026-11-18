@@ -66,6 +66,25 @@ def _read_zip(payload: bytes) -> zipfile.ZipFile:
     return zipfile.ZipFile(BytesIO(payload))
 
 
+def _root(zf: zipfile.ZipFile) -> str:
+    """The single top-level folder. A member at the archive root is a zip-bomb."""
+    names = zf.namelist()
+    assert names, "empty zip"
+    assert all("/" in name and not name.startswith("/") for name in names), names
+    roots = {name.split("/", 1)[0] for name in names}
+    assert len(roots) == 1, roots
+    return next(iter(roots))
+
+
+def _relnames(zf: zipfile.ZipFile) -> set:
+    root = _root(zf)
+    return {name[len(root) + 1 :] for name in zf.namelist()}
+
+
+def _read(zf: zipfile.ZipFile, relative: str) -> bytes:
+    return zf.read(f"{_root(zf)}/{relative}")
+
+
 def _build(spec: BundleSpec) -> bytes:
     built = write_bundle(spec)
     try:
@@ -180,8 +199,10 @@ class TestWriter:
         )
 
     def test_member_list(self, sqlite_designs_repo) -> None:
-        with _read_zip(_build(self._spec(sqlite_designs_repo))) as zf:
-            names = set(zf.namelist())
+        spec = self._spec(sqlite_designs_repo)
+        with _read_zip(_build(spec)) as zf:
+            assert _root(zf) == spec.label
+            names = _relnames(zf)
         assert {
             "manifest.json",
             "README.txt",
@@ -197,28 +218,31 @@ class TestWriter:
     def test_designs_tsv_matches_shared_serialiser(self, sqlite_designs_repo) -> None:
         spec = self._spec(sqlite_designs_repo)
         with _read_zip(_build(spec)) as zf:
-            assert zf.read("designs.tsv").decode() == designs_to_tsv(spec.rows)
+            assert _read(zf, "designs.tsv").decode() == designs_to_tsv(spec.rows)
 
     def test_every_sha256_matches_the_archived_bytes(self, sqlite_designs_repo) -> None:
-        with _read_zip(_build(self._spec(sqlite_designs_repo))) as zf:
-            manifest = json.loads(zf.read("manifest.json"))
+        spec = self._spec(sqlite_designs_repo)
+        with _read_zip(_build(spec)) as zf:
+            root = _root(zf)
+            manifest = json.loads(_read(zf, "manifest.json"))
             assert manifest["files"], "manifest lists no files"
             for entry in manifest["files"]:
+                assert entry["path"].startswith(f"{root}/"), entry["path"]
                 raw = zf.read(entry["path"])
                 assert hashlib.sha256(raw).hexdigest() == entry["sha256"], entry["path"]
                 assert len(raw) == entry["size_bytes"], entry["path"]
             # A structure file specifically: proves the single-pass hashing of streamed
             # file members, not just of the small in-memory ones.
-            assert any(e["path"].startswith("structures/") for e in manifest["files"])
+            assert any(e["path"].startswith(f"{root}/structures/") for e in manifest["files"])
 
     def test_manifest_does_not_list_itself(self, sqlite_designs_repo) -> None:
         with _read_zip(_build(self._spec(sqlite_designs_repo))) as zf:
-            manifest = json.loads(zf.read("manifest.json"))
-        assert all(e["path"] != "manifest.json" for e in manifest["files"])
+            manifest = json.loads(_read(zf, "manifest.json"))
+        assert all(Path(e["path"]).name != "manifest.json" for e in manifest["files"])
 
     def test_build_info_present(self, sqlite_designs_repo) -> None:
         with _read_zip(_build(self._spec(sqlite_designs_repo))) as zf:
-            manifest = json.loads(zf.read("manifest.json"))
+            manifest = json.loads(_read(zf, "manifest.json"))
         assert manifest["build"]["app_version"]
         assert manifest["build"]["build_source"] in {"env", "build_file", "git", "unknown"}
 
@@ -228,11 +252,11 @@ class TestWriter:
         monkeypatch.setattr(writer_mod, "SPOOL_THRESHOLD_BYTES", 512)
         with _read_zip(_build(self._spec(sqlite_designs_repo))) as zf:
             assert zf.testzip() is None
-            assert "manifest.json" in zf.namelist()
+            assert "manifest.json" in _relnames(zf)
 
     def test_session_state_round_trips(self, sqlite_designs_repo) -> None:
         with _read_zip(_build(self._spec(sqlite_designs_repo))) as zf:
-            payload = json.loads(zf.read("binderdash_session.json"))
+            payload = json.loads(_read(zf, "binderdash_session.json"))
         restored = SessionState.model_validate(payload)
         assert restored.run_ids == ["run-bundle-1"]
         assert restored.captured is True
@@ -265,8 +289,10 @@ class TestPrepareSequencesBundle:
         )
 
     def test_construct_members_present(self, sqlite_designs_repo) -> None:
-        with _read_zip(_build(self._spec())) as zf:
-            names = set(zf.namelist())
+        spec = self._spec()
+        with _read_zip(_build(spec)) as zf:
+            assert _root(zf) == spec.label
+            names = _relnames(zf)
         assert {
             "constructs.tsv",
             "constructs_aa.fasta",
@@ -284,20 +310,20 @@ class TestPrepareSequencesBundle:
             BundleDesignsRequest(keys=_keys("run-bundle-1", 2), run_ids=["run-bundle-1"])
         )
         with _read_zip(_build(spec)) as zf:
-            names = set(zf.namelist())
+            names = _relnames(zf)
         assert "constructs.tsv" not in names
         assert "prepare_sequences.json" not in names
 
     def test_presentational_fields_are_stripped(self, sqlite_designs_repo) -> None:
         with _read_zip(_build(self._spec())) as zf:
-            payload = json.loads(zf.read("prepare_sequences.json"))
+            payload = json.loads(_read(zf, "prepare_sequences.json"))
         assert payload["rows"][0]["prepared_aa"] == "MHHHHHHACDEF"
         assert "segments_aa" not in payload["rows"][0]
 
     def test_dna_fasta_only_holds_optimised_rows(self, sqlite_designs_repo) -> None:
         with _read_zip(_build(self._spec())) as zf:
-            dna = zf.read("constructs_dna.fasta").decode()
-            aa = zf.read("constructs_aa.fasta").decode()
+            dna = _read(zf, "constructs_dna.fasta").decode()
+            aa = _read(zf, "constructs_aa.fasta").decode()
         assert dna.count(">") == 1
         assert aa.count(">") == 2
 
@@ -329,10 +355,11 @@ class TestVendorCsv:
             )
         )
         with _read_zip(_build(spec)) as zf:
-            names = set(zf.namelist())
-            aa_lines = zf.read("constructs_twist_aa.csv").decode().strip().splitlines()
-            dna_lines = zf.read("constructs_twist_dna.csv").decode().strip().splitlines()
-            manifest = json.loads(zf.read("manifest.json"))
+            assert _root(zf) == spec.label
+            names = _relnames(zf)
+            aa_lines = _read(zf, "constructs_twist_aa.csv").decode().strip().splitlines()
+            dna_lines = _read(zf, "constructs_twist_dna.csv").decode().strip().splitlines()
+            manifest = json.loads(_read(zf, "manifest.json"))
 
         assert "constructs_twist.csv" not in names
         assert len(aa_lines) == 3, aa_lines  # header + both amino-acid rows

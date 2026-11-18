@@ -50,6 +50,24 @@ def _zip(resp) -> zipfile.ZipFile:
     return zipfile.ZipFile(BytesIO(resp.content))
 
 
+def _root(zf: zipfile.ZipFile) -> str:
+    names = zf.namelist()
+    assert names, "empty zip"
+    assert all("/" in name and not name.startswith("/") for name in names), names
+    roots = {name.split("/", 1)[0] for name in names}
+    assert len(roots) == 1, roots
+    return next(iter(roots))
+
+
+def _read(zf: zipfile.ZipFile, relative: str) -> bytes:
+    return zf.read(f"{_root(zf)}/{relative}")
+
+
+def _relnames(zf: zipfile.ZipFile) -> set:
+    root = _root(zf)
+    return {name[len(root) + 1 :] for name in zf.namelist()}
+
+
 class TestDesignsBundleRoute:
     def test_returns_a_zip(self, api_client, sqlite_designs_repo) -> None:
         _seed()
@@ -62,7 +80,8 @@ class TestDesignsBundleRoute:
         assert int(resp.headers["content-length"]) == len(resp.content)
         with _zip(resp) as zf:
             assert zf.testzip() is None
-            assert "manifest.json" in zf.namelist()
+            assert _root(zf) == "demo"
+            assert "manifest.json" in _relnames(zf)
 
     def test_empty_selection_is_a_400(self, api_client, sqlite_designs_repo) -> None:
         _seed()
@@ -81,7 +100,7 @@ class TestDesignsBundleRoute:
         )
         assert resp.status_code == 200, resp.text
         with _zip(resp) as zf:
-            header = zf.read("designs.tsv").decode().splitlines()[0]
+            header = _read(zf, "designs.tsv").decode().splitlines()[0]
         assert "binderdash_rank" in header
 
     def test_over_cap_is_413_with_the_estimate(
@@ -120,7 +139,7 @@ class TestEstimateRoute:
 
         resp = api_client.post("/api/bundles/designs", json=body)
         with _zip(resp) as zf:
-            manifest = json.loads(zf.read("manifest.json"))
+            manifest = json.loads(_read(zf, "manifest.json"))
         assert manifest["coverage"]["designs"] == estimate["design_count"]
         assert manifest["coverage"]["structures_included"] == estimate["structure_count"]
 
@@ -151,7 +170,8 @@ class TestPrepareSequencesRoute:
         )
         assert resp.status_code == 200, resp.text
         with _zip(resp) as zf:
-            names = set(zf.namelist())
+            assert _root(zf) == "binderdash_constructs"
+            names = _relnames(zf)
         assert {"constructs.tsv", "constructs_aa.fasta", "prepare_sequences.json"} <= names
 
     def test_unknown_prepared_field_is_accepted(self, api_client, sqlite_designs_repo) -> None:
@@ -226,17 +246,21 @@ class TestSavedSetDownloadParity:
 
         def shape(resp) -> set:
             with _zip(resp) as zf:
-                return {n for n in zf.namelist() if not n.startswith("structures/")}
+                return {n for n in _relnames(zf) if not n.startswith("structures/")}
 
         assert shape(saved) == shape(live)
+        with _zip(saved) as zf:
+            assert _root(zf) == "saved_set_parity_set"
+        with _zip(live) as zf:
+            assert _root(zf) == "binderdash_designs"
 
     def test_saved_set_provenance_and_ui_state(self, api_client, sqlite_designs_repo) -> None:
         _seed()
         set_id = self._create_set(api_client)
         resp = api_client.get(f"/api/saved-sets/{set_id}/download")
         with _zip(resp) as zf:
-            manifest = json.loads(zf.read("manifest.json"))
-            session = json.loads(zf.read("binderdash_session.json"))
+            manifest = json.loads(_read(zf, "manifest.json"))
+            session = json.loads(_read(zf, "binderdash_session.json"))
 
         assert manifest["provenance"]["source"] == "saved_set"
         assert manifest["provenance"]["saved_set_id"] == set_id
@@ -263,7 +287,8 @@ class TestSavedSetDownloadParity:
         download = api_client.get(f"/api/saved-sets/{set_id}/download")
         assert download.status_code == 200, download.text
         with _zip(download) as zf:
-            session = json.loads(zf.read("binderdash_session.json"))
+            assert _root(zf) == "saved_set_legacy_set"
+            session = json.loads(_read(zf, "binderdash_session.json"))
         assert session["captured"] is False
         assert "before Binderdash recorded UI state" in session["note"]
 

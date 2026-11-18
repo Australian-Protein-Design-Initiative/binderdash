@@ -140,7 +140,8 @@ def test_no_cached_records_means_no_contacts_member(monkeypatch, sqlite_designs_
     finally:
         built.close()
     with zipfile.ZipFile(BytesIO(payload)) as zf:
-        names = set(zf.namelist())
+        names = {name.split("/", 1)[-1] for name in zf.namelist()}
+        assert {name.split("/", 1)[0] for name in zf.namelist()} == {"binderdash_designs"}
     assert "target_contacts.tsv" not in names
     assert "target_contacts_reference.json" not in names
 
@@ -163,7 +164,7 @@ def test_contacts_member_written_when_cached(monkeypatch, sqlite_designs_repo) -
     finally:
         built.close()
     with zipfile.ZipFile(BytesIO(payload)) as zf:
-        tsv = zf.read("target_contacts.tsv").decode().splitlines()
-        assert "target_contacts_reference.json" in zf.namelist()
+        tsv = zf.read("binderdash_designs/target_contacts.tsv").decode().splitlines()
+        assert "binderdash_designs/target_contacts_reference.json" in zf.namelist()
     assert tsv[0].split("\t")[:4] == ["run_id", "design_id", "source_path", "residue_label"]
     assert len(tsv) == 3

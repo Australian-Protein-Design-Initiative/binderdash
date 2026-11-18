@@ -397,13 +397,16 @@ class TestSavedSetsCrud:
 
         zf = zipfile.ZipFile(BytesIO(resp.content))
         names = zf.namelist()
-        assert "designs.tsv" in names
-        assert "manifest.json" in names
-        assert "designs.csv" not in names
-        structure_entries = [n for n in names if n.startswith("structures/")]
+        assert names
+        assert all(name.startswith("saved_set_Set_A/") for name in names)
+        relative = {name.split("/", 1)[1] for name in names}
+        assert "designs.tsv" in relative
+        assert "manifest.json" in relative
+        assert "designs.csv" not in relative
+        structure_entries = [n for n in relative if n.startswith("structures/")]
         assert len(structure_entries) == 10
 
-        header = zf.read("designs.tsv").decode().splitlines()[0]
+        header = zf.read("saved_set_Set_A/designs.tsv").decode().splitlines()[0]
         assert "design_id" in header
         assert "final_rank" in header
 

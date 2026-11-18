@@ -68,20 +68,23 @@ test.describe('Design bundle download', () => {
         ]);
 
         expect(download.suggestedFilename()).toMatch(/\.zip$/);
+        const folder = download.suggestedFilename().replace(/\.zip$/i, '');
 
         const zipPath = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'bd-bundle-')), 'bundle.zip');
         await download.saveAs(zipPath);
 
         const members = zipMembers(zipPath);
-        expect(members).toContain('manifest.json');
-        expect(members).toContain('designs.tsv');
-        expect(members).toContain('binderdash_session.json');
-        expect(members).toContain('README.txt');
+        // One folder, named after the download, so unzip does not scatter files.
+        expect(members.every((m) => m.startsWith(`${folder}/`))).toBe(true);
+        expect(members).toContain(`${folder}/manifest.json`);
+        expect(members).toContain(`${folder}/designs.tsv`);
+        expect(members).toContain(`${folder}/binderdash_session.json`);
+        expect(members).toContain(`${folder}/README.txt`);
         // The CSV variant stays a separate dropdown item; it is not in the bundle.
-        expect(members).not.toContain('designs.csv');
-        expect(members.some((m) => m.startsWith('schemas/'))).toBe(true);
+        expect(members).not.toContain(`${folder}/designs.csv`);
+        expect(members.some((m) => m.startsWith(`${folder}/schemas/`))).toBe(true);
 
-        const manifest = JSON.parse(zipRead(zipPath, 'manifest.json'));
+        const manifest = JSON.parse(zipRead(zipPath, `${folder}/manifest.json`));
         expect(manifest.bundle_kind).toBe('designs');
         expect(manifest.build.app_version).toBeTruthy();
         expect(manifest.coverage.designs).toBeGreaterThan(0);
@@ -90,7 +93,7 @@ test.describe('Design bundle download', () => {
             expect(entry.sha256).toMatch(/^[0-9a-f]{64}$/);
         }
 
-        const session = JSON.parse(zipRead(zipPath, 'binderdash_session.json'));
+        const session = JSON.parse(zipRead(zipPath, `${folder}/binderdash_session.json`));
         expect(session.kind).toBe('binderdash.session');
         expect(session.captured).toBe(true);
         expect(session.run_ids.length).toBeGreaterThan(0);
@@ -117,7 +120,8 @@ test.describe('Design bundle download', () => {
         await download.saveAs(zipPath);
 
         const sessionPath = path.join(tmpDir, 'binderdash_session.json');
-        const sessionText = zipRead(zipPath, 'binderdash_session.json');
+        const folder = download.suggestedFilename().replace(/\.zip$/i, '');
+        const sessionText = zipRead(zipPath, `${folder}/binderdash_session.json`);
         fs.writeFileSync(sessionPath, sessionText);
         const expected = JSON.parse(sessionText);
 
@@ -188,7 +192,8 @@ test.describe('Design bundle download', () => {
         const zipPath = path.join(tmpDir, 'bundle.zip');
         await download.saveAs(zipPath);
 
-        const sessionText = zipRead(zipPath, 'binderdash_session.json');
+        const folder = download.suggestedFilename().replace(/\.zip$/i, '');
+        const sessionText = zipRead(zipPath, `${folder}/binderdash_session.json`);
         const sessionPath = path.join(tmpDir, 'binderdash_session.json');
         fs.writeFileSync(sessionPath, sessionText);
 

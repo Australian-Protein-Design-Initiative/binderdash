@@ -134,7 +134,12 @@
             </div>
           </template>
 
-          <Column headerStyle="width: 3rem" :exportable="false">
+          <Column
+            headerStyle="width: 3rem"
+            :exportable="false"
+            headerClass="row-selection-cell"
+            bodyClass="row-selection-cell"
+          >
             <template #header>
               <Checkbox
                 :modelValue="designsStore.tableHeaderSelectionChecked"
@@ -1981,18 +1986,22 @@ const viewDesign = (design: any): void => {
 }
 
 const onRowClick = (event: any): void => {
-  // Only trigger view if the click wasn't on a button or checkbox
   const target = event.originalEvent.target as HTMLElement
   const isButton = target.closest('button') || target.closest('.p-button')
   const isCheckbox = target.closest('.p-checkbox') || target.closest('input[type="checkbox"]')
-  
-  // Don't trigger view if clicking on buttons or checkboxes
+  // Missing the checkbox but clicking its cell must toggle that row only — not
+  // call viewDesign, which replaces the whole selection with the clicked row.
+  const isSelectionCell = !!target.closest('td.row-selection-cell')
+
+  if (isSelectionCell) {
+    if (!isCheckbox) {
+      const checked = designsStore.isDesignSelected(event.data)
+      designsStore.toggleDesignSelected(event.data, !checked)
+    }
+    return
+  }
+
   if (!isButton && !isCheckbox) {
-    // Prevent the default row selection behavior
-    event.originalEvent.preventDefault()
-    event.originalEvent.stopPropagation()
-    
-    // Just view the design without affecting selection
     viewDesign(event.data)
   }
 }

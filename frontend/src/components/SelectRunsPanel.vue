@@ -53,6 +53,8 @@
 
     <DataTable
       v-model:selection="tableSelection"
+      selectionMode="multiple"
+      :metaKeySelection="false"
       v-model:filters="filters"
       :value="dataForTable"
       data-key="run_id"
@@ -249,6 +251,8 @@
 
     <DataTable
       v-model:selection="savedSetSelection"
+      selectionMode="multiple"
+      :metaKeySelection="false"
       :value="filteringStore.savedSets"
       data-key="id"
       stripedRows

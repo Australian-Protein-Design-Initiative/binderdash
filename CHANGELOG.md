@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Designs / tables**: Clicking the row-selection cell (not only the checkbox) toggles that row. On Designs, missing the checkbox no longer replaces a multi-selection with the single clicked design; Select Runs and Ingest scan-result tables use the same checkbox-style toggle for selection-cell / row clicks.
 - **Downloads**: A design bundle zip unpacks into one folder named after the download (the order name, or `saved_set_<name>`), instead of scattering `designs.tsv`, `structures/` and the rest into the current directory.
 - **Sequence prep / DNA optimisation**: A custom nucleotide addition that is not a whole number of codons is kept as literal DNA during optimisation, instead of being recoded as amino acids, so the design and tag reading frame stays aligned with the construct.
 

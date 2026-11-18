@@ -587,6 +587,14 @@ p, span, div, label, input, textarea, select, button, a, h1, h2, h3, h4, h5, h6 
   border-bottom: 1px solid #dee2e6 !important;
 }
 
+/* Selection column: whole-cell clicks toggle the row (see DesignsView / metaKeySelection) */
+.p-datatable td[data-p-selection-column="true"],
+.p-datatable th[data-p-selection-column="true"],
+.p-datatable td.row-selection-cell,
+.p-datatable th.row-selection-cell {
+  cursor: pointer;
+}
+
 .p-datatable .p-datatable-tbody > tr > td {
   color: #495057 !important;
   border-bottom: 1px solid #f1f3f4 !important;

@@ -59,6 +59,7 @@
         :value="folderStore.scanResults" 
         v-model:selection="folderStore.selectedRuns"
         selectionMode="multiple"
+        :metaKeySelection="false"
         dataKey="run_id"
         stripedRows
         paginator

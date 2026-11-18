@@ -6,7 +6,7 @@
 
 Point it at the output folders from your design runs and it presents the scores and structures in one interface. Filter, rank and export ready-to-order DNA constructs.
 
-[Documentation](https://pansapiens.github.io/binderdash/) · [Download the desktop app](https://github.com/pansapiens/binderdash/releases/latest) · [Changelog](CHANGELOG.md)
+[Documentation](https://australian-protein-design-initiative.github.io/binderdash/) · [Download the desktop app](https://github.com/Australian-Protein-Design-Initiative/binderdash/releases/latest) · [Changelog](CHANGELOG.md)
 
 ## Features
 
@@ -25,7 +25,7 @@ Point it at the output folders from your design runs and it presents the scores 
 
 ### Desktop
 
-Download the build for your platform from the **[latest release](https://github.com/pansapiens/binderdash/releases/latest)**:
+Download the build for your platform from the **[latest release](https://github.com/Australian-Protein-Design-Initiative/binderdash/releases/latest)**:
 
 | Platform | File |
 | --- | --- |
@@ -33,14 +33,14 @@ Download the build for your platform from the **[latest release](https://github.
 | macOS (Apple silicon) | `Binderdash-<version>-macos-arm64.zip` |
 | Windows (64-bit) | `Binderdash-<version>-win64.zip` |
 
-Start the app, open **Ingest Runs**, choose the folder that contains your design runs, and ingest them. See [Desktop app](https://pansapiens.github.io/binderdash/latest/setup/desktop/) for platform notes (the builds are not code-signed, so macOS and Windows will ask you to confirm the first launch).
+Start the app, open **Ingest Runs**, choose the folder that contains your design runs, and ingest them. See [Desktop app](https://australian-protein-design-initiative.github.io/binderdash/latest/setup/desktop/) for platform notes (the builds are not code-signed, so macOS and Windows will ask you to confirm the first launch).
 
 ### Server
 
 For a shared instance, run Binderdash with Docker Compose. It ships with a Caddy reverse proxy that handles HTTPS.
 
 ```bash
-git clone https://github.com/pansapiens/binderdash.git
+git clone https://github.com/Australian-Protein-Design-Initiative/binderdash.git
 cd binderdash
 cp .env.example .env        # then edit: RUN_BASE_DIRS, DOMAIN and sign-in settings
 printf 'BINDERDASH_UID=%s\nBINDERDASH_GID=%s\n' "$(id -u)" "$(id -g)" >> .env   # run as you
@@ -49,15 +49,15 @@ docker compose up -d --build
 
 Mount your run directories into the `binderdash` service in `docker-compose.yml` (read-only is fine) and list the in-container paths in `RUN_BASE_DIRS`. Then open `https://<DOMAIN>` (or `https://localhost`).
 
-The example `.env` has authentication turned off. Before exposing the server to other people, set up sign-in as described in [Authentication](https://pansapiens.github.io/binderdash/latest/setup/authentication/). Full deployment details are in [Docker deployment](https://pansapiens.github.io/binderdash/latest/setup/docker/).
+The example `.env` has authentication turned off. Before exposing the server to other people, set up sign-in as described in [Authentication](https://australian-protein-design-initiative.github.io/binderdash/latest/setup/authentication/). Full deployment details are in [Docker deployment](https://australian-protein-design-initiative.github.io/binderdash/latest/setup/docker/).
 
 ## Documentation
 
-The full documentation is at **<https://pansapiens.github.io/binderdash/>**, covering:
+The full documentation is at **<https://australian-protein-design-initiative.github.io/binderdash/>**, covering:
 
-- [Filtering and ranking](https://pansapiens.github.io/binderdash/latest/usage/filtering-ranking/)
-- [Docker deployment](https://pansapiens.github.io/binderdash/latest/setup/docker/) and [authentication](https://pansapiens.github.io/binderdash/latest/setup/authentication/)
-- The [REST API](https://pansapiens.github.io/binderdash/latest/development/api/) and [MCP server](https://pansapiens.github.io/binderdash/latest/development/mcp/) for scripted and agent access
+- [Filtering and ranking](https://australian-protein-design-initiative.github.io/binderdash/latest/usage/filtering-ranking/)
+- [Docker deployment](https://australian-protein-design-initiative.github.io/binderdash/latest/setup/docker/) and [authentication](https://australian-protein-design-initiative.github.io/binderdash/latest/setup/authentication/)
+- The [REST API](https://australian-protein-design-initiative.github.io/binderdash/latest/development/api/) and [MCP server](https://australian-protein-design-initiative.github.io/binderdash/latest/development/mcp/) for scripted and agent access
 
 ## Development
 

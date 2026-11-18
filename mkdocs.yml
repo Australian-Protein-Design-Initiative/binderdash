@@ -1,7 +1,7 @@
 site_name: Binderdash
 site_description: Filtering, ranking and construct design for de novo protein binders
-site_url: https://pansapiens.github.io/binderdash/
-repo_url: https://github.com/pansapiens/binderdash
+site_url: https://australian-protein-design-initiative.github.io/binderdash/
+repo_url: https://github.com/Australian-Protein-Design-Initiative/binderdash
 edit_uri: edit/main/docs/
 
 docs_dir: docs
@@ -44,7 +44,7 @@ nav:
       - Sequence preparation: development/sequence_preparation.md
       - Storage architecture: development/storage.md
       - Download bundles: development/download-bundles.md
-  - Release history: https://github.com/pansapiens/binderdash/blob/main/CHANGELOG.md
+  - Release history: https://github.com/Australian-Protein-Design-Initiative/binderdash/blob/main/CHANGELOG.md
 
 plugins:
   - search

@@ -21,7 +21,7 @@ Point it at the output folders from your design runs and it presents the scores 
 
 ## Getting started
 
-- **[Desktop app](setup/desktop.md)**: download a build for Linux, macOS or Windows from the [latest release](https://github.com/pansapiens/binderdash/releases/latest). Best for one person exploring runs on their own machine.
+- **[Desktop app](setup/desktop.md)**: download a build for Linux, macOS or Windows from the [latest release](https://github.com/Australian-Protein-Design-Initiative/binderdash/releases/latest). Best for one person exploring runs on their own machine.
 - **[Server with Docker](setup/docker.md)**: host one instance for a group, with HTTPS and [sign-in](setup/authentication.md).
 
 ## For developers
@@ -30,4 +30,4 @@ Point it at the output folders from your design runs and it presents the scores 
 - [REST API](development/api.md) and [MCP server](development/mcp.md)
 - [Adding a pipeline method type](development/pipeline-methods.md)
 
-Source code, issues and releases are on [GitHub](https://github.com/pansapiens/binderdash).
+Source code, issues and releases are on [GitHub](https://github.com/Australian-Protein-Design-Initiative/binderdash).

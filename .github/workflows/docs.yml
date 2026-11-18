@@ -8,12 +8,12 @@ on:
       - 'v*'
   workflow_dispatch:
 
-# main, develop and version tags all deploy to the same gh-pages branch, so their
-# runs must not overlap. The default per-ref group would not help here: the refs
-# differ, the branch they write to does not. cancel-in-progress is false so a
-# queued deploy waits its turn instead of being dropped.
+# main, develop and version tags all push the same gh-pages branch. One shared
+# group queues them, and GitHub keeps only the newest pending run, so a tag
+# push cancelled the develop deploy before it started. One group per ref lets
+# those deploys run together; the retry below absorbs the push race.
 concurrency:
-  group: docs-deploy
+  group: docs-deploy-${{ github.ref }}
   cancel-in-progress: false
 
 permissions:

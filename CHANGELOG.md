@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Docs**: The documentation site and repository links now point at [Australian-Protein-Design-Initiative/binderdash](https://github.com/Australian-Protein-Design-Initiative/binderdash). The published docs are at <https://australian-protein-design-initiative.github.io/binderdash/>.
 - **MCP**: `read_structure_file` stays size-capped. A file over the cap is an error that includes a download URL, so the file is parsed locally rather than returned in the tool result. `structure_url` on design-table rows has no download token.
 
 ### Fixed

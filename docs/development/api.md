@@ -2,7 +2,7 @@
 
 Binderdash exposes a FastAPI REST API used by the Vue frontend and by scripts that analyse binder design runs. The same service also serves the built SPA and static assets.
 
-Pipeline outputs (BindCraft, RFdiffusion, RFdiffusion3, BoltzGen, and others recognised by [run signatures](https://github.com/pansapiens/binderdash/blob/main/backend/config/run_signatures.py)) are ingested into SQLite (or Postgres), cached in memory, and returned as JSON. Design rows include every column from the upstream results table plus Binderdash metadata.
+Pipeline outputs (BindCraft, RFdiffusion, RFdiffusion3, BoltzGen, and others recognised by [run signatures](https://github.com/Australian-Protein-Design-Initiative/binderdash/blob/main/backend/config/run_signatures.py)) are ingested into SQLite (or Postgres), cached in memory, and returned as JSON. Design rows include every column from the upstream results table plus Binderdash metadata.
 
 For machine-readable schemas, use the live OpenAPI document on your deployment. This page describes behaviour, authentication, and typical workflows.
 
@@ -511,4 +511,4 @@ Deleting a run (`DELETE /api/runs/{run_id}`) removes database and cache entries 
 - [Pipeline method types](pipeline-methods.md) — run signatures, score columns, structure paths
 - [Sequence preparation](sequence_preparation.md) — short names, hashing, UI behaviour
 - [Download bundles](download-bundles.md) — bundle contents, JSON schema versioning, restore
-- Agent-oriented quick reference: [`skills/binderdash-api/SKILL.md`](https://github.com/pansapiens/binderdash/blob/main/skills/binderdash-api/SKILL.md)
+- Agent-oriented quick reference: [`skills/binderdash-api/SKILL.md`](https://github.com/Australian-Protein-Design-Initiative/binderdash/blob/main/skills/binderdash-api/SKILL.md)

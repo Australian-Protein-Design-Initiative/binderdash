@@ -4,7 +4,7 @@ The desktop app is the full Binderdash interface in a native window, for use on 
 
 ## Download and install
 
-Download the file for your platform from the [latest release](https://github.com/pansapiens/binderdash/releases/latest).
+Download the file for your platform from the [latest release](https://github.com/Australian-Protein-Design-Initiative/binderdash/releases/latest).
 
 The builds are not code-signed, so macOS and Windows ask you to confirm the first launch.
 

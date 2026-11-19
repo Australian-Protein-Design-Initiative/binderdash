@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><link rel="canonical" href="https://australian-protein-design-initiative.github.io/binderdash/latest/admin/backup-restore/" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>Backup and restore - Binderdash</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+        <link href="../../styles.purple.css" rel="stylesheet" />
+        <link href="../../css/version-select.css" rel="stylesheet" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Backup and restore";
+        var mkdocs_page_input_path = "admin/backup-restore.md";
+        var mkdocs_page_url = "/binderdash/latest/admin/backup-restore/";
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/yaml.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/json.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/python.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/bash.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/nginx.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/http.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> Binderdash
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../..">Home</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Getting started</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../setup/desktop/">Desktop app</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../setup/docker/">Docker deployment</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../setup/authentication/">Authentication</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Usage</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../usage/filtering-ranking/">Filtering and ranking</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Administration</span></p>
+              <ul class="current">
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Backup and restore</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#files-to-back-up">Files to back up</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#database">Database</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#run-output-directories">Run output directories</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#env">.env</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#caddy-certificates">Caddy certificates</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#desktop-app">Desktop app</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#browser-local-state">Browser-local state</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#taking-a-database-backup">Taking a database backup</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#online-backup-service-running">Online backup (service running)</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#offline-backup-service-stopped">Offline backup (service stopped)</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#verifying-a-backup">Verifying a backup</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#restoring">Restoring</a>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../database-migrations/">Database migrations</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Development</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../development/setup/">Development setup</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../development/api/">REST API</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../development/mcp/">MCP server</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../development/pipeline-methods/">Pipeline method types</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../development/sequence_preparation/">Sequence preparation</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../development/storage/">Storage architecture</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../development/download-bundles/">Download bundles</a>
+                  </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="" href="https://github.com/Australian-Protein-Design-Initiative/binderdash/blob/main/CHANGELOG.md">Release history</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">Binderdash</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Administration</li>
+      <li class="breadcrumb-item active">Backup and restore</li>
+    <li class="wy-breadcrumbs-aside">
+          <a href="https://github.com/Australian-Protein-Design-Initiative/binderdash/edit/main/docs/admin/backup-restore.md" class="icon icon-github"> Edit on GitHub</a>
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="backup-and-restore">Backup and restore<a class="headerlink" href="#backup-and-restore" title="Permanent link">&para;</a></h1>
+<p>Binderdash stores server state in a SQLite database, your run output directories, and configuration files. For full details on each storage location, see <a href="../../development/storage/">Storage architecture</a>.</p>
+<h2 id="files-to-back-up">Files to back up<a class="headerlink" href="#files-to-back-up" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Docker Compose path</th>
+<th>Non-Docker server path</th>
+<th>Back up</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SQLite database</td>
+<td><code>./data/binderdash.sqlite</code> on the host (<code>/app/data</code> in the container)</td>
+<td>The path in <code>DATABASE</code>, or <code>backend/data/binderdash.sqlite</code> if <code>DATABASE</code> is unset</td>
+<td><strong>Yes, essential</strong></td>
+</tr>
+<tr>
+<td>Run output directories</td>
+<td>The host directories mounted into the container and listed in <code>RUN_BASE_DIRS</code></td>
+<td>The directories in <code>RUN_BASE_DIRS</code></td>
+<td><strong>Yes</strong>, if not already covered by your storage backups</td>
+</tr>
+<tr>
+<td><code>.env</code></td>
+<td><code>./.env</code></td>
+<td><code>./.env</code></td>
+<td><strong>Yes</strong> (contains secrets, store it securely)</td>
+</tr>
+<tr>
+<td><code>docker-compose.yml</code>, <code>Caddyfile</code></td>
+<td>Repository root</td>
+<td>-</td>
+<td>Yes, if you have edited them</td>
+</tr>
+<tr>
+<td>Caddy TLS certificates</td>
+<td><code>caddy_data</code> Docker volume</td>
+<td>-</td>
+<td>Optional</td>
+</tr>
+</tbody>
+</table>
+<p>Other server files do not need backups: bundle downloads are created in a temporary spool directory and deleted after transfer, and the built frontend is packaged in the container image.</p>
+<h3 id="database">Database<a class="headerlink" href="#database" title="Permanent link">&para;</a></h3>
+<p>Some data exists only in the database and cannot be reconstructed from run folders:</p>
+<ul>
+<li>Saved Sets and their frozen design lists.</li>
+<li>Per-design annotations made in the UI or via the API/MCP (<code>tag</code> and <code>good</code> flags, short names, edited sequences and binder chains, and columns merged from extra TSV/CSV files).</li>
+<li>Users, login identities, and API keys (keys are stored as SHA-256 hashes, so clients must create new keys if this table is lost).</li>
+</ul>
+<p>The database also stores ingested run and design rows along with cached metrics (tag placement, structural metrics, and target contacts). You can rebuild those tables by re-scanning and re-ingesting the runs, though recomputing metrics is slow on large installations and does not recover the annotations above.</p>
+<p>The backup contains user email addresses, so store it with the same access controls as <code>.env</code>.</p>
+<h3 id="run-output-directories">Run output directories<a class="headerlink" href="#run-output-directories" title="Permanent link">&para;</a></h3>
+<p>Binderdash opens run folders read-only and does not modify them. Because these directories are usually large and managed by your pipeline storage, they may already have separate backups. When restoring them:</p>
+<ul>
+<li>Restore runs to their original paths. The database records absolute paths into these directories; if the paths change, design rows remain visible, but Mol* viewing and structure downloads fail.</li>
+<li>Restore the directories (and their Docker volume mounts) before starting Binderdash. Run files are served only from inside <code>RUN_BASE_DIRS</code>, and startup fails if any <code>RUN_BASE_DIRS</code> directory is missing.</li>
+</ul>
+<h3 id="env"><code>.env</code><a class="headerlink" href="#env" title="Permanent link">&para;</a></h3>
+<p><code>.env</code> defines <code>SECRET_KEY</code>, <code>LOCAL_USERS</code> password hashes, the Google OAuth client secret, <code>BINDERDASH_ADMIN_USERS</code>, <code>DATABASE</code>, and <code>RUN_BASE_DIRS</code>. If <code>SECRET_KEY</code> changes, active browser sessions and outstanding download links become invalid and users must log in again. Stored data and API keys are unaffected.</p>
+<p>When <code>SECRET_KEY</code> is unset, Binderdash generates a random key on startup, invalidating existing sessions on restart. Set <code>SECRET_KEY</code> explicitly in production.</p>
+<h3 id="caddy-certificates">Caddy certificates<a class="headerlink" href="#caddy-certificates" title="Permanent link">&para;</a></h3>
+<p>The <code>caddy_data</code> volume stores the TLS certificates obtained by Caddy. Backing it up is optional because Caddy requests new certificates automatically if the volume is missing, though keeping the volume avoids certificate authority rate limits during repeated rebuilds.</p>
+<h3 id="desktop-app">Desktop app<a class="headerlink" href="#desktop-app" title="Permanent link">&para;</a></h3>
+<p>The desktop app stores its database, settings (<code>desktop.json</code>), and log in a per-user directory:</p>
+<ul>
+<li>Linux: <code>~/.local/share/binderdash/</code> (or <code>$XDG_DATA_HOME/binderdash/</code>)</li>
+<li>macOS: <code>~/Library/Application Support/Binderdash/</code></li>
+<li>Windows: <code>%LOCALAPPDATA%\Binderdash\</code></li>
+</ul>
+<p>Back up <code>binderdash.sqlite</code> (plus <code>-wal</code> if present, see below) and <code>desktop.json</code>.</p>
+<h3 id="browser-local-state">Browser-local state<a class="headerlink" href="#browser-local-state" title="Permanent link">&para;</a></h3>
+<p>Table layouts, column choices, unsaved filter settings, and similar UI state are stored in each user's browser (IndexedDB). Server backups do not include this state, and restoring a server does not affect it.</p>
+<h2 id="taking-a-database-backup">Taking a database backup<a class="headerlink" href="#taking-a-database-backup" title="Permanent link">&para;</a></h2>
+<p>SQLite runs in WAL mode, so recent writes may still be in <code>binderdash.sqlite-wal</code> instead of the main database file. <strong>Do not copy <code>binderdash.sqlite</code> directly while the server is running</strong>: the copy can miss recent writes or become inconsistent.</p>
+<h3 id="online-backup-service-running">Online backup (service running)<a class="headerlink" href="#online-backup-service-running" title="Permanent link">&para;</a></h3>
+<p>SQLite's online backup API writes a consistent snapshot without stopping Binderdash. The container image does not include the <code>sqlite3</code> CLI, so use Python's <code>sqlite3</code> module:</p>
+<pre class="highlight"><code class="language-bash">docker compose exec binderdash python -c \
+  "import sqlite3,sys; sqlite3.connect(sys.argv[1]).backup(sqlite3.connect(sys.argv[2]))" \
+  /app/data/binderdash.sqlite /app/data/binderdash-backup.sqlite</code></pre>
+<p>This writes <code>./data/binderdash-backup.sqlite</code> on the host. Move it out of <code>./data</code> to your off-host backup storage.</p>
+<p>If you run Binderdash directly on a host, or have the <code>sqlite3</code> CLI installed on the Docker host:</p>
+<pre class="highlight"><code class="language-bash">sqlite3 data/binderdash.sqlite ".backup /path/to/backups/binderdash-$(date +%F).sqlite"</code></pre>
+<p>Both commands are safe to schedule with cron.</p>
+<h3 id="offline-backup-service-stopped">Offline backup (service stopped)<a class="headerlink" href="#offline-backup-service-stopped" title="Permanent link">&para;</a></h3>
+<p>Stop the service (<code>docker compose stop binderdash</code>), then copy <code>binderdash.sqlite</code> and, if present, <code>binderdash.sqlite-wal</code>. You do not need to copy the <code>-shm</code> file.</p>
+<h3 id="verifying-a-backup">Verifying a backup<a class="headerlink" href="#verifying-a-backup" title="Permanent link">&para;</a></h3>
+<pre class="highlight"><code class="language-bash">python3 -c "import sqlite3,sys; print(sqlite3.connect(sys.argv[1]).execute('PRAGMA integrity_check').fetchone()[0])" \
+  binderdash-backup.sqlite</code></pre>
+<p>This prints <code>ok</code> when the database passes SQLite's integrity check.</p>
+<h2 id="restoring">Restoring<a class="headerlink" href="#restoring" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Stop the service with <code>docker compose stop binderdash</code> (or stop the server process).</li>
+<li>If <code>.env</code> or the run directories were lost, restore them to their original paths.</li>
+<li>
+<p><strong>Delete any leftover <code>-wal</code> and <code>-shm</code> files</strong> before replacing the database file. Applying a stale WAL file from the previous database to a restored snapshot can corrupt the database.</p>
+<pre class="highlight"><code class="language-bash">rm -f data/binderdash.sqlite-wal data/binderdash.sqlite-shm
+cp /path/to/backups/binderdash-2026-11-20.sqlite data/binderdash.sqlite</code></pre>
+</li>
+<li>
+<p>Check file ownership: under Docker Compose, <code>BINDERDASH_UID:BINDERDASH_GID</code> must have write permission (see <a href="../../setup/docker/#container-user">Docker deployment</a>).</p>
+</li>
+<li>Start the service with <code>docker compose start binderdash</code>.</li>
+</ol>
+<p>At startup, Binderdash loads all runs and designs from the database into memory, making restored data immediately available. Backups from older Binderdash versions are upgraded automatically on startup (see <a href="../database-migrations/">Database migrations</a>). Restoring a backup from a <strong>newer</strong> Binderdash version onto an older version is not supported.</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../../usage/filtering-ranking/" class="btn btn-neutral float-left" title="Filtering and ranking"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../database-migrations/" class="btn btn-neutral float-right" title="Database migrations">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+        <span>
+          <a href="https://github.com/Australian-Protein-Design-Initiative/binderdash" class="fa fa-github" style="color: #fcfcfc"> GitHub</a>
+        </span>
+    
+    
+      <span><a href="../../usage/filtering-ranking/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../database-migrations/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+      <script src="../../js/mermaid-init.mjs" type="module"></script>
+      <script src="../../search/main.js"></script>
+      <script src="../../js/version-select.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

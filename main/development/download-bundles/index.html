@@ -65,6 +65,13 @@
                   <li class="toctree-l1"><a class="reference internal" href="../../usage/filtering-ranking/">Filtering and ranking</a>
                   </li>
               </ul>
+              <p class="caption"><span class="caption-text">Administration</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../admin/backup-restore/">Backup and restore</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../admin/database-migrations/">Database migrations</a>
+                  </li>
+              </ul>
               <p class="caption"><span class="caption-text">Development</span></p>
               <ul class="current">
                   <li class="toctree-l1"><a class="reference internal" href="../setup/">Development setup</a>
@@ -81,11 +88,11 @@
                   </li>
                   <li class="toctree-l1 current"><a class="reference internal current" href="#">Download bundles</a>
     <ul class="current">
-    <li class="toctree-l2"><a class="reference internal" href="#what-the-scope-is">What the scope is</a>
+    <li class="toctree-l2"><a class="reference internal" href="#scope">Scope</a>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#contents">Contents</a>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#target-contacts-are-never-computed-on-download">Target contacts are never computed on download</a>
+    <li class="toctree-l2"><a class="reference internal" href="#cached-target-contacts">Cached target contacts</a>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#versioning">Versioning</a>
     </li>
@@ -128,11 +135,8 @@
             <div class="section" itemprop="articleBody">
               
                 <h1 id="download-bundles">Download bundles<a class="headerlink" href="#download-bundles" title="Permanent link">&para;</a></h1>
-<p>A <strong>design bundle</strong> is a single zip holding the data of a download <em>and</em> the interface
-state that produced it. The goal is that a folder of PDBs and sequences found six months
-later can still be explained - which runs, which filters, which ranking, which tags - and,
-where the runs still exist, restored.</p>
-<p>Three places produce one, all through the same builder (<code>backend/bundles/</code>):</p>
+<p>A <strong>design bundle</strong> is a single zip archive containing downloaded design data and the UI state that produced it. You can inspect which runs, filters, ranking settings, and tags generated a folder of PDBs and sequences months later, and restore that state if the runs are still available.</p>
+<p>Three endpoints build bundles through <code>backend/bundles/</code>:</p>
 <table>
 <thead>
 <tr>
@@ -155,17 +159,11 @@ where the runs still exist, restored.</p>
 </tr>
 </tbody>
 </table>
-<p>A pre-flight <code>POST /api/bundles/estimate</code> returns counts and byte sizes without reading
-any structure file, so the UI can warn before a large download.</p>
-<h2 id="what-the-scope-is">What the scope is<a class="headerlink" href="#what-the-scope-is" title="Permanent link">&para;</a></h2>
-<p>The bundle covers <strong>the rows currently in the Designs table</strong> - the selected designs if
-any, otherwise the filtered designs. It is not every design in the selected runs.</p>
+<p>Call <code>POST /api/bundles/estimate</code> beforehand to get counts and byte sizes without reading structure files, allowing the UI to warn before a large download.</p>
+<h2 id="scope">Scope<a class="headerlink" href="#scope" title="Permanent link">&para;</a></h2>
+<p>A bundle includes <strong>the rows currently in the Designs table</strong>: the selected designs if any are checked, or all filtered designs otherwise. It does not include unselected or filtered-out designs from the active runs.</p>
 <h2 id="contents">Contents<a class="headerlink" href="#contents" title="Permanent link">&para;</a></h2>
-<p>Everything sits in one folder named after the download — the same name as the zip
-file. That name is the order name (Prepare Sequences) or the saved-set name
-(<code>saved_set_&lt;name&gt;</code>). A Designs-tab download that is neither uses <code>binderdash_designs</code>.
-Extracting the archive creates that folder instead of scattering files into the
-current directory.</p>
+<p>All files are placed inside a single top-level folder matching the zip filename: the order name for Prepare Sequences, <code>saved_set_&lt;name&gt;</code> for a Saved Set, or <code>binderdash_designs</code> for a plain Designs-tab download. Extracting the archive creates that folder instead of unpacking files into the current directory.</p>
 <pre class="highlight"><code>&lt;order_or_set_name&gt;/
   manifest.json                   build info, file inventory with sha256, coverage counts
   designs.tsv                     one row per design, every column Binderdash holds
@@ -176,76 +174,33 @@ current directory.</p>
   structures/rank0001_&lt;run&gt;_&lt;name&gt;.pdb
   schemas/*.schema.json           JSON Schema for each JSON member
   README.txt</code></pre>
-<p>Prepare Sequences adds <code>constructs.tsv</code>, <code>constructs_aa.fasta</code>, <code>constructs_dna.fasta</code>,
-<code>constructs_twist_aa.csv</code>, <code>constructs_twist_dna.csv</code> and <code>prepare_sequences.json</code>.</p>
-<p>The member list does not depend on which entry point produced the bundle. A saved set
-created before UI state was recorded still emits <code>binderdash_session.json</code>, with
-<code>"captured": false</code> and a note explaining why it is empty.</p>
-<p>Only TSV: the Designs tab still offers a CSV download separately, but carrying the same
-rows twice in two delimiters inside one archive earns nothing. <code>constructs_twist_aa.csv</code>
-and <code>constructs_twist_dna.csv</code> are exceptions because they are Twist vendor upload formats
-(amino acid and nucleotide) rather than a general table. The nucleotide file is omitted,
-with a manifest warning, when no optimised DNA is available.</p>
-<h2 id="target-contacts-are-never-computed-on-download">Target contacts are never computed on download<a class="headerlink" href="#target-contacts-are-never-computed-on-download" title="Permanent link">&para;</a></h2>
-<p><code>target_contacts.tsv</code> holds whatever is already in <code>binderdash_target_contacts_cache</code> for
-the bundled designs. A SASA computation is minutes-scale, so a download must not start
-one. Designs with no cached record are reported in <code>manifest.json</code> under
-<code>coverage.designs_without_contacts</code>, alongside <code>coverage.contact_params_key</code> - records
-cached under an older parameter key are invisible to the reader and must not be counted
-as covered.</p>
-<p><code>sasa_apo</code> comes from the per-run reference map, <strong>except</strong> for a run whose target moves
-between designs, where the per-design record carries its own value and that one wins.
-Using the shared reference there would give the wrong delta for exactly the runs where it
-matters.</p>
+<p>Prepare Sequences adds <code>constructs.tsv</code>, <code>constructs_aa.fasta</code>, <code>constructs_dna.fasta</code>, <code>constructs_twist_aa.csv</code>, <code>constructs_twist_dna.csv</code>, and <code>prepare_sequences.json</code>.</p>
+<p>Every entry point writes the same core member list. A saved set created before UI state recording was added still includes <code>binderdash_session.json</code>, with <code>"captured": false</code> and a note explaining why it is empty.</p>
+<p>General tables use TSV only; the Designs tab still offers a separate CSV download, so duplicating rows in both delimiters inside the archive is unnecessary. <code>constructs_twist_aa.csv</code> and <code>constructs_twist_dna.csv</code> use CSV because they are Twist vendor upload formats (amino acid and nucleotide). If no optimised DNA is available, <code>constructs_twist_dna.csv</code> is omitted and a warning is added to the manifest.</p>
+<h2 id="cached-target-contacts">Cached target contacts<a class="headerlink" href="#cached-target-contacts" title="Permanent link">&para;</a></h2>
+<p><code>target_contacts.tsv</code> exports only records already present in <code>binderdash_target_contacts_cache</code> for the bundled designs. Computing SASA takes minutes, so downloads do not trigger it. Designs missing a cached record are listed in <code>manifest.json</code> under <code>coverage.designs_without_contacts</code>, alongside <code>coverage.contact_params_key</code> (records cached under an older parameter key are not readable by the current configuration and are excluded from coverage counts).</p>
+<p><code>sasa_apo</code> is read from the per-run reference map, except when a run's target moves between designs; in that case the per-design record provides its own <code>sasa_apo</code> value and overrides the shared reference so the SASA delta stays accurate.</p>
 <h2 id="versioning">Versioning<a class="headerlink" href="#versioning" title="Permanent link">&para;</a></h2>
-<p>Every JSON member carries <code>schema_version</code>, a <code>kind</code> discriminator, and the app version
-and git commit that wrote it. Bump the <strong>major</strong> only on a breaking change (a field
-removed or retyped); additive optional fields bump the minor. Readers reject a major above
-the one they know and ignore unknown keys.</p>
-<p>Schemas are generated from the Pydantic models at request time
-(<code>backend/bundles/json_schemas.py</code>), so a schema cannot disagree with the data beside it.
-What that does not catch is a model changing without anyone bumping a version, so
-<code>backend/tests/test_bundle_schemas.py</code> compares each generated schema against a golden
-snapshot under <code>backend/tests/fixtures/bundle_schemas/</code>. A failure there means: decide
-whether the change was additive (regenerate the golden, bump the minor) or breaking (new
-golden file, bump the major, keep the old one).</p>
-<p><code>SessionState</code> and <code>PrepareSequencesPayload</code> use <code>extra="allow"</code>. They mirror Pinia stores
-that move faster than the backend, and a download failing with a 422 because the frontend
-gained a field would be a poor trade for strictness on data the backend only passes
-through. Presentational fields (coloured segment spans, display duplicates) are accepted
-on input but stripped before writing - the archive should be data, not a snapshot of one
-UI's rendering.</p>
+<p>Every JSON member includes <code>schema_version</code>, a <code>kind</code> discriminator, and the app version and git commit that generated it. Increment the <strong>major</strong> version only for breaking changes (removing or retyping a field); increment the minor version for additive optional fields. Readers reject any major version higher than the one they support and ignore unknown keys.</p>
+<p><code>backend/bundles/json_schemas.py</code> generates schemas from the Pydantic models at request time so each schema matches its corresponding JSON data. To detect unversioned model changes, <code>backend/tests/test_bundle_schemas.py</code> compares each generated schema against a golden snapshot in <code>backend/tests/fixtures/bundle_schemas/</code>. When that test fails, check whether the change is additive (regenerate the golden snapshot and increment the minor version) or breaking (add a new golden file, increment the major version, and keep the previous snapshot).</p>
+<p><code>SessionState</code> and <code>PrepareSequencesPayload</code> use <code>extra="allow"</code> because they mirror Pinia stores that change independently of the backend, and rejecting a download with HTTP 422 over an extra pass-through frontend field would break exports unnecessarily. Presentational fields (coloured segment spans, display duplicates) are accepted on input and stripped before writing so the archive stores data only.</p>
 <h2 id="build-identity">Build identity<a class="headerlink" href="#build-identity" title="Permanent link">&para;</a></h2>
-<p><code>backend/version.py</code> resolves the app version and commit in this order: the
-<code>BINDERDASH_GIT_COMMIT</code> env var (set as a Docker build arg), then
-<code>backend/_build_info.json</code> (written by <code>desktop/packaging/build-common.sh</code>, the only
-mechanism that works in a PyInstaller build where there is no <code>.git</code>), then
-<code>git rev-parse</code> in a source checkout, then unknown. It is resolved lazily and cached, so
-the subprocess runs at most once per process and only if a bundle is actually built.</p>
+<p><code>backend/version.py</code> resolves the app version and commit in this order:</p>
+<ol>
+<li>The <code>BINDERDASH_GIT_COMMIT</code> environment variable (set as a Docker build arg).</li>
+<li><code>backend/_build_info.json</code> (written by <code>desktop/packaging/build-common.sh</code> for PyInstaller builds that have no <code>.git</code> directory).</li>
+<li><code>git rev-parse</code> in a source checkout.</li>
+<li><code>unknown</code>.</li>
+</ol>
+<p>Resolution is lazy and cached, so the git subprocess runs at most once per process and only when a bundle is built.</p>
 <h2 id="memory-and-size">Memory and size<a class="headerlink" href="#memory-and-size" title="Permanent link">&para;</a></h2>
-<p>The zip is built into a <code>tempfile.SpooledTemporaryFile</code> (32 MB in RAM, then spilling to
-disk) and streamed with a real <code>Content-Length</code>. A generator-based zip writer would avoid
-the temp file but loses the length header, turns a mid-archive exception into a truncated
-zip delivered with a 200, and saves no memory, since structure files stream either way.</p>
-<p><code>BUNDLE_SPOOL_DIR</code> matters on the desktop app, where <code>/tmp</code> is often tmpfs - i.e. RAM -
-which would silently defeat the spill.</p>
-<p>The caps (<code>BUNDLE_MAX_STRUCTURE_FILES</code>, <code>BUNDLE_MAX_STRUCTURE_BYTES</code>,
-<code>BUNDLE_MAX_TOTAL_BYTES</code>) guard against a runaway request rather than normal use, and
-return 413 with the measured estimate. The UI's own warning threshold is lower and is
-about the browser: <code>response.blob()</code> holds the whole archive in memory client-side.</p>
+<p>Bundles are written to a <code>tempfile.SpooledTemporaryFile</code> (up to 32 MB in RAM before spilling to disk) and streamed with an accurate <code>Content-Length</code> header. A streaming generator writer would omit <code>Content-Length</code>, turn mid-archive errors into truncated HTTP 200 responses, and still use similar memory because structure files are streamed in both approaches.</p>
+<p>Set <code>BUNDLE_SPOOL_DIR</code> for desktop deployments where <code>/tmp</code> is mounted on tmpfs (RAM), so spilled files write to disk instead of memory.</p>
+<p><code>BUNDLE_MAX_STRUCTURE_FILES</code>, <code>BUNDLE_MAX_STRUCTURE_BYTES</code>, and <code>BUNDLE_MAX_TOTAL_BYTES</code> prevent oversized requests and return HTTP 413 with the measured estimate when exceeded. The UI uses a lower warning threshold because <code>response.blob()</code> buffers the entire archive in browser memory.</p>
 <h2 id="restore">Restore<a class="headerlink" href="#restore" title="Permanent link">&para;</a></h2>
-<p>"Restore session from JSON" in the app header reads a <code>binderdash_session.json</code> or
-<code>prepare_sequences.json</code> back into the stores
-(<code>frontend/src/session/{sessionState,prepareState}.ts</code>). It is deliberately per-section
-and defensive: a bundle is often opened against a Binderdash whose runs have moved on, and
-restoring the filters is still worth doing when two of the runs have gone. Each section
-reports applied / partial / skipped.</p>
-<p>The filter and ranking half delegates to <code>filteringStore.loadRecipe()</code>, which already
-existed for a Saved Set's "Reapply filters", so there is one path for turning a stored
-recipe back into filter-builder state.</p>
-<p>Optimised DNA is not restored. It is a function of the settings plus the sequences, and
-stale DNA presented as current would be worse than none; the store's staleness flag
-prompts a re-run instead.</p>
+<p>"Restore session from JSON" in the app header loads a <code>binderdash_session.json</code> or <code>prepare_sequences.json</code> file back into the Pinia stores (<code>frontend/src/session/{sessionState,prepareState}.ts</code>). Restoration runs per section so filters still load even if some original runs are no longer present in Binderdash. Each section reports <code>applied</code>, <code>partial</code>, or <code>skipped</code>.</p>
+<p>Filter and ranking restoration delegates to <code>filteringStore.loadRecipe()</code>, sharing the same code path used by a Saved Set's "Reapply filters" action.</p>
+<p>Optimised DNA is not restored because it depends on both the settings and the input sequences. Leaving it blank and setting the store's staleness flag prompts you to re-run optimisation instead of displaying stale DNA.</p>
               
             </div>
           </div><footer>

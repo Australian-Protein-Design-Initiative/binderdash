@@ -81,9 +81,9 @@
         <ul>
     <li class="toctree-l3"><a class="reference internal" href="#pam-with-docker-compose-required-host-account-binds">PAM with Docker Compose (required host account binds)</a>
         <ul>
-    <li class="toctree-l4"><a class="reference internal" href="#the-shadow-group-is-not-optional">The shadow group is not optional</a>
+    <li class="toctree-l4"><a class="reference internal" href="#requiring-the-shadow-group">Requiring the shadow group</a>
     </li>
-    <li class="toctree-l4"><a class="reference internal" href="#host-account-changes-need-a-container-recreate">Host account changes need a container recreate</a>
+    <li class="toctree-l4"><a class="reference internal" href="#recreating-the-container-after-host-account-changes">Recreating the container after host account changes</a>
     </li>
         </ul>
     </li>
@@ -119,6 +119,13 @@
               <p class="caption"><span class="caption-text">Usage</span></p>
               <ul>
                   <li class="toctree-l1"><a class="reference internal" href="../../usage/filtering-ranking/">Filtering and ranking</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Administration</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../admin/backup-restore/">Backup and restore</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../admin/database-migrations/">Database migrations</a>
                   </li>
               </ul>
               <p class="caption"><span class="caption-text">Development</span></p>
@@ -176,18 +183,18 @@
 <li>Session auth via Google OAuth (OIDC)</li>
 <li>Per-user API key auth for scripted access</li>
 </ul>
-<p>You can enable multiple auth providers at the same time. The sections below describe how to configure each mode and how precedence works when multiple are enabled.</p>
+<p>You can enable multiple auth providers at the same time.</p>
 <h2 id="quick-reference">Quick Reference<a class="headerlink" href="#quick-reference" title="Permanent link">&para;</a></h2>
 <ul>
 <li><code>DISABLE_AUTHENTICATION="true"</code> makes all protected endpoints public and bypasses provider checks.</li>
 <li>Session auth uses cookies (<code>binderdash_session</code>) and CSRF protection for non-GET requests.</li>
-<li>API key auth uses either <code>Authorization: Bearer &lt;key&gt;</code> or <code>X-Binderdash-Api-Key: &lt;key&gt;</code>. Keys are per-user, named, expiring, and revocable — there is no single shared server secret — and require <code>DATABASE</code> to be configured.</li>
+<li>API key auth uses <code>Authorization: Bearer &lt;key&gt;</code> or <code>X-Binderdash-Api-Key: &lt;key&gt;</code>. Keys are per-user, named, expiring, and revocable (there is no shared server secret) and require <code>DATABASE</code>.</li>
 <li>Username/password login (<code>POST /api/auth/login</code>) checks local users first, then PAM (if enabled).</li>
 <li>Google OAuth signs in through <code>/api/auth/google/login</code> and creates the same session cookies as local/PAM login.</li>
-<li>Every successful login resolves to a <strong>user</strong> (see "User model and admin allowlist" below); <code>BINDERDASH_ADMIN_USERS</code> is re-applied on every startup and login.</li>
+<li>Every successful login resolves to a user (see <a href="#user-model-and-admin-allowlist">User model and admin allowlist</a>); <code>BINDERDASH_ADMIN_USERS</code> is re-applied on every startup and login.</li>
 </ul>
 <h2 id="environment-variables">Environment Variables<a class="headerlink" href="#environment-variables" title="Permanent link">&para;</a></h2>
-<p>These are the auth-related variables currently supported in <code>.env.example</code>:</p>
+<p>Auth-related variables supported in <code>.env.example</code>:</p>
 <ul>
 <li><code>DISABLE_AUTHENTICATION</code></li>
 <li><code>LOCAL_USERS</code></li>
@@ -203,21 +210,21 @@
 <li><code>SECRET_KEY</code></li>
 <li><code>ACCESS_TOKEN_EXPIRE_MINUTES</code></li>
 <li><code>BINDERDASH_ADMIN_USERS</code></li>
-<li><code>DATABASE</code> (required for per-user API keys to exist at all)</li>
+<li><code>DATABASE</code> (required for per-user API keys)</li>
 </ul>
 <h2 id="provider-precedence-and-coexistence">Provider Precedence and Coexistence<a class="headerlink" href="#provider-precedence-and-coexistence" title="Permanent link">&para;</a></h2>
-<p>When multiple options are enabled, behaviour is:</p>
+<p>When multiple options are enabled:</p>
 <ol>
-<li><strong>Global override</strong>: if <code>DISABLE_AUTHENTICATION="true"</code>, auth is bypassed for protected routes.</li>
-<li><strong>Protected API route auth</strong> (when auth is enabled):</li>
+<li>Global override: if <code>DISABLE_AUTHENTICATION="true"</code>, auth is bypassed for protected routes.</li>
+<li>Protected API route auth (when auth is enabled):</li>
 <li>API key is checked first.</li>
-<li>If no valid API key, session cookie auth is checked.</li>
-<li><strong>Username/password login flow</strong> (<code>POST /api/auth/login</code>):</li>
+<li>If no valid API key is present, session cookie auth is checked.</li>
+<li>Username/password login flow (<code>POST /api/auth/login</code>):</li>
 <li>Local bcrypt users are checked first.</li>
 <li>PAM is checked only if local auth did not match and <code>PAM_LOCAL_ENABLED="true"</code>.</li>
-<li><strong>Google OAuth flow</strong>:</li>
-<li>Independent login path; if successful, issues session cookies.</li>
-<li>Then protected routes use normal cookie/API-key precedence above.</li>
+<li>Google OAuth flow:</li>
+<li>Independent login path that issues session cookies on success.</li>
+<li>Protected routes then follow the API key and cookie precedence above.</li>
 </ol>
 <h2 id="auth-type-1-disable-authentication-public-mode">Auth Type 1: Disable Authentication (Public Mode)<a class="headerlink" href="#auth-type-1-disable-authentication-public-mode" title="Permanent link">&para;</a></h2>
 <p>Use this for local development only.</p>
@@ -267,28 +274,16 @@ That usually includes only container users (for example <code>app</code>), not h
       - /etc/group:/etc/group:ro
       - /etc/shadow:/etc/shadow:ro
     group_add:
-      - "42"          # gid `shadow` — see below; without it every login fails</code></pre>
+      - "42"          # gid `shadow` - see below; without it every login fails</code></pre>
 <p>The mounts are active in <code>docker-compose.dev.yml</code> and commented out in <code>docker-compose.yml</code>.</p>
-<h4 id="the-shadow-group-is-not-optional">The <code>shadow</code> group is not optional<a class="headerlink" href="#the-shadow-group-is-not-optional" title="Permanent link">&para;</a></h4>
-<p><code>pam_unix</code> does not read <code>/etc/shadow</code> itself — it shells out to <code>/sbin/unix_chkpwd</code>,
-which is setgid <code>shadow</code> but <strong>refuses to use that privilege to check any user other than
-its caller</strong>, so that an unprivileged process cannot brute-force other people's passwords.
-A container running as a non-root <code>user:</code> is therefore always making a cross-user request,
-and the helper returns <code>PAM_AUTHINFO_UNAVAIL</code>. <code>pam_unix</code> surfaces that as an ordinary
-failure, so the symptom is an indistinguishable <em>"Incorrect username or password"</em> even
-when the password is right.</p>
-<p>Adding gid 42 lets the process read <code>/etc/shadow</code> in its own right. To confirm which
-failure you have, run the helper by hand inside the container:</p>
+<h4 id="requiring-the-shadow-group">Requiring the <code>shadow</code> group<a class="headerlink" href="#requiring-the-shadow-group" title="Permanent link">&para;</a></h4>
+<p><code>pam_unix</code> delegates <code>/etc/shadow</code> lookups to <code>/sbin/unix_chkpwd</code>. Although that helper is setgid <code>shadow</code>, it only uses that privilege when checking the calling user's own password, preventing unprivileged processes from brute-forcing other accounts. Because the container runs as a non-root <code>user:</code>, every login for another account is a cross-user check, and <code>/sbin/unix_chkpwd</code> returns <code>PAM_AUTHINFO_UNAVAIL</code>. <code>pam_unix</code> reports this as a standard authentication error (<em>"Incorrect username or password"</em>), even with a valid password.</p>
+<p>Adding gid <code>42</code> grants the container process direct read access to <code>/etc/shadow</code>. To diagnose the failure inside the container, run the helper directly:</p>
 <pre class="highlight"><code class="language-bash">docker compose exec binderdash sh -c 'printf %s "$PW" | /sbin/unix_chkpwd someuser nullok; echo $?'
 # 9 = cannot read /etc/shadow (missing shadow group)
 # 7 = read it fine, password genuinely wrong</code></pre>
-<h4 id="host-account-changes-need-a-container-recreate">Host account changes need a container recreate<a class="headerlink" href="#host-account-changes-need-a-container-recreate" title="Permanent link">&para;</a></h4>
-<p>These are single-<em>file</em> bind mounts, which pin an inode. <code>passwd(1)</code> replaces
-<code>/etc/shadow</code> rather than editing it in place, so a running container keeps reading the
-file as it was at start: password changes and newly added users are silently invisible,
-and logins fail against a stale hash. <code>docker compose restart</code> does <strong>not</strong> fix it, since
-the container is not recreated. Compare <code>md5sum /etc/shadow</code> inside and outside the
-container to confirm, then:</p>
+<h4 id="recreating-the-container-after-host-account-changes">Recreating the container after host account changes<a class="headerlink" href="#recreating-the-container-after-host-account-changes" title="Permanent link">&para;</a></h4>
+<p>Single-file bind mounts attach to the original file's inode. Because <code>passwd(1)</code> replaces <code>/etc/shadow</code> with a new file instead of editing it in place, a running container continues reading the old version. Password updates and new host users will not appear in the container, and logins will check against stale hashes. Running <code>docker compose restart</code> keeps the same container and mounts, so it will not reload the file. Compare <code>md5sum /etc/shadow</code> on the host and inside the container to verify, then recreate the container:</p>
 <pre class="highlight"><code class="language-bash">docker compose up -d --force-recreate</code></pre>
 <p>Recommended matching env:</p>
 <pre class="highlight"><code class="language-bash">PAM_LOCAL_ENABLED="true"
@@ -325,13 +320,13 @@ DISABLE_AUTHENTICATION="false"</code></pre>
 </ul>
 <h2 id="auth-type-5-per-user-api-key">Auth Type 5: Per-User API Key<a class="headerlink" href="#auth-type-5-per-user-api-key" title="Permanent link">&para;</a></h2>
 <p>Use this for scripts/agents without browser session or CSRF handling.</p>
-<p>Unlike the other four modes, this isn't a server-wide toggle — it's a capability of the user model, gated on persistence:</p>
-<pre class="highlight"><code class="language-bash">DATABASE="sqlite:///./binderdash.db"   # or Postgres URL; keys live in the DB
+<p>Per-user API keys are enabled automatically whenever <code>DATABASE</code> is configured (no separate feature flag is required):</p>
+<pre class="highlight"><code class="language-bash">DATABASE="sqlite:///./binderdash.db"   # or Postgres URL; keys are stored in the DB
 DISABLE_AUTHENTICATION="false"</code></pre>
-<p>Create a user and a key for them, either via the web UI (account menu, top-right → "API keys") or the CLI:</p>
+<p>Create a user and an API key in the web UI (top-right account menu, <strong>API keys</strong>) or via the CLI:</p>
 <pre class="highlight"><code class="language-bash">python -m backend.cli user create --email you@example.org --admin
 python -m backend.cli key create you@example.org --name bootstrap</code></pre>
-<p>The token prints to stdout alone (a warning goes to stderr) and is shown <strong>once</strong> — the server stores only a SHA-256 hash. Other CLI subcommands: <code>user list|show|link-identity|set-admin</code>, <code>key list|revoke</code>.</p>
+<p>The CLI writes the token to stdout and prints a warning to stderr. The raw token is displayed <strong>once</strong> because the server stores only its SHA-256 hash. Other CLI subcommands include <code>user list|show|link-identity|set-admin</code> and <code>key list|revoke</code>.</p>
 <p>Use either header format:</p>
 <pre class="highlight"><code class="language-http">Authorization: Bearer &lt;token&gt;</code></pre>
 <p>or</p>
@@ -341,16 +336,16 @@ python -m backend.cli key create you@example.org --name bootstrap</code></pre>
 <li>For state-changing requests, API key auth bypasses CSRF checks.</li>
 <li>On protected routes, a valid API key is accepted before cookie auth.</li>
 <li><code>/api/auth/me</code> requires cookie session auth (it does not accept API key auth).</li>
-<li>Keys are named, can have an expiry (<code>--expires-days</code>), and are individually revocable (<code>key revoke &lt;id&gt;</code>); revocation takes effect immediately.</li>
+<li>Each key has a name, an optional expiry (<code>--expires-days</code>), and can be revoked immediately with <code>key revoke &lt;id&gt;</code>.</li>
 <li>With no <code>DATABASE</code> configured, <code>GET /api/auth/status</code> reports <code>api_keys.enabled: false, reason: "persistence_disabled"</code> and the key-management endpoints return <code>503</code>.</li>
-<li><strong>Key management is session-only.</strong> <code>GET/POST /api/api-keys</code> and <code>PATCH/DELETE /api/api-keys/{id}</code> reject API-key-authenticated requests with <code>403</code> — a leaked key must not be able to mint its own replacement or see other keys. <code>GET /api/users</code> is additionally admin-only.</li>
+<li>Key management requires a browser session. <code>GET/POST /api/api-keys</code> and <code>PATCH/DELETE /api/api-keys/{id}</code> return <code>403</code> for API-key-authenticated requests so a compromised key cannot create replacements or list other keys. <code>GET /api/users</code> also requires admin privileges.</li>
 </ul>
 <h2 id="user-model-and-admin-allowlist">User model and admin allowlist<a class="headerlink" href="#user-model-and-admin-allowlist" title="Permanent link">&para;</a></h2>
-<p>A <strong>user</strong> is a person. An <strong>identity</strong> is one login method, keyed on <code>(provider, identifier)</code> — e.g. <code>local:alice</code>, <code>pam:alice</code>, <code>google:alice@example.org</code>. A user is auto-created on first successful login. Two identities are merged onto the same user only when they share a <strong>verified email</strong> (so, for example, PAM login for <code>alice</code> and Google login for <code>alice@example.org</code> merge only if <code>PAM_GECOS_EMAIL</code> resolves the same address — see below — otherwise they stay separate users).</p>
-<p><code>BINDERDASH_ADMIN_USERS</code> is a comma-separated allowlist granting <code>is_admin</code>. Each entry matches against a login's email, its <code>provider:identifier</code> pair, or a bare username/identifier — there is deliberately <strong>no <code>*</code> wildcard</strong> (unlike <code>PAM_LOCAL_ALLOWED_USERS</code>, "everyone is an admin" should never be a one-character mistake). The allowlist is re-applied at every startup and at every login, so revoking admin access just means removing the entry and waiting for the next login (or restart) — <code>is_admin</code> set only via <code>python -m backend.cli user set-admin</code> will not stick if the user isn't also in <code>BINDERDASH_ADMIN_USERS</code>.</p>
+<p>A user represents one person, and an identity represents one login method keyed by <code>(provider, identifier)</code> (for example, <code>local:alice</code>, <code>pam:alice</code>, or <code>google:alice@example.org</code>). Binderdash creates a user automatically on the first successful login. Two identities merge into the same user only when they share a verified email address. For example, PAM login for <code>alice</code> and Google login for <code>alice@example.org</code> merge only when <code>PAM_GECOS_EMAIL</code> resolves to the same address (see below); otherwise they remain separate users.</p>
+<p><code>BINDERDASH_ADMIN_USERS</code> is a comma-separated allowlist that grants <code>is_admin</code>. Entries match a user's email, <code>provider:identifier</code> pair, or plain username. Unlike <code>PAM_LOCAL_ALLOWED_USERS</code>, this variable does not support a <code>*</code> wildcard, preventing accidental admin grants to all users. Binderdash re-applies this allowlist on every startup and login. To revoke admin access, remove the entry and restart or wait for the user's next login. Admin status granted via <code>python -m backend.cli user set-admin</code> will be overwritten unless the user is also listed in <code>BINDERDASH_ADMIN_USERS</code>.</p>
 <h3 id="pam_gecos_email"><code>PAM_GECOS_EMAIL</code><a class="headerlink" href="#pam_gecos_email" title="Permanent link">&para;</a></h3>
-<p>Default <code>false</code>. When <code>true</code>, PAM login resolves the user's email from the <strong>5th GECOS field only</strong> ("other"), never fields 1–4 ("full name", "room", "work phone", "home phone").</p>
-<p>This is a security boundary, not a formatting preference: <code>chfn</code> lets ordinary users rewrite their own GECOS, and <code>/etc/login.defs</code>'s <code>CHFN_RESTRICT</code> commonly ships as <code>"rwh"</code> — meaning room, work phone, and home phone are user-writable, but there is no <code>chfn</code> flag for the 5th field, so only root can set it (and <code>chfn</code> rejects commas in input, so a user can't smuggle extra fields in). Trusting an earlier, user-writable field would let any shell user run <code>chfn</code> to claim a colleague's email address and get merged into their Binderdash account — inheriting their API keys and admin rights.</p>
+<p>Default: <code>false</code>. When <code>true</code>, PAM login reads the user's email from the <strong>5th GECOS field only</strong> ("other") and ignores fields 1-4 ("full name", "room", "work phone", "home phone").</p>
+<p>Restricting to the 5th field prevents account takeover. Standard Linux configurations set <code>CHFN_RESTRICT="rwh"</code> in <code>/etc/login.defs</code>, allowing local users to edit their room, work phone, and home phone via <code>chfn</code>. Because <code>chfn</code> has no flag for the 5th field and rejects commas in input, only root can set that field. Reading any user-writable field would allow a shell user to enter another user's email with <code>chfn</code>, merge into that Binderdash account, and gain access to its API keys and admin privileges.</p>
 <h2 id="session-and-csrf-behaviour">Session and CSRF Behaviour<a class="headerlink" href="#session-and-csrf-behaviour" title="Permanent link">&para;</a></h2>
 <p>When auth is enabled and you use session cookies:</p>
 <ul>
@@ -382,13 +377,13 @@ python -m backend.cli key create you@example.org --name bootstrap</code></pre>
   },
   "api_keys": { "enabled": true, "reason": null }
 }</code></pre>
-<p><code>api_keys.reason</code> is <code>null</code> when keys are usable, <code>"auth_disabled"</code> when <code>DISABLE_AUTHENTICATION=true</code> (there is nothing to scope a key to), or <code>"persistence_disabled"</code> when no <code>DATABASE</code> is configured.</p>
+<p><code>api_keys.reason</code> is <code>null</code> when keys are enabled, <code>"auth_disabled"</code> when <code>DISABLE_AUTHENTICATION=true</code> (keys require user accounts), or <code>"persistence_disabled"</code> when <code>DATABASE</code> is unset.</p>
 <h2 id="recommended-combinations">Recommended Combinations<a class="headerlink" href="#recommended-combinations" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong>Local dev (public)</strong>: <code>DISABLE_AUTHENTICATION="true"</code></li>
-<li><strong>Team dev (session login)</strong>: local users and/or PAM, <code>DISABLE_AUTHENTICATION="false"</code></li>
-<li><strong>Production user login</strong>: Google OAuth + allowlist, <code>DISABLE_AUTHENTICATION="false"</code></li>
-<li><strong>Automation access</strong>: configure <code>DATABASE</code>, then mint per-user keys via the UI or <code>python -m backend.cli key create</code> (coexists with any session provider)</li>
+<li>Local dev (public): <code>DISABLE_AUTHENTICATION="true"</code></li>
+<li>Team dev (session login): local users and/or PAM, <code>DISABLE_AUTHENTICATION="false"</code></li>
+<li>Production user login: Google OAuth + allowlist, <code>DISABLE_AUTHENTICATION="false"</code></li>
+<li>Automation access: configure <code>DATABASE</code>, then create per-user keys via the UI or <code>python -m backend.cli key create</code> (works alongside any session provider)</li>
 </ul>
               
             </div>

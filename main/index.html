@@ -73,6 +73,13 @@
                   <li class="toctree-l1"><a class="reference internal" href="usage/filtering-ranking/">Filtering and ranking</a>
                   </li>
               </ul>
+              <p class="caption"><span class="caption-text">Administration</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="admin/backup-restore/">Backup and restore</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="admin/database-migrations/">Database migrations</a>
+                  </li>
+              </ul>
               <p class="caption"><span class="caption-text">Development</span></p>
               <ul>
                   <li class="toctree-l1"><a class="reference internal" href="development/setup/">Development setup</a>
@@ -120,25 +127,25 @@
               
                 <h1 id="binderdash">Binderdash<a class="headerlink" href="#binderdash" title="Permanent link">&para;</a></h1>
 <p><img alt="Binderdash: the design table with scores, and a binder-target complex in the structure viewer" src="images/binderdash-hero.png" /></p>
-<p><strong>Binderdash is a tool to streamline filtering, ranking and construct design for de novo protein binders.</strong></p>
-<p>Point it at the output folders from your design runs and it presents the scores and structures in one interface. Filter, rank and export ready-to-order DNA constructs.</p>
+<p><strong>Binderdash filters, ranks, and designs DNA constructs for de novo protein binders.</strong></p>
+<p>Point it at the output folders from your design runs to inspect scores and structures in one interface, filter and rank candidates, and export ready-to-order DNA constructs.</p>
 <h2 id="features">Features<a class="headerlink" href="#features" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong>Reads your runs as they are.</strong> Supports run output folders from RFdiffusion, RFdiffusion3, BindCraft and BoltzGen. Binderdash detects <code>nf-binder-design</code> pipeline outputs and imports with no reformatting needed.</li>
-<li><strong>One table across runs and methods.</strong> Sort and compare designs from different runs side by side. Common metrics (ipTM, interface PAE, RMSD, pLDDT) are matched across pipelines that name them differently.</li>
-<li><strong>3D structure viewer.</strong> Built on Mol*. Step through designs, colour by chain or pLDDT, overlay a reference structure, and mark designs as good or bad as you go.</li>
-<li><strong>Filtering and ranking.</strong> Combine score thresholds with target-contact conditions (for example "binds within 5 Å of these epitope residues"), rank on several metrics at once, and pick a shortlist that balances score against sequence diversity. The filter cascade UI shows how many designs each condition removes. See <a href="usage/filtering-ranking/">Filtering and ranking</a>.</li>
-<li><strong>Plots.</strong> Scatterplots and histograms of any two metrics against each other.</li>
-<li><strong>Saved sets.</strong> Keep a shortlist together with the filters and ranking that produced it, and come back to it later.</li>
-<li><strong>Construct design.</strong> Add N- or C-terminal affinity tags and linkers (His, FLAG, Strep-tag II, AviTag and others) and codon-optimise with synthesis complexity constraints, including GC content, hairpins and restriction sites. Generate short names compatible with DNA synthesis vendors naming rules. Export Twist-ready CSVs.</li>
-<li><strong>Reproducible downloads.</strong> A design bundle holds the structures, sequences and tables together with the selections, filters and settings that produced them, so a shortlist can be traced and restored later.</li>
-<li><strong>Bring your own data.</strong> Upload a TSV of extra columns (for example lab results) and merge it onto designs by ID to use for filtering and ranking.</li>
-<li><strong>Desktop or shared server.</strong> Run it on your own machine, or host one instance for a group with sign-in (local accounts, Unix/PAM or Google), per-user API keys, and an optional <a href="development/mcp/">MCP endpoint</a> and <a href="development/api/">REST API</a> for AI agents.</li>
+<li>Reads run output folders directly from RFdiffusion, RFdiffusion3, BindCraft, and BoltzGen, and detects <code>nf-binder-design</code> pipeline outputs without reformatting.</li>
+<li>Displays designs from different runs and methods in one sortable table, matching common metrics (ipTM, interface PAE, RMSD, pLDDT) across pipelines that name them differently.</li>
+<li>Includes a Mol* 3D structure viewer to step through designs, colour by chain or pLDDT, overlay a reference structure, and mark designs as good or bad.</li>
+<li>Filters and ranks designs using score thresholds and target-contact conditions (for example, binding within 5 Å of selected epitope residues), multi-metric ranking, and diversity-aware shortlisting. The filter cascade UI shows how many designs each condition removes. See <a href="usage/filtering-ranking/">Filtering and ranking</a>.</li>
+<li>Plots scatterplots and histograms for any pair of metrics.</li>
+<li>Saves design shortlists together with the filters and ranking that produced them.</li>
+<li>Designs DNA constructs with N- or C-terminal affinity tags and linkers (His, FLAG, Strep-tag II, AviTag, and others), codon optimisation under synthesis complexity constraints (GC content, hairpins, restriction sites), vendor-compatible short names, and Twist-ready CSV export.</li>
+<li>Exports design bundles containing structures, sequences, tables, selections, filters, and settings so a shortlist can be traced and restored later.</li>
+<li>Merges extra columns from uploaded TSV files (for example, lab results) onto designs by ID for filtering and ranking.</li>
+<li>Runs as a local desktop app or a shared server with sign-in (local accounts, Unix/PAM, or Google), per-user API keys, and an optional <a href="development/mcp/">MCP endpoint</a> and <a href="development/api/">REST API</a> for AI agents.</li>
 </ul>
 <h2 id="getting-started">Getting started<a class="headerlink" href="#getting-started" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong><a href="setup/desktop/">Desktop app</a></strong>: download a build for Linux, macOS or Windows from the <a href="https://github.com/Australian-Protein-Design-Initiative/binderdash/releases/latest">latest release</a>. Best for one person exploring runs on their own machine.</li>
-<li><strong><a href="setup/docker/">Server with Docker</a></strong>: host one instance for a group, with HTTPS and <a href="setup/authentication/">sign-in</a>.</li>
+<li><a href="setup/desktop/">Desktop app</a>: download a build for Linux, macOS, or Windows from the <a href="https://github.com/Australian-Protein-Design-Initiative/binderdash/releases/latest">latest release</a> for local single-user use.</li>
+<li><a href="setup/docker/">Server with Docker</a>: host a shared instance for a group, with HTTPS and <a href="setup/authentication/">sign-in</a>.</li>
 </ul>
 <h2 id="for-developers">For developers<a class="headerlink" href="#for-developers" title="Permanent link">&para;</a></h2>
 <ul>
@@ -201,5 +208,5 @@
 
 <!--
 MkDocs version : 1.6.1
-Build Date UTC : 2026-11-19 23:15:05.401902+00:00
+Build Date UTC : 2026-11-19 23:51:41.216525+00:00
 -->

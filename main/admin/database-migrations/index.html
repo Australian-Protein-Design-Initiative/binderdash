@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><link rel="canonical" href="https://australian-protein-design-initiative.github.io/binderdash/latest/admin/database-migrations/" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>Database migrations - Binderdash</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+        <link href="../../styles.purple.css" rel="stylesheet" />
+        <link href="../../css/version-select.css" rel="stylesheet" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Database migrations";
+        var mkdocs_page_input_path = "admin/database-migrations.md";
+        var mkdocs_page_url = "/binderdash/latest/admin/database-migrations/";
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/yaml.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/json.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/python.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/bash.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/nginx.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/http.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> Binderdash
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../..">Home</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Getting started</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../setup/desktop/">Desktop app</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../setup/docker/">Docker deployment</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../setup/authentication/">Authentication</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Usage</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../usage/filtering-ranking/">Filtering and ranking</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Administration</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../backup-restore/">Backup and restore</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Database migrations</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#summary">Summary</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#migration-mechanism">Migration mechanism</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#upgrading-a-server">Upgrading a server</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#running-migrations-manually">Running migrations manually</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#adding-a-migration-developers">Adding a migration (developers)</a>
+    </li>
+    </ul>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Development</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../development/setup/">Development setup</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../development/api/">REST API</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../development/mcp/">MCP server</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../development/pipeline-methods/">Pipeline method types</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../development/sequence_preparation/">Sequence preparation</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../development/storage/">Storage architecture</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../development/download-bundles/">Download bundles</a>
+                  </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="" href="https://github.com/Australian-Protein-Design-Initiative/binderdash/blob/main/CHANGELOG.md">Release history</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">Binderdash</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Administration</li>
+      <li class="breadcrumb-item active">Database migrations</li>
+    <li class="wy-breadcrumbs-aside">
+          <a href="https://github.com/Australian-Protein-Design-Initiative/binderdash/edit/main/docs/admin/database-migrations.md" class="icon icon-github"> Edit on GitHub</a>
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="database-migrations">Database migrations<a class="headerlink" href="#database-migrations" title="Permanent link">&para;</a></h1>
+<h2 id="summary">Summary<a class="headerlink" href="#summary" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Schema migrations run <strong>automatically</strong> whenever Binderdash opens the database, including server startup and <code>python -m backend.cli</code> commands.</li>
+<li>Migrations are strictly additive (new tables, new columns, or rows backfilled from older tables); no migration drops or renames tables or columns.</li>
+<li>Downgrades are not supported. To roll back an upgrade, restore your pre-upgrade backup.</li>
+</ul>
+<h2 id="migration-mechanism">Migration mechanism<a class="headerlink" href="#migration-mechanism" title="Permanent link">&para;</a></h2>
+<p>Binderdash does not use a migration framework or a schema version number. When <code>create_repository()</code> in <code>backend/persistence/factory.py</code> creates the SQLite repository, it calls <code>init_schema()</code> in <code>backend/persistence/sqlite_repo.py</code>, which:</p>
+<ol>
+<li>Creates missing tables and indexes with <code>CREATE TABLE IF NOT EXISTS</code> and <code>CREATE INDEX IF NOT EXISTS</code>. New tables in a release are added here.</li>
+<li>Calls each <code>_migrate_*</code> method in order, inspecting the current schema (<code>PRAGMA table_info</code>, <code>sqlite_master</code>) and applying changes only when missing:<ul>
+<li><code>_migrate_binder_chain_column</code>, <code>_migrate_short_name_column</code>, <code>_migrate_extra_data_column</code>: add columns to <code>binderdash_designs</code>.</li>
+<li><code>_migrate_run_path_column</code>, <code>_migrate_ingested_at_column</code>: add columns to <code>binderdash_runs</code>.</li>
+<li><code>_migrate_auth_users_to_user_model</code>: copies logins from the legacy <code>binderdash_auth_users</code> table into <code>binderdash_users</code> and <code>binderdash_user_identities</code>, leaving existing identities untouched and keeping the legacy table in place.</li>
+</ul>
+</li>
+</ol>
+<p>Each step is idempotent: up-to-date databases are unchanged, and an interrupted startup completes the remaining steps on the next launch. Migrations do not emit log output.</p>
+<p>Only the <code>sqlite</code> scheme is supported in <code>DATABASE</code> (Postgres is not implemented). Configuring any other scheme causes startup to fail with an error.</p>
+<h2 id="upgrading-a-server">Upgrading a server<a class="headerlink" href="#upgrading-a-server" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Take a backup (see <a href="../backup-restore/#taking-a-database-backup">Backup and restore</a>).</li>
+<li>
+<p>Update the code and rebuild:</p>
+<pre class="highlight"><code class="language-bash">git pull
+docker compose build --build-arg GIT_COMMIT=$(git rev-parse --short=12 HEAD)</code></pre>
+</li>
+<li>
+<p>Restart with <code>docker compose up -d</code>. The new container upgrades the schema on startup.</p>
+</li>
+<li>Check <code>docker compose logs binderdash</code> for errors and confirm <code>/health</code> responds.</li>
+</ol>
+<p>To roll back, stop the service, check out and rebuild the previous version, and restore your pre-upgrade backup. Running older code with a newer schema is untested.</p>
+<h2 id="running-migrations-manually">Running migrations manually<a class="headerlink" href="#running-migrations-manually" title="Permanent link">&para;</a></h2>
+<p>Normal upgrades do not require manual steps. You can trigger migrations before starting the web server, for example to verify an upgrade on a copy of a production database.</p>
+<p>CLI commands open the database through the same <code>DATABASE</code> resolution and <code>init_schema()</code> path as the server, so a read-only command such as <code>user list</code> applies pending migrations and exits:</p>
+<pre class="highlight"><code class="language-bash"># Non-Docker server, from the repository root with the venv active
+python -m backend.cli user list
+
+# Docker Compose, using the newly built image and the same ./data volume
+docker compose run --rm binderdash python -m backend.cli user list</code></pre>
+<p>To test on a database copy instead of the live file, override <code>DATABASE</code> for the command:</p>
+<pre class="highlight"><code class="language-bash">DATABASE="sqlite:////tmp/binderdash-copy.sqlite" python -m backend.cli user list</code></pre>
+<h2 id="adding-a-migration-developers">Adding a migration (developers)<a class="headerlink" href="#adding-a-migration-developers" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Add a <code>_migrate_*</code> method to <code>SqliteDesignsRepository</code> and call it from <code>init_schema()</code> after the existing migration calls.</li>
+<li>Check the current schema first and return early if the change is already present, since <code>init_schema()</code> runs at startup.</li>
+<li>Keep migrations additive: do not drop or rename tables or columns, because installations may restore older backups and upgrade from earlier schemas.</li>
+<li>For new tables, add a <code>CREATE TABLE IF NOT EXISTS</code> statement to the <code>executescript</code> block.</li>
+</ul>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../backup-restore/" class="btn btn-neutral float-left" title="Backup and restore"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../../development/setup/" class="btn btn-neutral float-right" title="Development setup">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+        <span>
+          <a href="https://github.com/Australian-Protein-Design-Initiative/binderdash" class="fa fa-github" style="color: #fcfcfc"> GitHub</a>
+        </span>
+    
+    
+      <span><a href="../backup-restore/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../../development/setup/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+      <script src="../../js/mermaid-init.mjs" type="module"></script>
+      <script src="../../search/main.js"></script>
+      <script src="../../js/version-select.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

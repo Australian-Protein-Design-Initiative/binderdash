@@ -113,6 +113,13 @@
                   <li class="toctree-l1"><a class="reference internal" href="../../usage/filtering-ranking/">Filtering and ranking</a>
                   </li>
               </ul>
+              <p class="caption"><span class="caption-text">Administration</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../admin/backup-restore/">Backup and restore</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../admin/database-migrations/">Database migrations</a>
+                  </li>
+              </ul>
               <p class="caption"><span class="caption-text">Development</span></p>
               <ul>
                   <li class="toctree-l1"><a class="reference internal" href="../../development/setup/">Development setup</a>
@@ -160,7 +167,7 @@
             <div class="section" itemprop="articleBody">
               
                 <h1 id="docker-deployment">Docker deployment<a class="headerlink" href="#docker-deployment" title="Permanent link">&para;</a></h1>
-<p>This page describes running Binderdash as a shared server with Docker Compose.</p>
+<p>Run Binderdash as a shared server with Docker Compose.</p>
 <h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
 <p>The application is containerized using a single Docker image that:</p>
 <ul>
@@ -177,15 +184,15 @@
 sudo chmod -R a+rX /data/runs /data2/runs</code></pre>
 <h3 id="environment-configuration">Environment Configuration<a class="headerlink" href="#environment-configuration" title="Permanent link">&para;</a></h3>
 <ol>
-<li><strong>Create <code>.env</code> file</strong>: copy from <code>.env.example</code> and configure:</li>
+<li>Copy <code>.env.example</code> to <code>.env</code>:</li>
 </ol>
 <pre class="highlight"><code class="language-bash">cp .env.example .env</code></pre>
 <ol>
-<li><strong>Set the container user</strong> to your own uid and gid (see <a href="#container-user">Container user</a> for why):</li>
+<li>Set the container user to your own uid and gid (see <a href="#container-user">Container user</a>):</li>
 </ol>
 <pre class="highlight"><code class="language-bash">printf 'BINDERDASH_UID=%s\nBINDERDASH_GID=%s\n' "$(id -u)" "$(id -g)" &gt;&gt; .env</code></pre>
 <ol>
-<li><strong>Configure your environment variables</strong> in the <code>.env</code> file:</li>
+<li>Configure environment variables in <code>.env</code>:</li>
 </ol>
 <pre class="highlight"><code class="language-bash"># Required: set the paths to your data directories
 RUN_BASE_DIRS="/data/runs,/data2/runs"
@@ -197,16 +204,16 @@ GOOGLE_AUTH_ALLOWED_USERS="user1@example.com,user2@example.com"
 LOCAL_USERS="alice:$2b$12$...,bob:$2b$12$..."</code></pre>
 <p>Docker Compose automatically loads all environment variables from the <code>.env</code> file.</p>
 <h3 id="mounting-your-run-directories">Mounting your run directories<a class="headerlink" href="#mounting-your-run-directories" title="Permanent link">&para;</a></h3>
-<p><code>RUN_BASE_DIRS</code> is read inside the container, so each directory must be mounted into the <code>binderdash</code> service and listed by its <strong>container</strong> path. For example, to serve runs from <code>/data/runs</code> on the host, add a volume in <code>docker-compose.yml</code>:</p>
+<p>Because Binderdash reads <code>RUN_BASE_DIRS</code> inside the container, mount each directory into the <code>binderdash</code> service and list its container path. For example, to serve runs from <code>/data/runs</code> on the host, add a volume to <code>docker-compose.yml</code>:</p>
 <pre class="highlight"><code class="language-yaml">services:
   binderdash:
     volumes:
       - /data/runs:/data/runs:ro</code></pre>
-<p>and set <code>RUN_BASE_DIRS="/data/runs"</code> in <code>.env</code>. Binderdash only reads run folders, so a read-only mount is sufficient.</p>
+<p>Then set <code>RUN_BASE_DIRS="/data/runs"</code> in <code>.env</code>. A read-only mount (<code>:ro</code>) works because Binderdash does not write to run folders.</p>
 <h3 id="database-directory">Database directory<a class="headerlink" href="#database-directory" title="Permanent link">&para;</a></h3>
-<p>The SQLite database lives under <code>./data</code> on the host (mounted at <code>/app/data</code>) and is created on first start. The <code>data/</code> directory is part of the repository, so it exists after cloning, owned by you.</p>
+<p>Binderdash creates the SQLite database in <code>./data</code> on the host (mounted at <code>/app/data</code>) on first start. The <code>data/</code> directory is tracked in the repository, so it already exists after cloning and is owned by your user.</p>
 <h3 id="container-user">Container user<a class="headerlink" href="#container-user" title="Permanent link">&para;</a></h3>
-<p>The <code>binderdash</code> container never runs as root. It runs as the numeric user and group given by two variables in <code>.env</code>:</p>
+<p>The <code>binderdash</code> container runs as a non-root user configured by numeric IDs in <code>.env</code>:</p>
 <table>
 <thead>
 <tr>
@@ -228,7 +235,7 @@ LOCAL_USERS="alice:$2b$12$...,bob:$2b$12$..."</code></pre>
 </tr>
 </tbody>
 </table>
-<p>Files the container creates in <code>./data</code> (the SQLite database and its <code>-wal</code>/<code>-shm</code> files) are owned by this uid and gid on the host. The same ids need read access to your run directories. Setting them to your own ids means:</p>
+<p>This uid and gid own any files created in <code>./data</code> (the SQLite database and its <code>-wal</code>/<code>-shm</code> files) and need read access to your run directories. Matching your host user ensures:</p>
 <ul>
 <li><code>./data</code>, which you own after cloning, is writable without a <code>chown</code></li>
 <li>run directories you can read, the container can read</li>
@@ -236,7 +243,7 @@ LOCAL_USERS="alice:$2b$12$...,bob:$2b$12$..."</code></pre>
 </ul>
 <p>To set them to the user you are logged in as:</p>
 <pre class="highlight"><code class="language-bash">printf 'BINDERDASH_UID=%s\nBINDERDASH_GID=%s\n' "$(id -u)" "$(id -g)" &gt;&gt; .env</code></pre>
-<p>This writes literal numbers into <code>.env</code>, for example <code>BINDERDASH_UID=1001</code>. Use numbers, not <code>$UID</code>: Compose substitutes variables in <code>.env</code> only from its own environment, and bash does not export <code>UID</code> and does not define a <code>GID</code> variable at all. A <code>$UID</code> in <code>.env</code> therefore resolves to an empty string, Compose prints a <code>"UID" variable is not set</code> warning, and the container falls back to 1000.</p>
+<p>This writes literal numbers such as <code>BINDERDASH_UID=1001</code> into <code>.env</code>. Do not use <code>$UID</code> or <code>$GID</code>: Compose only expands variables from its own environment, bash does not export <code>UID</code>, and bash defines no <code>GID</code> variable. Writing <code>$UID</code> in <code>.env</code> expands to an empty string, triggers a <code>"UID" variable is not set</code> warning, and defaults the container to <code>1000</code>.</p>
 <p>Check the result with:</p>
 <pre class="highlight"><code class="language-bash">docker compose config | grep 'user:'</code></pre>
 <p>If you change the ids after the database exists, give <code>./data</code> to the new owner and recreate the container (<code>docker compose restart</code> keeps the old user):</p>
@@ -244,7 +251,7 @@ LOCAL_USERS="alice:$2b$12$...,bob:$2b$12$..."</code></pre>
 docker compose up -d</code></pre>
 <p>The variables are read by Docker Compose only; the Binderdash backend ignores them. They apply to <code>docker-compose.dev.yml</code> too.</p>
 <h3 id="https-with-caddy">HTTPS with Caddy<a class="headerlink" href="#https-with-caddy" title="Permanent link">&para;</a></h3>
-<p><code>docker-compose.yml</code> runs a <a href="https://caddyserver.com/">Caddy</a> reverse proxy on ports 80 and 443 in front of Binderdash. Set <code>DOMAIN</code> in <code>.env</code> to the server's public hostname and Caddy obtains a TLS certificate automatically. With <code>DOMAIN</code> unset, Caddy serves <code>https://localhost</code> with a locally issued certificate. Also set <code>CORS_ALLOWED_ORIGINS</code> to your site URL, and set a fixed <code>SECRET_KEY</code> so sign-in sessions survive restarts.</p>
+<p><code>docker-compose.yml</code> runs a <a href="https://caddyserver.com/">Caddy</a> reverse proxy on ports 80 and 443 in front of Binderdash. Set <code>DOMAIN</code> in <code>.env</code> to the server's public hostname and Caddy obtains a TLS certificate automatically. With <code>DOMAIN</code> unset, Caddy serves <code>https://localhost</code> with a locally issued certificate. Also set <code>CORS_ALLOWED_ORIGINS</code> to your site URL, and set a fixed <code>SECRET_KEY</code> so sign-in sessions persist across restarts.</p>
 <h2 id="building-and-running">Building and Running<a class="headerlink" href="#building-and-running" title="Permanent link">&para;</a></h2>
 <h3 id="production-mode">Production Mode<a class="headerlink" href="#production-mode" title="Permanent link">&para;</a></h3>
 <pre class="highlight"><code class="language-bash"># Build the Docker image
@@ -271,36 +278,36 @@ curl http://localhost:8000/health</code></pre>
 <h2 id="resource-limits">Resource Limits<a class="headerlink" href="#resource-limits" title="Permanent link">&para;</a></h2>
 <p>The container is configured with resource limits:</p>
 <ul>
-<li><strong>Memory</strong>: 2GB limit, 512MB reservation</li>
-<li><strong>CPU</strong>: 1.0 CPU limit, 0.5 CPU reservation</li>
+<li>Memory: 2GB limit, 512MB reservation</li>
+<li>CPU: 1.0 CPU limit, 0.5 CPU reservation</li>
 </ul>
 <p>Adjust these in <code>docker-compose.yml</code> if needed for your environment.</p>
 <h2 id="security-considerations">Security Considerations<a class="headerlink" href="#security-considerations" title="Permanent link">&para;</a></h2>
 <ol>
-<li><strong>Non-root user</strong>: the container runs as <code>BINDERDASH_UID</code>:<code>BINDERDASH_GID</code> (default 1000:1000), never root</li>
-<li><strong>Read-only volumes</strong>: data directories are mounted as read-only</li>
-<li><strong>Environment variables</strong>: sensitive configuration is passed via environment variables, not baked into the image</li>
-<li><strong>Network</strong>: only Caddy (ports 80 and 443) is exposed to the host; the Binderdash container listens on port 8000 on the internal Compose network</li>
+<li>Non-root user: the container runs as <code>BINDERDASH_UID</code>:<code>BINDERDASH_GID</code> (default 1000:1000), not root.</li>
+<li>Read-only volumes: data directories are mounted read-only.</li>
+<li>Environment variables: sensitive configuration is passed via environment variables instead of baking secrets into the image.</li>
+<li>Network: only Caddy (ports 80 and 443) is exposed to the host; the Binderdash container listens on port 8000 on the internal Compose network.</li>
 </ol>
 <h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
 <h3 id="common-issues">Common Issues<a class="headerlink" href="#common-issues" title="Permanent link">&para;</a></h3>
 <ol>
-<li><strong>Permission denied on data directories</strong>: the container user (see <a href="#container-user">Container user</a>) must be able to read the run directories and write <code>./data</code>. Either set <code>BINDERDASH_UID</code>/<code>BINDERDASH_GID</code> to the owner, or make the directories readable:</li>
+<li>Permission denied on data directories: the container user (see <a href="#container-user">Container user</a>) must be able to read the run directories and write <code>./data</code>. Either set <code>BINDERDASH_UID</code>/<code>BINDERDASH_GID</code> to the owner, or make the directories readable:</li>
 </ol>
 <pre class="highlight"><code class="language-bash">sudo chmod -R a+rX /data/runs /data2/runs</code></pre>
 <ol>
-<li><strong>Container won't start</strong>:</li>
+<li>Container will not start:</li>
 </ol>
 <pre class="highlight"><code class="language-bash">docker compose logs binderdash
 netstat -tulpn | grep :8000
 cat .env</code></pre>
 <ol>
-<li><strong>Health check failing</strong>:</li>
+<li>Health check failing:</li>
 </ol>
 <pre class="highlight"><code class="language-bash">curl -v http://localhost:8000/health
 docker compose logs -f binderdash</code></pre>
 <ol>
-<li><strong>Frontend not loading</strong>:</li>
+<li>Frontend not loading:</li>
 <li>Ensure the frontend was built during the Docker build process</li>
 <li>Check that static files are being served correctly</li>
 <li>Verify the build output in the container: <code>docker compose exec binderdash ls -la /app/backend/static/</code></li>
@@ -314,12 +321,12 @@ docker compose exec binderdash ps aux</code></pre>
 <h2 id="production-deployment">Production Deployment<a class="headerlink" href="#production-deployment" title="Permanent link">&para;</a></h2>
 <p>For production deployment:</p>
 <ol>
-<li><strong>Use a reverse proxy</strong> (nginx, traefik, or Caddy — see <code>Caddyfile</code> and <code>DOMAIN</code> in <code>.env.example</code>) in front of the container</li>
-<li><strong>Set up SSL/TLS</strong> termination at the reverse proxy</li>
-<li><strong>Configure proper logging</strong> and log rotation</li>
-<li><strong>Set up monitoring</strong> and alerting</li>
-<li><strong>Use secrets management</strong> for sensitive environment variables</li>
-<li><strong>Consider using Docker Swarm or Kubernetes</strong> for orchestration</li>
+<li>Put a reverse proxy (nginx, traefik, or Caddy; see <code>Caddyfile</code> and <code>DOMAIN</code> in <code>.env.example</code>) in front of the container.</li>
+<li>Terminate SSL/TLS at the reverse proxy.</li>
+<li>Configure logging and log rotation.</li>
+<li>Set up monitoring and alerting.</li>
+<li>Manage sensitive environment variables with a secrets manager.</li>
+<li>Consider Docker Swarm or Kubernetes for orchestration.</li>
 </ol>
 <h3 id="example-nginx-configuration">Example nginx configuration<a class="headerlink" href="#example-nginx-configuration" title="Permanent link">&para;</a></h3>
 <pre class="highlight"><code class="language-nginx">server {

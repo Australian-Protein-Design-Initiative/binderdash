@@ -65,6 +65,13 @@
                   <li class="toctree-l1"><a class="reference internal" href="../../usage/filtering-ranking/">Filtering and ranking</a>
                   </li>
               </ul>
+              <p class="caption"><span class="caption-text">Administration</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../admin/backup-restore/">Backup and restore</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../admin/database-migrations/">Database migrations</a>
+                  </li>
+              </ul>
               <p class="caption"><span class="caption-text">Development</span></p>
               <ul class="current">
                   <li class="toctree-l1"><a class="reference internal" href="../setup/">Development setup</a>
@@ -118,72 +125,72 @@
             <div class="section" itemprop="articleBody">
               
                 <h1 id="adding-a-pipeline-method-type">Adding a pipeline method type<a class="headerlink" href="#adding-a-pipeline-method-type" title="Permanent link">&para;</a></h1>
-<p>Binderdash recognises design pipelines by <strong>method</strong> string (e.g. <code>bindcraft</code>, <code>rfd</code>, <code>boltzgen</code>, <code>rfd3</code>). When you add a new one, keep the backend detection/metadata and the frontend display config in sync.</p>
+<p>Binderdash recognises design pipelines by <code>method</code> string (e.g. <code>bindcraft</code>, <code>rfd</code>, <code>boltzgen</code>, <code>rfd3</code>). When you add a new method, keep the backend detection/metadata and the frontend display config in sync.</p>
 <h2 id="backend">Backend<a class="headerlink" href="#backend" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
 <th>Location</th>
-<th>What to change</th>
+<th>Changes</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>backend/config/run_signatures.py</code></td>
-<td><strong><code>run_folder_signatures</code></strong> — declarative entries: <code>method</code>, <code>submethod</code>, paths (<code>required_files</code>, <code>results_table</code>, <code>pdb_pattern</code>, …), <strong><code>primary_score_columns</code></strong>, design id columns, trajectory hints. New methods usually mean a <strong>new signature dict</strong> (and priority ordering).</td>
+<td><code>run_folder_signatures</code>: declarative entries for <code>method</code>, <code>submethod</code>, paths (<code>required_files</code>, <code>results_table</code>, <code>pdb_pattern</code>, ...), <code>primary_score_columns</code>, design id columns, and trajectory hints. Add a signature dict for the new method in the appropriate priority order.</td>
 </tr>
 <tr>
 <td><code>backend/config/method_paths.py</code></td>
-<td><strong><code>PIPELINE_METHOD_IDS</code></strong> — add the new id. Update <strong><code>_RUN_NAME_SEGMENT_BLOCKLIST</code></strong> / <strong><code>_PROJECT_ID_SEGMENT_BLOCKLIST</code></strong> if path segments for the new layout should be ignored when inferring run/project names.</td>
+<td><code>PIPELINE_METHOD_IDS</code>: add the new id. Update <code>_RUN_NAME_SEGMENT_BLOCKLIST</code> and <code>_PROJECT_ID_SEGMENT_BLOCKLIST</code> if path segments for the new layout should be ignored when inferring run or project names.</td>
 </tr>
 <tr>
 <td><code>backend/run_discovery.py</code></td>
-<td>Search for <strong><code>method ==</code></strong> / <strong><code>get("method")</code></strong> — branches for target sequence, backbone id, dataframe standardisation, structure resolution, etc. Extend only where the new pipeline differs from the generic path.</td>
+<td>Search for <code>method ==</code> and <code>get("method")</code> for branches covering target sequence, backbone id, dataframe standardisation, and structure resolution. Add branches only where the new pipeline needs custom handling.</td>
 </tr>
 <tr>
 <td><code>backend/config/score_labels.py</code></td>
-<td>Optional: <strong><code>SCORE_FIELD_LABELS</code></strong> for human-readable names of new score columns in API/UI.</td>
+<td>Optional: add <code>SCORE_FIELD_LABELS</code> entries for human-readable names of new score columns in the API and UI.</td>
 </tr>
 </tbody>
 </table>
-<p><code>run_signatures</code> docstrings note alignment with the frontend primary-score config; <strong><code>primary_score_columns</code></strong> in each signature should match how you resolve “primary” scores for that method on the client.</p>
+<p>Each signature's <code>primary_score_columns</code> in <code>run_signatures.py</code> should match the client primary-score rules for that method.</p>
 <h2 id="frontend">Frontend<a class="headerlink" href="#frontend" title="Permanent link">&para;</a></h2>
-<p><code>frontend/src/config/pipelineDisplay.ts</code> is the main file. Touch the pieces that apply to your method:</p>
+<p>Update the relevant exports in <code>frontend/src/config/pipelineDisplay.ts</code>:</p>
 <table>
 <thead>
 <tr>
-<th>Piece</th>
+<th>Export</th>
 <th>Role</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><strong><code>PIPELINE_METHOD_IDS</code></strong> / <strong><code>PipelineMethodId</code></strong></td>
-<td>Register the method id for filters, tags, and typing.</td>
+<td><code>PIPELINE_METHOD_IDS</code> / <code>PipelineMethodId</code></td>
+<td>Register the method id for filters, tags, and TypeScript types.</td>
 </tr>
 <tr>
-<td><strong><code>METHOD_TAG_PALETTE</code></strong>, <strong><code>METHOD_TAG_DISPLAY</code></strong></td>
-<td>Chip colour and icon for <strong>Select Runs</strong> method tags.</td>
+<td><code>METHOD_TAG_PALETTE</code>, <code>METHOD_TAG_DISPLAY</code></td>
+<td>Chip colour and icon for Select Runs method tags.</td>
 </tr>
 <tr>
-<td><strong><code>SCORE_FIELD_DEFS</code></strong></td>
-<td>Declares score columns (table, filters, colouring); add entries for new CSV/TSV fields.</td>
+<td><code>SCORE_FIELD_DEFS</code></td>
+<td>Declare score columns (table, filters, colouring) for new CSV/TSV fields.</td>
 </tr>
 <tr>
-<td><strong><code>METHOD_BEST_SCORE</code></strong></td>
-<td>Primary/secondary columns and direction for “best design” grouping within MPNN variants.</td>
+<td><code>METHOD_BEST_SCORE</code></td>
+<td>Primary/secondary columns and sort direction for "best design" grouping within MPNN variants.</td>
 </tr>
 <tr>
-<td><strong><code>PRIMARY_SCORE_CHIP_RULES</code></strong></td>
-<td>Which column(s) drive the <strong>primary score</strong> chip on Select Runs (align with backend <strong><code>primary_score_columns</code></strong>).</td>
+<td><code>PRIMARY_SCORE_CHIP_RULES</code></td>
+<td>Columns used for the primary score chip on Select Runs (align with backend <code>primary_score_columns</code>).</td>
 </tr>
 <tr>
-<td><strong><code>getStructureFilenameFromDesign</code></strong> / <strong><code>designHasStructureFile</code></strong></td>
-<td>Only if structure path resolution is special-cased (see existing <strong><code>boltzgen</code></strong> handling).</td>
+<td><code>getStructureFilenameFromDesign</code> / <code>designHasStructureFile</code></td>
+<td>Add cases only if structure path resolution is non-standard (see existing <code>boltzgen</code> handling).</td>
 </tr>
 </tbody>
 </table>
-<p>Other modules may import these exports; after changing method ids or score fields, run a quick search for the old method name or column names across <code>frontend/src</code>.</p>
+<p>Other modules may import these exports. After changing method ids or score fields, search <code>frontend/src</code> for the old method name or column names.</p>
               
             </div>
           </div><footer>

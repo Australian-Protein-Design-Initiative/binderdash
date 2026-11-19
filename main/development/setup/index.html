@@ -65,6 +65,13 @@
                   <li class="toctree-l1"><a class="reference internal" href="../../usage/filtering-ranking/">Filtering and ranking</a>
                   </li>
               </ul>
+              <p class="caption"><span class="caption-text">Administration</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../admin/backup-restore/">Backup and restore</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../admin/database-migrations/">Database migrations</a>
+                  </li>
+              </ul>
               <p class="caption"><span class="caption-text">Development</span></p>
               <ul class="current">
                   <li class="toctree-l1 current"><a class="reference internal current" href="#">Development setup</a>
@@ -142,10 +149,10 @@
                 <h1 id="development-setup">Development setup<a class="headerlink" href="#development-setup" title="Permanent link">&para;</a></h1>
 <p>Binderdash is a single-page app with two parts:</p>
 <ul>
-<li><strong>Frontend</strong>: Vite + Vue 3 (Composition API) + PrimeVue, with the Mol* structure viewer and Vega-Lite plots.</li>
-<li><strong>Backend</strong>: FastAPI (async), serving the REST API and the built frontend as static files.</li>
+<li>Frontend: Vite + Vue 3 (Composition API) + PrimeVue, with the Mol* structure viewer and Vega-Lite plots.</li>
+<li>Backend: FastAPI (async), serving the REST API and the built frontend as static files.</li>
 </ul>
-<p><code>AGENTS.md</code> in the repository root holds the authoritative code-style, environment-variable and release rules.</p>
+<p><code>AGENTS.md</code> in the repository root defines the code-style, environment-variable, and release rules.</p>
 <h2 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Python 3.11+ (tested with 3.12)</li>
@@ -193,7 +200,7 @@
 </tbody>
 </table>
 <h2 id="environment-configuration">Environment configuration<a class="headerlink" href="#environment-configuration" title="Permanent link">&para;</a></h2>
-<p>Configuration is read from a <code>.env</code> file at the repository root. Copy <code>.env.example</code> as a starting point; it documents every supported variable. For local development the defaults (authentication disabled, SQLite under <code>data/</code>, runs from <code>./example_runs</code>) are usually enough.</p>
+<p>Binderdash loads configuration from <code>.env</code> at the repository root. Copy <code>.env.example</code> as a starting point; it documents all supported variables. For local development, the defaults (authentication disabled, SQLite under <code>data/</code>, runs from <code>./example_runs</code>) are usually sufficient.</p>
 <p>To create a local user account instead, set <code>DISABLE_AUTHENTICATION="false"</code> and add a bcrypt hash to <code>LOCAL_USERS</code>:</p>
 <pre class="highlight"><code class="language-bash">python backend/scripts/encrypt_password.py myusername  # prompts for the password</code></pre>
 <p>See <a href="../../setup/authentication/">Authentication</a> for the other sign-in providers.</p>
@@ -206,23 +213,23 @@ uv pip install -r backend/requirements.txt</code></pre>
 <pre class="highlight"><code class="language-bash">uv run uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000</code></pre>
 <p>The server listens on <a href="http://localhost:8000">http://localhost:8000</a>.</p>
 <h3 id="changing-backend-dependencies">Changing backend dependencies<a class="headerlink" href="#changing-backend-dependencies" title="Permanent link">&para;</a></h3>
-<p>Edit <code>backend/pyproject.toml</code>, then recompile the pinned requirements:</p>
+<p>After modifying <code>backend/pyproject.toml</code>, regenerate and install the pinned requirements:</p>
 <pre class="highlight"><code class="language-bash">uv pip compile backend/pyproject.toml -o backend/requirements.txt
 uv pip install -r backend/requirements.txt</code></pre>
 <h2 id="frontend">Frontend<a class="headerlink" href="#frontend" title="Permanent link">&para;</a></h2>
-<p>There are two ways to work on the UI.</p>
-<p><strong>Rebuild into the backend</strong> (recommended when the backend is running). Changes are rebuilt into <code>backend/static/</code>, so the FastAPI server at :8000 always serves the latest UI:</p>
+<p>You can run the frontend in two modes.</p>
+<p>To rebuild into <code>backend/static/</code> automatically (recommended while the backend is running so FastAPI on <code>:8000</code> serves the latest build):</p>
 <pre class="highlight"><code class="language-bash">cd frontend
 pnpm install
 pnpm run watch:build</code></pre>
-<p><strong>Vite dev server</strong> with hot reload on <a href="http://localhost:5173">http://localhost:5173</a>, proxying API calls to the backend:</p>
+<p>To run the Vite dev server with hot reload on <a href="http://localhost:5173">http://localhost:5173</a> (proxying API calls to the backend):</p>
 <pre class="highlight"><code class="language-bash">cd frontend
 pnpm install
 pnpm run dev</code></pre>
 <p>For a one-off production build, run <code>pnpm run build</code> in <code>frontend/</code>.</p>
 <h2 id="docker-development-mode">Docker development mode<a class="headerlink" href="#docker-development-mode" title="Permanent link">&para;</a></h2>
 <p><code>docker-compose.dev.yml</code> runs the backend with auto-reload and a separate container that rebuilds the frontend when Vue/TypeScript files change. The project directory is mounted from your filesystem.</p>
-<p>Both containers write into that mount (the frontend watcher rebuilds <code>backend/static/</code>, the backend writes <code>data/</code>), so they should run as your own user. Set <code>BINDERDASH_UID</code> and <code>BINDERDASH_GID</code> in <code>.env</code> first if your uid is not 1000; see <a href="../../setup/docker/#container-user">Container user</a>.</p>
+<p>Because the frontend container rebuilds <code>backend/static/</code> and the backend container updates <code>data/</code> inside the bind mount, run both containers under your host UID and GID. If your UID is not 1000, set <code>BINDERDASH_UID</code> and <code>BINDERDASH_GID</code> in <code>.env</code> first (see <a href="../../setup/docker/#container-user">Container user</a>).</p>
 <pre class="highlight"><code class="language-bash">printf 'BINDERDASH_UID=%s\nBINDERDASH_GID=%s\n' "$(id -u)" "$(id -g)" &gt;&gt; .env
 docker compose -f docker-compose.dev.yml up --build
 # App: http://localhost:8001
@@ -284,7 +291,7 @@ mkdocs serve</code></pre>
             </div>
           </div><footer>
     <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
-        <a href="../../usage/filtering-ranking/" class="btn btn-neutral float-left" title="Filtering and ranking"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../../admin/database-migrations/" class="btn btn-neutral float-left" title="Database migrations"><span class="icon icon-circle-arrow-left"></span> Previous</a>
         <a href="../api/" class="btn btn-neutral float-right" title="REST API">Next <span class="icon icon-circle-arrow-right"></span></a>
     </div>
 
@@ -312,7 +319,7 @@ mkdocs serve</code></pre>
         </span>
     
     
-      <span><a href="../../usage/filtering-ranking/" style="color: #fcfcfc">&laquo; Previous</a></span>
+      <span><a href="../../admin/database-migrations/" style="color: #fcfcfc">&laquo; Previous</a></span>
     
     
       <span><a href="../api/" style="color: #fcfcfc">Next &raquo;</a></span>

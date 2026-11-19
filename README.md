@@ -2,24 +2,24 @@
 
 ![Binderdash: the design table with scores, and a binder-target complex in the structure viewer](docs/images/binderdash-hero.png)
 
-**Binderdash is a tool to streamline filtering, ranking and construct design for de novo protein binders.**
+**Binderdash filters, ranks, and designs DNA constructs for de novo protein binders.**
 
-Point it at the output folders from your design runs and it presents the scores and structures in one interface. Filter, rank and export ready-to-order DNA constructs.
+Point it at the output folders from your design runs to inspect scores and structures in one interface, filter and rank candidates, and export ready-to-order DNA constructs.
 
 [Documentation](https://australian-protein-design-initiative.github.io/binderdash/) · [Download the desktop app](https://github.com/Australian-Protein-Design-Initiative/binderdash/releases/latest) · [Changelog](CHANGELOG.md)
 
 ## Features
 
-- **Reads your runs as they are.** Supports run output folders from RFdiffusion, RFdiffusion3, BindCraft and BoltzGen. Binderdash detects `nf-binder-design` pipeline outputs and imports with no reformatting needed.
-- **One table across runs and methods.** Sort and compare designs from different runs side by side. Common metrics (ipTM, interface PAE, RMSD, pLDDT) are matched across pipelines that name them differently.
-- **3D structure viewer.** Built on Mol\*. Step through designs, colour by chain or pLDDT, overlay a reference structure, and mark designs as good or bad as you go.
-- **Filtering and ranking.** Combine score thresholds with target-contact conditions (for example "binds within 5 Å of these epitope residues"), rank on several metrics at once, and pick a shortlist that balances score against sequence diversity. The filter cascade UI shows how many designs each condition removes.
-- **Plots.** Scatterplots and histograms of any two metrics against each other.
-- **Saved sets.** Keep a shortlist together with the filters and ranking that produced it, and come back to it later.
-- **Construct design.** Add N- or C-terminal affinity tags and linkers (His, FLAG, Strep-tag II, AviTag and others) and codon-optimise with synthesis complexity constraints, including GC content, hairpins and restriction sites. Generate short names compatible with DNA synthesis vendors naming rules. Export Twist-ready CSVs.
-- **Reproducible downloads.** A design bundle holds the structures, sequences and tables together with the selections, filters and settings that produced them, so a shortlist can be traced and restored later.
-- **Bring your own data.** Upload a TSV of extra columns (for example lab results) and merge it onto designs by ID to use for filtering and ranking.
-- **Desktop or shared server.** Run it on your own machine, or host one instance for a group with sign-in (local accounts, Unix/PAM or Google), per-user API keys, and an optional MCP endpoint and REST API for AI agents.
+- Reads run output folders directly from RFdiffusion, RFdiffusion3, BindCraft, and BoltzGen, and detects `nf-binder-design` pipeline outputs without reformatting.
+- Displays designs from different runs and methods in one sortable table, matching common metrics (ipTM, interface PAE, RMSD, pLDDT) across pipelines that name them differently.
+- Includes a Mol\* 3D structure viewer to step through designs, colour by chain or pLDDT, overlay a reference structure, and mark designs as good or bad.
+- Filters and ranks designs using score thresholds and target-contact conditions (for example, binding within 5 Å of selected epitope residues), multi-metric ranking, and diversity-aware shortlisting. The filter cascade UI shows how many designs each condition removes.
+- Plots scatterplots and histograms for any pair of metrics.
+- Saves design shortlists together with the filters and ranking that produced them.
+- Designs DNA constructs with N- or C-terminal affinity tags and linkers (His, FLAG, Strep-tag II, AviTag, and others), codon optimisation under synthesis complexity constraints (GC content, hairpins, restriction sites), vendor-compatible short names, and Twist-ready CSV export.
+- Exports design bundles containing structures, sequences, tables, selections, filters, and settings so a shortlist can be traced and restored later.
+- Merges extra columns from uploaded TSV files (for example, lab results) onto designs by ID for filtering and ranking.
+- Runs as a local desktop app or a shared server with sign-in (local accounts, Unix/PAM, or Google), per-user API keys, and an optional MCP endpoint and REST API for AI agents.
 
 ## Getting started
 
@@ -37,7 +37,7 @@ Start the app, open **Ingest Runs**, choose the folder that contains your design
 
 ### Server
 
-For a shared instance, run Binderdash with Docker Compose. It ships with a Caddy reverse proxy that handles HTTPS.
+For a shared instance, run Binderdash with Docker Compose. The Compose setup includes a Caddy reverse proxy for HTTPS.
 
 ```bash
 git clone https://github.com/Australian-Protein-Design-Initiative/binderdash.git
@@ -47,7 +47,7 @@ printf 'BINDERDASH_UID=%s\nBINDERDASH_GID=%s\n' "$(id -u)" "$(id -g)" >> .env   
 docker compose up -d --build
 ```
 
-Mount your run directories into the `binderdash` service in `docker-compose.yml` (read-only is fine) and list the in-container paths in `RUN_BASE_DIRS`. Then open `https://<DOMAIN>` (or `https://localhost`).
+Mount your run directories into the `binderdash` service in `docker-compose.yml` (read-only mounts are supported) and list the in-container paths in `RUN_BASE_DIRS`. Then open `https://<DOMAIN>` (or `https://localhost`).
 
 The example `.env` has authentication turned off. Before exposing the server to other people, set up sign-in as described in [Authentication](https://australian-protein-design-initiative.github.io/binderdash/latest/setup/authentication/). Full deployment details are in [Docker deployment](https://australian-protein-design-initiative.github.io/binderdash/latest/setup/docker/).
 

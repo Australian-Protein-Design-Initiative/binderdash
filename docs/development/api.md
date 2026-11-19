@@ -11,7 +11,7 @@ For machine-readable schemas, use the live OpenAPI document on your deployment. 
 | Environment | Typical base URL |
 | ----------- | ---------------- |
 | Your deployment | `https://binderdash.example.com` |
-| Docker dev (`docker-compose.dev.yml`) | `http://localhost:8911` (host port → container `8000`) |
+| Docker dev (`docker-compose.dev.yml`) | `http://localhost:8911` (host port mapped to container `8000`) |
 | Local uvicorn | `http://localhost:8000` |
 
 | Resource | Path |
@@ -19,7 +19,7 @@ For machine-readable schemas, use the live OpenAPI document on your deployment. 
 | Swagger UI | `/docs` |
 | ReDoc | `/redoc` |
 | OpenAPI JSON | `/openapi.json` |
-| Health (no auth) | `/health` → `{"status": "healthy", "timestamp": "..."}` |
+| Health (no auth) | `/health` (returns `{"status": "healthy", "timestamp": "..."}`) |
 
 Treat **`/openapi.json` as authoritative** for request and response shapes. The examples below cover common cases; new fields or routes may appear only in the spec.
 
@@ -44,18 +44,18 @@ Configure auth via `.env` (see `.env.example`). Relevant variables:
 | `GOOGLE_AUTH_*` | Optional Google OAuth |
 | `SECRET_KEY` | JWT signing for session cookies |
 | `BINDERDASH_ADMIN_USERS` | Comma-separated allowlist (email, `provider:identifier`, or bare username) granting admin; re-applied at every startup and login |
-| `DATABASE` | Required for per-user API keys to exist at all — they live in the DB |
+| `DATABASE` | Required for per-user API keys (stored in the database) |
 
 ### API key (scripts and automation)
 
-API keys are **per-user, named, expiring, and revocable** — there is no single shared server secret. Get one from the web UI (account menu, top-right → "API keys") or via CLI:
+API keys are **per-user, named, expiring, and revocable**; there is no single shared server secret. Create one in the web UI (account menu, top-right > "API keys") or via CLI:
 
 ```bash
 python -m backend.cli user create --email you@example.org --admin
 python -m backend.cli key create you@example.org --name bootstrap
 ```
 
-The token is printed to stdout alone (a warning goes to stderr) and shown only once — the server stores a SHA-256 hash, not the plaintext. Keys require `DATABASE`; with no persistence, key endpoints return `503`.
+The token is printed to stdout (a warning goes to stderr) and shown once: the server stores a SHA-256 hash instead of plaintext. Keys require `DATABASE`; without persistence, key endpoints return `503`.
 
 Once you have a token, send it on **every** request, including `POST` / `PATCH` / `DELETE`. No session cookie or CSRF header is required.
 
@@ -73,23 +73,23 @@ curl -sS -H "Authorization: Bearer $BINDERDASH_TOKEN" "$BASE/api/runs"
 
 `GET /api/auth/status` reports `api_keys.enabled: true` when keys are usable (auth is enabled and `DATABASE` is configured). Invalid, expired, or missing keys receive `401 Authentication required`.
 
-Keys are managed via `GET/POST /api/api-keys` and `PATCH/DELETE /api/api-keys/{id}` — but only with a **browser session**; an API-key-authenticated request to those routes gets `403` (a leaked key must not be able to mint its own replacement). `GET /api/users` is admin-only, session-only. Do not commit keys to the repository.
+Manage keys via `GET/POST /api/api-keys` and `PATCH/DELETE /api/api-keys/{id}` using a **browser session** only. API-key requests to those routes receive `403` so a leaked key cannot create its own replacement. `GET /api/users` is admin-only and session-only. Do not commit keys to the repository.
 
 ### Browser session (SPA)
 
 For interactive login (also required to create or manage API keys):
 
-1. **`POST /api/auth/login`** — body `{"username": "...", "password": "..."}`. Sets an HTTP-only session cookie and returns `csrf_token` and `user`.
-2. **CSRF** — state-changing methods (`POST`, `PUT`, `PATCH`, `DELETE`) must send header `X-CSRF-Token` matching the `binderdash_csrf` cookie. `GET` / `HEAD` / `OPTIONS` are exempt. Failure → `403` with plain text `CSRF token missing` or `CSRF token mismatch`.
-3. **`POST /api/auth/logout`** — clears session and CSRF cookies.
+1. `POST /api/auth/login`: body `{"username": "...", "password": "..."}`. Sets an HTTP-only session cookie and returns `csrf_token` and `user`.
+2. CSRF: state-changing methods (`POST`, `PUT`, `PATCH`, `DELETE`) must send header `X-CSRF-Token` matching the `binderdash_csrf` cookie. `GET`, `HEAD`, and `OPTIONS` are exempt. Missing or mismatched tokens return `403` with plain text `CSRF token missing` or `CSRF token mismatch`.
+3. `POST /api/auth/logout`: clears session and CSRF cookies.
 
 Google OAuth: `GET /api/auth/google/login` and `GET /api/auth/google/callback` (browser redirect flow).
 
-**`GET /api/auth/me`** — current user; requires a session cookie (API key alone is not accepted here — deliberately, see `backend/auth.py`). Returns `username`, `provider`, `email`, `display_name`, `picture_url`, `user_id`, `is_admin`, `auth_method`, `last_login_at`. The login response (`POST /api/auth/login`, and the Google callback) returns the same shape under `user`.
+`GET /api/auth/me` returns the current user and requires a session cookie (API keys are not accepted; see `backend/auth.py`). It returns `username`, `provider`, `email`, `display_name`, `picture_url`, `user_id`, `is_admin`, `auth_method`, and `last_login_at`. The login response (`POST /api/auth/login`, and the Google callback) returns the same shape under `user`.
 
 ### User model
 
-A **user** is a person; an **identity** is one login method, `(provider, identifier)` — e.g. `local:alice`, `google:alice@example.org`, `pam:alice`. Identities merge onto the same user only when they share a **verified email**; users are auto-created on first login. `BINDERDASH_ADMIN_USERS` (comma-separated; matches email, `provider:identifier`, or bare username — no `*` wildcard) grants `is_admin` and is re-applied at every startup and login, so admin status set only via the CLI (`user set-admin`) will not stick unless the user is also listed there.
+A **user** is a person; an **identity** is one login method, `(provider, identifier)` (for example, `local:alice`, `google:alice@example.org`, `pam:alice`). Identities merge onto the same user only when they share a **verified email**, and users are created automatically on first login. `BINDERDASH_ADMIN_USERS` (comma-separated; matches email, `provider:identifier`, or bare username, with no `*` wildcard) grants `is_admin` and is re-applied at every startup and login, so admin status set only via the CLI (`user set-admin`) is overwritten unless the user is also listed there.
 
 ## Data model
 
@@ -140,12 +140,12 @@ Common Binderdash fields:
 | `pdb_file` | Structure basename (not full path) |
 | `source_path` | Distinguishes rows when runs are merged |
 | `good` | User flag (boolean) |
-| `tag` | `"N"` or `"C"` — which terminus receives preset tags in Prepare Sequences |
+| `tag` | `"N"` or `"C"`: terminus receiving preset tags in Prepare Sequences |
 | `Sequence` | Binder amino-acid sequence (stored in **`extra_data`**; extract / tag-placement) |
 | `binder_chain` | Chain ID used for sequence extract (default `B`) |
 | `short_name` | Twist / vendor short identifier (≤32 chars) |
 
-**Persistence:** Pipeline columns from the on-disk results table are stored in **`data_json`** and replaced on re-ingest. User annotations (uploaded table columns, extracted sequence, plugins) live in **`extra_data`** and are preserved across re-ingest. The API returns a single flat dict: `{**data_json, **extra_data}` plus dedicated columns.
+**Persistence:** Pipeline columns from the on-disk results table are stored in **`data_json`** and replaced on re-ingest. User annotations (uploaded table columns, extracted sequence, plugins) are stored in **`extra_data`** and preserved across re-ingest. The API returns a single flat dict: `{**data_json, **extra_data}` plus dedicated columns.
 
 The in-memory designs list is sorted by each method’s primary score (see table below). Client-side filtering and re-sorting are normal.
 
@@ -243,9 +243,9 @@ For custom analysis, prefer `GET /api/designs` or `GET /api/runs/{run_id}/table`
 | ------ | ---- | ----------- |
 | `POST` | `/api/filtering/columns` | Filterable columns (numeric metrics + `design_id`/`project_id`/`run_name`/`method`/`Sequence` + user columns `good`/`tag`) for a run scope |
 | `POST` | `/api/filtering/preview` | Sequential filter cascade: designs remaining after each stage |
-| `POST` | `/api/filtering/apply` | Hard filters only — passing design keys, debounced for live table narrowing |
+| `POST` | `/api/filtering/apply` | Hard filters only: passing design keys, debounced for live table narrowing |
 | `POST` | `/api/filtering/rank` | Filters + ranking (boltzgen "Algorithm 2" worst-case rank), no diversity selection, not persisted |
-| `POST` | `/api/filtering/diversity` | Full filter → rank → diversity pipeline, not persisted |
+| `POST` | `/api/filtering/diversity` | Full filter, rank, and diversity pipeline, not persisted |
 | `POST` | `/api/filtering/run` | Full pipeline, persisted as a new Saved Set |
 
 ### Saved Sets
@@ -255,15 +255,13 @@ For custom analysis, prefer `GET /api/designs` or `GET /api/runs/{run_id}/table`
 | `GET` | `/api/saved-sets` | List all saved sets |
 | `GET` | `/api/saved-sets/{id}` | One saved set's metadata |
 | `GET` | `/api/saved-sets/{id}/designs` | Full ranked design table for the set (see below) |
-| `PATCH` | `/api/saved-sets/{id}` | Rename (the only allowed mutation — sets are otherwise immutable snapshots) |
+| `PATCH` | `/api/saved-sets/{id}` | Rename (the only allowed mutation; sets are otherwise immutable snapshots) |
 | `DELETE` | `/api/saved-sets/{id}` | Delete |
-| `GET` | `/api/saved-sets/{id}/download` | ZIP: the standard [design bundle](download-bundles.md) — ranked rows, structures, and the UI state the set was saved with |
+| `GET` | `/api/saved-sets/{id}/download` | ZIP: the standard [design bundle](download-bundles.md) containing ranked rows, structures, and the saved UI state |
 
 ### Download bundles
 
-One zip carrying the data plus the UI state that produced it. See
-[Download bundles](download-bundles.md) for the member list and the JSON schema contract.
-Requests carry design **keys**, not rows — the server re-reads each design from its cache.
+Each bundle is a single zip archive containing design data and the UI state that produced it. See [Download bundles](download-bundles.md) for the member list and JSON schema contract. Requests send design **keys** instead of full rows, and the server reads each design from its cache.
 
 | Method | Path | Description |
 | ------ | ---- | ----------- |
@@ -355,21 +353,21 @@ curl -sS -H "Authorization: Bearer $BINDERDASH_TOKEN" \
 
 Optional `fixed` maps each `design_id` to a per-residue boolean array the same length as that protein. Residues marked `true` must be stops (`*`, frozen as **TAA**) or a leading Met (`M`, frozen as **ATG**), and are excluded from codon optimisation and from user constraints. When a design id is omitted from `fixed` (or `fixed` is omitted entirely), every `*` in that protein is treated as fixed.
 
-Each result row carries the `seed` that produced its DNA, and the response carries `tool_versions` (DnaChisel, python_codon_tables, numpy). Passing those seeds back as `seeds: { design_id: 12345 }` reproduces the same DNA, as long as the versions still match - a DnaChisel upgrade can change the search order and so the result for a given seed. Omit `seeds` and each design gets a fresh one, which is what makes re-running the solver worthwhile when a hard constraint set fails.
+Each result row includes the `seed` that produced its DNA, and the response includes `tool_versions` (DnaChisel, python_codon_tables, numpy). Passing those seeds back as `seeds: { design_id: 12345 }` reproduces the same DNA while package versions match (a DnaChisel upgrade can change the search order for a given seed). Omitting `seeds` assigns a new random seed per design, allowing retries to succeed when a strict constraint set fails.
 
-Lowercase `a`/`c`/`g`/`t` in a sequence are literal nucleotides from a custom addition, not amino acids: they stay frozen and are not recoded. Optional `frame` maps each `design_id` to `0`, `1` or `2`, the nucleotide offset where design and preset-tag codons begin. A 5' addition whose length is not a multiple of 3 sets this to 1 or 2. `AvoidConsecutiveCodons` reads codons from that offset.
+Lowercase `a`/`c`/`g`/`t` in a sequence are literal nucleotides from a custom addition, not amino acids: they stay frozen and are not recoded. Optional `frame` maps each `design_id` to `0`, `1` or `2`, the nucleotide offset where design and preset-tag codons begin. A 5' addition with a length not divisible by 3 sets this to 1 or 2. `AvoidConsecutiveCodons` reads codons from that offset.
 
 ### Preparing constructs
 
-`POST /api/sequences/prepare` builds the full constructs - N/C tags, linkers, terminal prefixes and suffixes, start methionine, stop codons, post-stop padding, vendor short names and the protein parameters - from a design selection plus a settings payload, and returns the prepared rows plus per-row warnings. The settings payload is the same JSON a Prepare Sequences download bundle records, so a saved bundle can be replayed. An invalid payload returns `validation_errors` instead of rows.
+`POST /api/sequences/prepare` builds constructs (N/C tags, linkers, terminal prefixes and suffixes, start methionine, stop codons, post-stop padding, vendor short names, and protein parameters) from a design selection and a settings payload, returning the prepared rows and per-row warnings. The settings payload uses the same JSON format stored in a Prepare Sequences download bundle, so a saved bundle can be replayed. An invalid payload returns `validation_errors` instead of rows.
 
-`POST /api/sequences/prepare/script` returns a standalone Python script (`text/x-python`) that reproduces those constructs offline. It is generated by inlining `backend/seq_prep/`'s own source alongside a `CONFIG` block holding the settings, so it cannot drift from the server that produced it. The script runs under `uv run` using a PEP 723 header, takes a TSV of designs with a `tag` column, writes Twist CSV by default (`--format` for FASTA/TSV/CSV/JSON), and embeds no sequences, hashes or seeds, so the same script works on a later similar set. It is POST rather than GET because the settings are a whole document, not a query string.
+`POST /api/sequences/prepare/script` returns a standalone Python script (`text/x-python`) that reproduces those constructs offline. The server generates it by inlining `backend/seq_prep/` alongside a `CONFIG` block containing your settings, keeping the script matched to the server version. The script runs under `uv run` via a PEP 723 header, reads a TSV of designs with a `tag` column, outputs Twist CSV by default (`--format` for FASTA/TSV/CSV/JSON), and embeds no sequences, hashes, or seeds so you can reuse it on later sets. This endpoint uses POST because the settings payload is a full JSON document.
 
 ### Codon tables
 
 `GET /api/sequences/codon-tables` returns `{ "items": [ { "value", "label" }, ... ] }`.
 
-`GET /api/sequences/codon-tables/{table_id}` returns `value`, `label`, `stop_codons`, and `codons_by_aa` (amino acid → codon → frequency).
+`GET /api/sequences/codon-tables/{table_id}` returns `value`, `label`, `stop_codons`, and `codons_by_aa` (mapping amino acid to codon to frequency).
 
 Common `codon_table_id` values:
 
@@ -409,7 +407,7 @@ Each constraint: `{ "type": "<name>", "enabled": true, "params": { ... } }`.
 
 The Prepare Sequences UI uses `DEFAULT_TWIST_CONSTRAINTS` in `frontend/src/stores/seqPrep.ts`, similar to the DNA optimisation/complexity rules used by Twist Biosciences for gene synthesis. The UI-only type `ExcludeRestrictionSite` with `params.enzyme` is serialised to `AvoidPattern` with `pattern: "<enzyme>_site"` before POST.
 
-`AvoidInvertedRepeats` rejects sequences whose self-complementary structures (snapback hairpins) melt at or above `min_tm`, computed the same way primer3 / IDT do (concentration-free nearest-neighbour thermodynamic alignment). This catches the short GC-rich and imperfect inverted repeats that gene-synthesis vendors flag and that `AvoidHairpins` (exact stems only) misses. primer3's alignment scores at most 60 bp per sequence, so hairpins are scored on sliding 60 bp windows; structures spanning more than ~50 nt (long arms and loop) may not be detected.
+`AvoidInvertedRepeats` rejects sequences with self-complementary structures (snapback hairpins) melting at or above `min_tm`, computed the same way primer3 and IDT do (concentration-free nearest-neighbour thermodynamic alignment). This detects the short GC-rich and imperfect inverted repeats that gene-synthesis vendors flag and that `AvoidHairpins` (exact stems only) misses. primer3's alignment scores at most 60 bp per sequence, so hairpins are scored on sliding 60 bp windows; structures spanning more than ~50 nt (long arms and loop) may not be detected.
 
 ### Optimisation response
 
@@ -424,13 +422,13 @@ The Prepare Sequences UI uses `DEFAULT_TWIST_CONSTRAINTS` in `frontend/src/store
 }
 ```
 
-Failures are per design. DnaChisel's constraint search is stochastic, so a design that fails with "No solution found" is optimised again from the same starting sequence, up to five attempts with a fresh seed each time, before that error is returned. The `seed` reported is the one from the attempt that succeeded. Other errors are returned on the first failure. If many rows still fail, relax `UniquifyAllKmers` or windowed `EnforceGCContent` first.
+Failures are reported per design. Because DnaChisel's constraint search is stochastic, any design failing with "No solution found" is retried from the same starting sequence up to five times with a new seed each time before returning that error; the reported `seed` is from the succeeding attempt. All other errors return immediately. If many rows still fail, relax `UniquifyAllKmers` or windowed `EnforceGCContent` first.
 
 ## Sequence tags
 
 Preset tag **amino-acid sequences** are not stored as DNA on the server. The API stores only which terminus is active (`tag`: `"N"` or `"C"`); `GET /api/sequences/tag-presets` returns the preset table itself.
 
-Construct assembly exists **twice**: in `backend/seq_prep/` behind `POST /api/sequences/prepare`, and in TypeScript in `frontend/src/stores/seqPrep.ts`, which is what the Prepare Sequences tab's live preview still uses. They are held in agreement by `backend/tests/test_seq_prep_parity.py`. Removing the TypeScript side is planned.
+Construct assembly is implemented in two places: in `backend/seq_prep/` behind `POST /api/sequences/prepare`, and in TypeScript in `frontend/src/stores/seqPrep.ts` for the Prepare Sequences tab's live preview. Parity between them is verified by `backend/tests/test_seq_prep_parity.py`. Removing the TypeScript implementation is planned.
 
 ### Preset sequences
 
@@ -470,13 +468,13 @@ Further UI behaviour (post-stop padding, short names, mixed-case sequences) is d
 
 ## Filtering, ranking, and diversity selection
 
-Run scope for every `/api/filtering/*` call is an explicit `run_ids` list — there is no server-side "currently selected" state. How the Filtering tab uses these stages, including the BoltzGen-style weighted ranking, is described in [Filtering and ranking](../usage/filtering-ranking.md). The pipeline has three independent stages, each individually reachable:
+Run scope for every `/api/filtering/*` call is an explicit `run_ids` list; there is no server-side "currently selected" state. How the Filtering tab uses these stages, including the BoltzGen-style weighted ranking, is described in [Filtering and ranking](../usage/filtering-ranking.md). The pipeline has three independent stages, each individually reachable:
 
-1. **Hard filters** (`FilterSpec`) — `{ "column": "...", "operator": "...", "threshold": <number|null>, "text_value": <string|null> }`. `column` accepts a canonical metric name (see `backend/filtering/metrics.py`, e.g. `iptm`, `rmsd`, `pae_interaction`) resolved per-method, a raw column name, one of the identity columns `design_id`/`project_id`/`run_name`/`method`/`Sequence`, or the user columns `good` and `tag`. Numeric operators `<`, `<=`, `>`, `>=` take `threshold`; string operators `contains`, `not_contains`, `starts_with`, `ends_with`, `equals`, `not_equals`, `regex` take `text_value`; `is_empty`/`is_not_empty` take neither. `good` is a three-state rating: `equals` with `text_value` `"true"` (good) or `"false"` (bad), or `is_empty` (unrated). `tag` is text (`N` / `C`, or empty). Both columns are listed even when no design has a value yet; a missing column is treated as all null.
-2. **Ranking** (`RankingMetric`) — `{ "column": "...", "weight": 1.0, "higher_is_better": true }`, plus `ranking_mode`. `worst_rank` (the default when the field is omitted, so older clients stay on boltzgen Algorithm 2) scales each design's rank on every metric by `1/weight` and takes the *worst* (max) scaled rank. `simple` sorts lexicographically: more filters passed first, then the metrics in list order, and `weight` is ignored. Either way `num_filters_passed` is folded into the sort and failing designs are **not dropped** — `ranked` always covers every input design. The Filtering tab sends `simple` by default.
-3. **Diversity selection** (`select_diverse`) — lazy-greedy selection over binder sequence similarity + `quality_score`, controlled by `budget` (final set size), `alpha` (0 = quality only, 1 = diversity only), and optional `size_buckets` (`{"min", "max", "num_designs"}`, caps selections per sequence-length range). **Only designs that passed every hard filter are eligible** — a design failing a filter can never end up in the diverse/saved set, however small `passing_filters` is relative to `budget`. `best_mpnn_only` (default false) first keeps one design per `backbone_id` (best primary score; designs with no backbone are kept) so the budget is not spent on MPNN variants of the same backbone. It applies only when diversity selection runs.
+1. Hard filters (`FilterSpec`): `{ "column": "...", "operator": "...", "threshold": <number|null>, "text_value": <string|null> }`. `column` accepts a canonical metric name (see `backend/filtering/metrics.py`, e.g. `iptm`, `rmsd`, `pae_interaction`) resolved per-method, a raw column name, one of the identity columns `design_id`/`project_id`/`run_name`/`method`/`Sequence`, or the user columns `good` and `tag`. Numeric operators `<`, `<=`, `>`, `>=` take `threshold`; string operators `contains`, `not_contains`, `starts_with`, `ends_with`, `equals`, `not_equals`, `regex` take `text_value`; `is_empty`/`is_not_empty` take neither. `good` is a three-state rating: `equals` with `text_value` `"true"` (good) or `"false"` (bad), or `is_empty` (unrated). `tag` is text (`N` / `C`, or empty). Both columns are listed even when no design has a value yet; a missing column is treated as all null.
+2. Ranking (`RankingMetric`): `{ "column": "...", "weight": 1.0, "higher_is_better": true }`, plus `ranking_mode`. `worst_rank` (the default when omitted, keeping older clients on boltzgen Algorithm 2) scales each design's rank on every metric by `1/weight` and takes the *worst* (max) scaled rank. `simple` sorts lexicographically: more filters passed first, then the metrics in list order, ignoring `weight`. In both modes, `num_filters_passed` is included in the sort and failing designs are **not dropped**; `ranked` always covers every input design. The Filtering tab sends `simple` by default.
+3. Diversity selection (`select_diverse`): lazy-greedy selection over binder sequence similarity + `quality_score`, controlled by `budget` (final set size), `alpha` (0 = quality only, 1 = diversity only), and optional `size_buckets` (`{"min", "max", "num_designs"}`, capping selections per sequence-length range). **Only designs that passed every hard filter are eligible**: a design failing a filter cannot appear in the diverse or saved set, regardless of how small `passing_filters` is relative to `budget`. `best_mpnn_only` (default false) first keeps one design per `backbone_id` (best primary score; designs with no backbone are kept) so the budget is not spent on MPNN variants of the same backbone. It applies only when diversity selection runs.
 
-`POST /api/filtering/run` body is `FilteringRunRequest`: `name`, `run_ids`, `filters`, `metrics`, `budget` (default 24), `alpha` (default 0 — quality only; BoltzGen uses 0.001 for proteins and 0.01 for its peptide-anything protocol), `size_buckets`, `random_state`, `apply_diversity` (default true — when false, the saved set is every design that passed the hard filters and `budget`/`alpha` are ignored for selection), `best_mpnn_only` (default false; see stage 3). `POST /api/filtering/diversity` accepts the same selection fields without persisting a set. Response:
+`POST /api/filtering/run` accepts a `FilteringRunRequest` body: `name`, `run_ids`, `filters`, `metrics`, `budget` (default 24), `alpha` (default 0, quality only; BoltzGen uses 0.001 for proteins and 0.01 for its peptide-anything protocol), `size_buckets`, `random_state`, `apply_diversity` (default true; when false, the saved set includes every design that passed the hard filters and `budget`/`alpha` are ignored for selection), and `best_mpnn_only` (default false; see stage 3). `POST /api/filtering/diversity` accepts the same selection fields without persisting a set. Response:
 
 ```json
 {
@@ -489,28 +487,28 @@ Run scope for every `/api/filtering/*` call is an explicit `run_ids` list — th
 }
 ```
 
-`total_input` is every design across `run_ids` before filtering; `passing_filters` is how many passed every hard filter; `top_set_count` is `min(budget, total_input)` (an upper bound, not necessarily reachable); `diverse_set_count` is the actual number of designs selected into the set — this is what `SavedSet.design_count` reports afterwards (**not** `total_input`).
+`total_input` is the total number of designs across `run_ids` before filtering; `passing_filters` is how many passed every hard filter; `top_set_count` is `min(budget, total_input)` (an upper bound, not necessarily reachable); `diverse_set_count` is the actual number of designs selected into the set, which `SavedSet.design_count` reports afterwards (**not** `total_input`).
 
-`GET /api/saved-sets/{id}/designs` returns every ranked design (pass or fail), each with `in_diverse_set` — use this to browse the full ranked pool with a "made the cut" flag; use `SavedSet.design_count`/`total_input` from `GET /api/saved-sets/{id}` for the summary counts.
+`GET /api/saved-sets/{id}/designs` returns every ranked design (pass or fail) with an `in_diverse_set` boolean; use this to browse the full ranked pool, and use `SavedSet.design_count` and `total_input` from `GET /api/saved-sets/{id}` for summary counts.
 
-`SavedSet.source_run_ids` records which runs a set was built from — resolve to display names via `GET /api/runs`.
+`SavedSet.source_run_ids` lists the run IDs a set was built from; resolve them to display names via `GET /api/runs`.
 
 ## Run ingestion
 
 Used by the **Select Runs** UI to discover and persist runs from `RUN_BASE_DIRS`:
 
-1. **`GET /api/tree`** — browse allowed base directories.
-2. **`POST /api/runs/scan`** — body `{ "folders": ["/path/..."], "force_rescan_of_ingested": false }`. Returns discovered run metadata; skips already-ingested runs unless forced.
-3. **`POST /api/runs/ingest-preview`** — body `{ "runs": [ ... ] }`. Lists runs that would be re-ingested.
-4. **`POST /api/runs/ingest`** — body `{ "runs": [ ... ] }`. Requires `DATABASE`. Assigns stable `run_id`, stores designs, refreshes cache. Only each run's `path` / `merged_paths` is read from the body: the server re-detects the run at those folders (which must be inside `RUN_BASE_DIRS`) and stores what it finds on disk. A folder outside the base dirs, or with no recognised run, is a 400.
+1. `GET /api/tree`: browse allowed base directories.
+2. `POST /api/runs/scan`: body `{ "folders": ["/path/..."], "force_rescan_of_ingested": false }`. Returns discovered run metadata; skips already-ingested runs unless forced.
+3. `POST /api/runs/ingest-preview`: body `{ "runs": [ ... ] }`. Lists runs that would be re-ingested.
+4. `POST /api/runs/ingest`: body `{ "runs": [ ... ] }`. Requires `DATABASE`. Assigns stable `run_id`, stores designs, and refreshes the cache. Only each run's `path` / `merged_paths` is read from the body: the server re-detects the run at those folders (which must be inside `RUN_BASE_DIRS`) and stores what it finds on disk. A folder outside the base dirs, or with no recognised run, returns `400`.
 
-The server refuses to start if `RUN_BASE_DIRS` is empty or any entry is not an existing directory (desktop builds excepted, which ask for folders on first run). At startup, stored runs whose folders or structure files lie outside the current `RUN_BASE_DIRS` are not loaded; each is logged as a warning and stays in the database.
+The server exits at startup if `RUN_BASE_DIRS` is empty or any entry is not an existing directory (except in desktop builds, which prompt for folders on first launch). Stored runs with folders or structure files outside the current `RUN_BASE_DIRS` are skipped at startup, logged as warnings, and left untouched in the database.
 
 Deleting a run (`DELETE /api/runs/{run_id}`) removes database and cache entries only; files on disk are unchanged.
 
 ## Related documentation
 
-- [Pipeline method types](pipeline-methods.md) — run signatures, score columns, structure paths
-- [Sequence preparation](sequence_preparation.md) — short names, hashing, UI behaviour
-- [Download bundles](download-bundles.md) — bundle contents, JSON schema versioning, restore
+- [Pipeline method types](pipeline-methods.md): run signatures, score columns, structure paths
+- [Sequence preparation](sequence_preparation.md): short names, hashing, UI behaviour
+- [Download bundles](download-bundles.md): bundle contents, JSON schema versioning, restore
 - Agent-oriented quick reference: [`skills/binderdash-api/SKILL.md`](https://github.com/Australian-Protein-Design-Initiative/binderdash/blob/main/skills/binderdash-api/SKILL.md)

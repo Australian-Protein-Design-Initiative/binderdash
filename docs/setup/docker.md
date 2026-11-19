@@ -1,6 +1,6 @@
 # Docker deployment
 
-This page describes running Binderdash as a shared server with Docker Compose.
+Run Binderdash as a shared server with Docker Compose.
 
 ## Overview
 
@@ -26,19 +26,19 @@ sudo chmod -R a+rX /data/runs /data2/runs
 
 ### Environment Configuration
 
-1. **Create `.env` file**: copy from `.env.example` and configure:
+1. Copy `.env.example` to `.env`:
 
    ```bash
    cp .env.example .env
    ```
 
-2. **Set the container user** to your own uid and gid (see [Container user](#container-user) for why):
+2. Set the container user to your own uid and gid (see [Container user](#container-user)):
 
    ```bash
    printf 'BINDERDASH_UID=%s\nBINDERDASH_GID=%s\n' "$(id -u)" "$(id -g)" >> .env
    ```
 
-3. **Configure your environment variables** in the `.env` file:
+3. Configure environment variables in `.env`:
 
    ```bash
    # Required: set the paths to your data directories
@@ -55,7 +55,7 @@ Docker Compose automatically loads all environment variables from the `.env` fil
 
 ### Mounting your run directories
 
-`RUN_BASE_DIRS` is read inside the container, so each directory must be mounted into the `binderdash` service and listed by its **container** path. For example, to serve runs from `/data/runs` on the host, add a volume in `docker-compose.yml`:
+Because Binderdash reads `RUN_BASE_DIRS` inside the container, mount each directory into the `binderdash` service and list its container path. For example, to serve runs from `/data/runs` on the host, add a volume to `docker-compose.yml`:
 
 ```yaml
 services:
@@ -64,22 +64,22 @@ services:
       - /data/runs:/data/runs:ro
 ```
 
-and set `RUN_BASE_DIRS="/data/runs"` in `.env`. Binderdash only reads run folders, so a read-only mount is sufficient.
+Then set `RUN_BASE_DIRS="/data/runs"` in `.env`. A read-only mount (`:ro`) works because Binderdash does not write to run folders.
 
 ### Database directory
 
-The SQLite database lives under `./data` on the host (mounted at `/app/data`) and is created on first start. The `data/` directory is part of the repository, so it exists after cloning, owned by you.
+Binderdash creates the SQLite database in `./data` on the host (mounted at `/app/data`) on first start. The `data/` directory is tracked in the repository, so it already exists after cloning and is owned by your user.
 
 ### Container user
 
-The `binderdash` container never runs as root. It runs as the numeric user and group given by two variables in `.env`:
+The `binderdash` container runs as a non-root user configured by numeric IDs in `.env`:
 
 | Variable | Meaning | Default |
 | --- | --- | --- |
 | `BINDERDASH_UID` | User ID the container process runs as | `1000` |
 | `BINDERDASH_GID` | Group ID the container process runs as | `1000` |
 
-Files the container creates in `./data` (the SQLite database and its `-wal`/`-shm` files) are owned by this uid and gid on the host. The same ids need read access to your run directories. Setting them to your own ids means:
+This uid and gid own any files created in `./data` (the SQLite database and its `-wal`/`-shm` files) and need read access to your run directories. Matching your host user ensures:
 
 - `./data`, which you own after cloning, is writable without a `chown`
 - run directories you can read, the container can read
@@ -91,7 +91,7 @@ To set them to the user you are logged in as:
 printf 'BINDERDASH_UID=%s\nBINDERDASH_GID=%s\n' "$(id -u)" "$(id -g)" >> .env
 ```
 
-This writes literal numbers into `.env`, for example `BINDERDASH_UID=1001`. Use numbers, not `$UID`: Compose substitutes variables in `.env` only from its own environment, and bash does not export `UID` and does not define a `GID` variable at all. A `$UID` in `.env` therefore resolves to an empty string, Compose prints a `"UID" variable is not set` warning, and the container falls back to 1000.
+This writes literal numbers such as `BINDERDASH_UID=1001` into `.env`. Do not use `$UID` or `$GID`: Compose only expands variables from its own environment, bash does not export `UID`, and bash defines no `GID` variable. Writing `$UID` in `.env` expands to an empty string, triggers a `"UID" variable is not set` warning, and defaults the container to `1000`.
 
 Check the result with:
 
@@ -110,7 +110,7 @@ The variables are read by Docker Compose only; the Binderdash backend ignores th
 
 ### HTTPS with Caddy
 
-`docker-compose.yml` runs a [Caddy](https://caddyserver.com/) reverse proxy on ports 80 and 443 in front of Binderdash. Set `DOMAIN` in `.env` to the server's public hostname and Caddy obtains a TLS certificate automatically. With `DOMAIN` unset, Caddy serves `https://localhost` with a locally issued certificate. Also set `CORS_ALLOWED_ORIGINS` to your site URL, and set a fixed `SECRET_KEY` so sign-in sessions survive restarts.
+`docker-compose.yml` runs a [Caddy](https://caddyserver.com/) reverse proxy on ports 80 and 443 in front of Binderdash. Set `DOMAIN` in `.env` to the server's public hostname and Caddy obtains a TLS certificate automatically. With `DOMAIN` unset, Caddy serves `https://localhost` with a locally issued certificate. Also set `CORS_ALLOWED_ORIGINS` to your site URL, and set a fixed `SECRET_KEY` so sign-in sessions persist across restarts.
 
 ## Building and Running
 
@@ -150,29 +150,29 @@ curl http://localhost:8000/health
 
 The container is configured with resource limits:
 
-- **Memory**: 2GB limit, 512MB reservation
-- **CPU**: 1.0 CPU limit, 0.5 CPU reservation
+- Memory: 2GB limit, 512MB reservation
+- CPU: 1.0 CPU limit, 0.5 CPU reservation
 
 Adjust these in `docker-compose.yml` if needed for your environment.
 
 ## Security Considerations
 
-1. **Non-root user**: the container runs as `BINDERDASH_UID`:`BINDERDASH_GID` (default 1000:1000), never root
-2. **Read-only volumes**: data directories are mounted as read-only
-3. **Environment variables**: sensitive configuration is passed via environment variables, not baked into the image
-4. **Network**: only Caddy (ports 80 and 443) is exposed to the host; the Binderdash container listens on port 8000 on the internal Compose network
+1. Non-root user: the container runs as `BINDERDASH_UID`:`BINDERDASH_GID` (default 1000:1000), not root.
+2. Read-only volumes: data directories are mounted read-only.
+3. Environment variables: sensitive configuration is passed via environment variables instead of baking secrets into the image.
+4. Network: only Caddy (ports 80 and 443) is exposed to the host; the Binderdash container listens on port 8000 on the internal Compose network.
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **Permission denied on data directories**: the container user (see [Container user](#container-user)) must be able to read the run directories and write `./data`. Either set `BINDERDASH_UID`/`BINDERDASH_GID` to the owner, or make the directories readable:
+1. Permission denied on data directories: the container user (see [Container user](#container-user)) must be able to read the run directories and write `./data`. Either set `BINDERDASH_UID`/`BINDERDASH_GID` to the owner, or make the directories readable:
 
    ```bash
    sudo chmod -R a+rX /data/runs /data2/runs
    ```
 
-2. **Container won't start**:
+2. Container will not start:
 
    ```bash
    docker compose logs binderdash
@@ -180,14 +180,14 @@ Adjust these in `docker-compose.yml` if needed for your environment.
    cat .env
    ```
 
-3. **Health check failing**:
+3. Health check failing:
 
    ```bash
    curl -v http://localhost:8000/health
    docker compose logs -f binderdash
    ```
 
-4. **Frontend not loading**:
+4. Frontend not loading:
    - Ensure the frontend was built during the Docker build process
    - Check that static files are being served correctly
    - Verify the build output in the container: `docker compose exec binderdash ls -la /app/backend/static/`
@@ -206,12 +206,12 @@ docker compose exec binderdash ps aux
 
 For production deployment:
 
-1. **Use a reverse proxy** (nginx, traefik, or Caddy — see `Caddyfile` and `DOMAIN` in `.env.example`) in front of the container
-2. **Set up SSL/TLS** termination at the reverse proxy
-3. **Configure proper logging** and log rotation
-4. **Set up monitoring** and alerting
-5. **Use secrets management** for sensitive environment variables
-6. **Consider using Docker Swarm or Kubernetes** for orchestration
+1. Put a reverse proxy (nginx, traefik, or Caddy; see `Caddyfile` and `DOMAIN` in `.env.example`) in front of the container.
+2. Terminate SSL/TLS at the reverse proxy.
+3. Configure logging and log rotation.
+4. Set up monitoring and alerting.
+5. Manage sensitive environment variables with a secrets manager.
+6. Consider Docker Swarm or Kubernetes for orchestration.
 
 ### Example nginx configuration
 

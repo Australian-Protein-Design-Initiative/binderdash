@@ -2,10 +2,10 @@
 
 Binderdash is a single-page app with two parts:
 
-- **Frontend**: Vite + Vue 3 (Composition API) + PrimeVue, with the Mol\* structure viewer and Vega-Lite plots.
-- **Backend**: FastAPI (async), serving the REST API and the built frontend as static files.
+- Frontend: Vite + Vue 3 (Composition API) + PrimeVue, with the Mol\* structure viewer and Vega-Lite plots.
+- Backend: FastAPI (async), serving the REST API and the built frontend as static files.
 
-`AGENTS.md` in the repository root holds the authoritative code-style, environment-variable and release rules.
+`AGENTS.md` in the repository root defines the code-style, environment-variable, and release rules.
 
 ## Prerequisites
 
@@ -28,7 +28,7 @@ Binderdash is a single-page app with two parts:
 
 ## Environment configuration
 
-Configuration is read from a `.env` file at the repository root. Copy `.env.example` as a starting point; it documents every supported variable. For local development the defaults (authentication disabled, SQLite under `data/`, runs from `./example_runs`) are usually enough.
+Binderdash loads configuration from `.env` at the repository root. Copy `.env.example` as a starting point; it documents all supported variables. For local development, the defaults (authentication disabled, SQLite under `data/`, runs from `./example_runs`) are usually sufficient.
 
 To create a local user account instead, set `DISABLE_AUTHENTICATION="false"` and add a bcrypt hash to `LOCAL_USERS`:
 
@@ -59,7 +59,7 @@ The server listens on <http://localhost:8000>.
 
 ### Changing backend dependencies
 
-Edit `backend/pyproject.toml`, then recompile the pinned requirements:
+After modifying `backend/pyproject.toml`, regenerate and install the pinned requirements:
 
 ```bash
 uv pip compile backend/pyproject.toml -o backend/requirements.txt
@@ -68,9 +68,9 @@ uv pip install -r backend/requirements.txt
 
 ## Frontend
 
-There are two ways to work on the UI.
+You can run the frontend in two modes.
 
-**Rebuild into the backend** (recommended when the backend is running). Changes are rebuilt into `backend/static/`, so the FastAPI server at :8000 always serves the latest UI:
+To rebuild into `backend/static/` automatically (recommended while the backend is running so FastAPI on `:8000` serves the latest build):
 
 ```bash
 cd frontend
@@ -78,7 +78,7 @@ pnpm install
 pnpm run watch:build
 ```
 
-**Vite dev server** with hot reload on <http://localhost:5173>, proxying API calls to the backend:
+To run the Vite dev server with hot reload on <http://localhost:5173> (proxying API calls to the backend):
 
 ```bash
 cd frontend
@@ -92,7 +92,7 @@ For a one-off production build, run `pnpm run build` in `frontend/`.
 
 `docker-compose.dev.yml` runs the backend with auto-reload and a separate container that rebuilds the frontend when Vue/TypeScript files change. The project directory is mounted from your filesystem.
 
-Both containers write into that mount (the frontend watcher rebuilds `backend/static/`, the backend writes `data/`), so they should run as your own user. Set `BINDERDASH_UID` and `BINDERDASH_GID` in `.env` first if your uid is not 1000; see [Container user](../setup/docker.md#container-user).
+Because the frontend container rebuilds `backend/static/` and the backend container updates `data/` inside the bind mount, run both containers under your host UID and GID. If your UID is not 1000, set `BINDERDASH_UID` and `BINDERDASH_GID` in `.env` first (see [Container user](../setup/docker.md#container-user)).
 
 ```bash
 printf 'BINDERDASH_UID=%s\nBINDERDASH_GID=%s\n' "$(id -u)" "$(id -g)" >> .env

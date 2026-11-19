@@ -8,20 +8,20 @@ Binderdash supports five authentication modes:
 - Session auth via Google OAuth (OIDC)
 - Per-user API key auth for scripted access
 
-You can enable multiple auth providers at the same time. The sections below describe how to configure each mode and how precedence works when multiple are enabled.
+You can enable multiple auth providers at the same time.
 
 ## Quick Reference
 
 - `DISABLE_AUTHENTICATION="true"` makes all protected endpoints public and bypasses provider checks.
 - Session auth uses cookies (`binderdash_session`) and CSRF protection for non-GET requests.
-- API key auth uses either `Authorization: Bearer <key>` or `X-Binderdash-Api-Key: <key>`. Keys are per-user, named, expiring, and revocable — there is no single shared server secret — and require `DATABASE` to be configured.
+- API key auth uses `Authorization: Bearer <key>` or `X-Binderdash-Api-Key: <key>`. Keys are per-user, named, expiring, and revocable (there is no shared server secret) and require `DATABASE`.
 - Username/password login (`POST /api/auth/login`) checks local users first, then PAM (if enabled).
 - Google OAuth signs in through `/api/auth/google/login` and creates the same session cookies as local/PAM login.
-- Every successful login resolves to a **user** (see "User model and admin allowlist" below); `BINDERDASH_ADMIN_USERS` is re-applied on every startup and login.
+- Every successful login resolves to a user (see [User model and admin allowlist](#user-model-and-admin-allowlist)); `BINDERDASH_ADMIN_USERS` is re-applied on every startup and login.
 
 ## Environment Variables
 
-These are the auth-related variables currently supported in `.env.example`:
+Auth-related variables supported in `.env.example`:
 
 - `DISABLE_AUTHENTICATION`
 - `LOCAL_USERS`
@@ -37,22 +37,22 @@ These are the auth-related variables currently supported in `.env.example`:
 - `SECRET_KEY`
 - `ACCESS_TOKEN_EXPIRE_MINUTES`
 - `BINDERDASH_ADMIN_USERS`
-- `DATABASE` (required for per-user API keys to exist at all)
+- `DATABASE` (required for per-user API keys)
 
 ## Provider Precedence and Coexistence
 
-When multiple options are enabled, behaviour is:
+When multiple options are enabled:
 
-1. **Global override**: if `DISABLE_AUTHENTICATION="true"`, auth is bypassed for protected routes.
-2. **Protected API route auth** (when auth is enabled):
+1. Global override: if `DISABLE_AUTHENTICATION="true"`, auth is bypassed for protected routes.
+2. Protected API route auth (when auth is enabled):
    - API key is checked first.
-   - If no valid API key, session cookie auth is checked.
-3. **Username/password login flow** (`POST /api/auth/login`):
+   - If no valid API key is present, session cookie auth is checked.
+3. Username/password login flow (`POST /api/auth/login`):
    - Local bcrypt users are checked first.
    - PAM is checked only if local auth did not match and `PAM_LOCAL_ENABLED="true"`.
-4. **Google OAuth flow**:
-   - Independent login path; if successful, issues session cookies.
-   - Then protected routes use normal cookie/API-key precedence above.
+4. Google OAuth flow:
+   - Independent login path that issues session cookies on success.
+   - Protected routes then follow the API key and cookie precedence above.
 
 ## Auth Type 1: Disable Authentication (Public Mode)
 
@@ -131,23 +131,16 @@ services:
       - /etc/group:/etc/group:ro
       - /etc/shadow:/etc/shadow:ro
     group_add:
-      - "42"          # gid `shadow` — see below; without it every login fails
+      - "42"          # gid `shadow` - see below; without it every login fails
 ```
 
 The mounts are active in `docker-compose.dev.yml` and commented out in `docker-compose.yml`.
 
-#### The `shadow` group is not optional
+#### Requiring the `shadow` group
 
-`pam_unix` does not read `/etc/shadow` itself — it shells out to `/sbin/unix_chkpwd`,
-which is setgid `shadow` but **refuses to use that privilege to check any user other than
-its caller**, so that an unprivileged process cannot brute-force other people's passwords.
-A container running as a non-root `user:` is therefore always making a cross-user request,
-and the helper returns `PAM_AUTHINFO_UNAVAIL`. `pam_unix` surfaces that as an ordinary
-failure, so the symptom is an indistinguishable *"Incorrect username or password"* even
-when the password is right.
+`pam_unix` delegates `/etc/shadow` lookups to `/sbin/unix_chkpwd`. Although that helper is setgid `shadow`, it only uses that privilege when checking the calling user's own password, preventing unprivileged processes from brute-forcing other accounts. Because the container runs as a non-root `user:`, every login for another account is a cross-user check, and `/sbin/unix_chkpwd` returns `PAM_AUTHINFO_UNAVAIL`. `pam_unix` reports this as a standard authentication error (*"Incorrect username or password"*), even with a valid password.
 
-Adding gid 42 lets the process read `/etc/shadow` in its own right. To confirm which
-failure you have, run the helper by hand inside the container:
+Adding gid `42` grants the container process direct read access to `/etc/shadow`. To diagnose the failure inside the container, run the helper directly:
 
 ```bash
 docker compose exec binderdash sh -c 'printf %s "$PW" | /sbin/unix_chkpwd someuser nullok; echo $?'
@@ -155,14 +148,9 @@ docker compose exec binderdash sh -c 'printf %s "$PW" | /sbin/unix_chkpwd someus
 # 7 = read it fine, password genuinely wrong
 ```
 
-#### Host account changes need a container recreate
+#### Recreating the container after host account changes
 
-These are single-*file* bind mounts, which pin an inode. `passwd(1)` replaces
-`/etc/shadow` rather than editing it in place, so a running container keeps reading the
-file as it was at start: password changes and newly added users are silently invisible,
-and logins fail against a stale hash. `docker compose restart` does **not** fix it, since
-the container is not recreated. Compare `md5sum /etc/shadow` inside and outside the
-container to confirm, then:
+Single-file bind mounts attach to the original file's inode. Because `passwd(1)` replaces `/etc/shadow` with a new file instead of editing it in place, a running container continues reading the old version. Password updates and new host users will not appear in the container, and logins will check against stale hashes. Running `docker compose restart` keeps the same container and mounts, so it will not reload the file. Compare `md5sum /etc/shadow` on the host and inside the container to verify, then recreate the container:
 
 ```bash
 docker compose up -d --force-recreate
@@ -226,21 +214,21 @@ Notes:
 
 Use this for scripts/agents without browser session or CSRF handling.
 
-Unlike the other four modes, this isn't a server-wide toggle — it's a capability of the user model, gated on persistence:
+Per-user API keys are enabled automatically whenever `DATABASE` is configured (no separate feature flag is required):
 
 ```bash
-DATABASE="sqlite:///./binderdash.db"   # or Postgres URL; keys live in the DB
+DATABASE="sqlite:///./binderdash.db"   # or Postgres URL; keys are stored in the DB
 DISABLE_AUTHENTICATION="false"
 ```
 
-Create a user and a key for them, either via the web UI (account menu, top-right → "API keys") or the CLI:
+Create a user and an API key in the web UI (top-right account menu, **API keys**) or via the CLI:
 
 ```bash
 python -m backend.cli user create --email you@example.org --admin
 python -m backend.cli key create you@example.org --name bootstrap
 ```
 
-The token prints to stdout alone (a warning goes to stderr) and is shown **once** — the server stores only a SHA-256 hash. Other CLI subcommands: `user list|show|link-identity|set-admin`, `key list|revoke`.
+The CLI writes the token to stdout and prints a warning to stderr. The raw token is displayed **once** because the server stores only its SHA-256 hash. Other CLI subcommands include `user list|show|link-identity|set-admin` and `key list|revoke`.
 
 Use either header format:
 
@@ -259,21 +247,21 @@ Notes:
 - For state-changing requests, API key auth bypasses CSRF checks.
 - On protected routes, a valid API key is accepted before cookie auth.
 - `/api/auth/me` requires cookie session auth (it does not accept API key auth).
-- Keys are named, can have an expiry (`--expires-days`), and are individually revocable (`key revoke <id>`); revocation takes effect immediately.
+- Each key has a name, an optional expiry (`--expires-days`), and can be revoked immediately with `key revoke <id>`.
 - With no `DATABASE` configured, `GET /api/auth/status` reports `api_keys.enabled: false, reason: "persistence_disabled"` and the key-management endpoints return `503`.
-- **Key management is session-only.** `GET/POST /api/api-keys` and `PATCH/DELETE /api/api-keys/{id}` reject API-key-authenticated requests with `403` — a leaked key must not be able to mint its own replacement or see other keys. `GET /api/users` is additionally admin-only.
+- Key management requires a browser session. `GET/POST /api/api-keys` and `PATCH/DELETE /api/api-keys/{id}` return `403` for API-key-authenticated requests so a compromised key cannot create replacements or list other keys. `GET /api/users` also requires admin privileges.
 
 ## User model and admin allowlist
 
-A **user** is a person. An **identity** is one login method, keyed on `(provider, identifier)` — e.g. `local:alice`, `pam:alice`, `google:alice@example.org`. A user is auto-created on first successful login. Two identities are merged onto the same user only when they share a **verified email** (so, for example, PAM login for `alice` and Google login for `alice@example.org` merge only if `PAM_GECOS_EMAIL` resolves the same address — see below — otherwise they stay separate users).
+A user represents one person, and an identity represents one login method keyed by `(provider, identifier)` (for example, `local:alice`, `pam:alice`, or `google:alice@example.org`). Binderdash creates a user automatically on the first successful login. Two identities merge into the same user only when they share a verified email address. For example, PAM login for `alice` and Google login for `alice@example.org` merge only when `PAM_GECOS_EMAIL` resolves to the same address (see below); otherwise they remain separate users.
 
-`BINDERDASH_ADMIN_USERS` is a comma-separated allowlist granting `is_admin`. Each entry matches against a login's email, its `provider:identifier` pair, or a bare username/identifier — there is deliberately **no `*` wildcard** (unlike `PAM_LOCAL_ALLOWED_USERS`, "everyone is an admin" should never be a one-character mistake). The allowlist is re-applied at every startup and at every login, so revoking admin access just means removing the entry and waiting for the next login (or restart) — `is_admin` set only via `python -m backend.cli user set-admin` will not stick if the user isn't also in `BINDERDASH_ADMIN_USERS`.
+`BINDERDASH_ADMIN_USERS` is a comma-separated allowlist that grants `is_admin`. Entries match a user's email, `provider:identifier` pair, or plain username. Unlike `PAM_LOCAL_ALLOWED_USERS`, this variable does not support a `*` wildcard, preventing accidental admin grants to all users. Binderdash re-applies this allowlist on every startup and login. To revoke admin access, remove the entry and restart or wait for the user's next login. Admin status granted via `python -m backend.cli user set-admin` will be overwritten unless the user is also listed in `BINDERDASH_ADMIN_USERS`.
 
 ### `PAM_GECOS_EMAIL`
 
-Default `false`. When `true`, PAM login resolves the user's email from the **5th GECOS field only** ("other"), never fields 1–4 ("full name", "room", "work phone", "home phone").
+Default: `false`. When `true`, PAM login reads the user's email from the **5th GECOS field only** ("other") and ignores fields 1-4 ("full name", "room", "work phone", "home phone").
 
-This is a security boundary, not a formatting preference: `chfn` lets ordinary users rewrite their own GECOS, and `/etc/login.defs`'s `CHFN_RESTRICT` commonly ships as `"rwh"` — meaning room, work phone, and home phone are user-writable, but there is no `chfn` flag for the 5th field, so only root can set it (and `chfn` rejects commas in input, so a user can't smuggle extra fields in). Trusting an earlier, user-writable field would let any shell user run `chfn` to claim a colleague's email address and get merged into their Binderdash account — inheriting their API keys and admin rights.
+Restricting to the 5th field prevents account takeover. Standard Linux configurations set `CHFN_RESTRICT="rwh"` in `/etc/login.defs`, allowing local users to edit their room, work phone, and home phone via `chfn`. Because `chfn` has no flag for the 5th field and rejects commas in input, only root can set that field. Reading any user-writable field would allow a shell user to enter another user's email with `chfn`, merge into that Binderdash account, and gain access to its API keys and admin privileges.
 
 ## Session and CSRF Behaviour
 
@@ -316,11 +304,11 @@ Response shape:
 }
 ```
 
-`api_keys.reason` is `null` when keys are usable, `"auth_disabled"` when `DISABLE_AUTHENTICATION=true` (there is nothing to scope a key to), or `"persistence_disabled"` when no `DATABASE` is configured.
+`api_keys.reason` is `null` when keys are enabled, `"auth_disabled"` when `DISABLE_AUTHENTICATION=true` (keys require user accounts), or `"persistence_disabled"` when `DATABASE` is unset.
 
 ## Recommended Combinations
 
-- **Local dev (public)**: `DISABLE_AUTHENTICATION="true"`
-- **Team dev (session login)**: local users and/or PAM, `DISABLE_AUTHENTICATION="false"`
-- **Production user login**: Google OAuth + allowlist, `DISABLE_AUTHENTICATION="false"`
-- **Automation access**: configure `DATABASE`, then mint per-user keys via the UI or `python -m backend.cli key create` (coexists with any session provider)
+- Local dev (public): `DISABLE_AUTHENTICATION="true"`
+- Team dev (session login): local users and/or PAM, `DISABLE_AUTHENTICATION="false"`
+- Production user login: Google OAuth + allowlist, `DISABLE_AUTHENTICATION="false"`
+- Automation access: configure `DATABASE`, then create per-user keys via the UI or `python -m backend.cli key create` (works alongside any session provider)

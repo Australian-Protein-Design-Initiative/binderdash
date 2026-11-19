@@ -43,9 +43,9 @@ The app uses the Microsoft Edge [WebView2 runtime](https://developer.microsoft.c
 2. Scan the folder tree and ingest the runs you want. Binderdash detects RFdiffusion, RFdiffusion3, BindCraft and BoltzGen output layouts.
 3. Tick runs in **Select Runs**, then explore them in **Designs**, **Plots** and **Filtering**.
 
-Ingesting reads your results into the app's database. It never modifies or deletes files in the run folders, and removing a run from Binderdash leaves the files on disk untouched.
+Ingesting imports run results into the app's database without changing or deleting any files in your run folders. Removing a run from Binderdash only deletes the database record; the original files remain on disk.
 
-## Where data is stored
+## Data directory
 
 | OS | Location |
 | --- | --- |
@@ -53,4 +53,4 @@ Ingesting reads your results into the app's database. It never modifies or delet
 | macOS | `~/Library/Application Support/Binderdash` |
 | Windows | `%LOCALAPPDATA%\Binderdash` |
 
-This folder holds `binderdash.sqlite` (the database), `desktop.json` (folder and window settings) and `binderdash.log`. If the app fails to start, check `binderdash.log` first.
+This folder contains `binderdash.sqlite` (the database), `desktop.json` (folder and window settings), and `binderdash.log`. If the app fails to start, check `binderdash.log` first.

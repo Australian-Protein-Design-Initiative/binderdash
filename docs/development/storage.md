@@ -1,106 +1,66 @@
 # Storage architecture
 
-Binderdash reads/writes data in three distinct places. This page is the map of
-"where does X live" — useful when reasoning about backups, multi-user
-deployments, or what survives a container rebuild.
+Binderdash stores data in three locations: a server-side database, browser IndexedDB, and the server filesystem. Use this reference when planning backups, multi-user deployments, or container rebuilds. For backup procedures, see [Backup and restore](../admin/backup-restore.md).
 
 ## 1. Server-side database (SQLite by default)
 
-Controlled by the `DATABASE` env var (see `AGENTS.md`), resolved in
-`backend/persistence/factory.py`. If `DATABASE` is unset, persistence is
-disabled entirely (`NoopDesignsRepository` — nothing below is stored, and the
-app relies purely on the in-memory cache hydrated at startup from disk scans).
+The `DATABASE` environment variable (see `AGENTS.md`, resolved in `backend/persistence/factory.py`) selects the database backend. When `DATABASE` is unset, Binderdash uses `NoopDesignsRepository`, disables database persistence (which also disables per-user API keys), and serves data from the in-memory cache populated by startup filesystem scans.
 
-With `DATABASE=sqlite:///path/to/file` (or left to the default,
-`backend/data/binderdash.sqlite`), the following tables exist
-(`backend/persistence/sqlite_repo.py`):
+With `DATABASE=sqlite:///path/to/file` (or the default `backend/data/binderdash.sqlite`), `backend/persistence/sqlite_repo.py` creates these tables:
 
-| Table | What it stores |
+| Table | Contents |
 |---|---|
-| `binderdash_runs` | One row per discovered run: method, run name, project ID, resolved run path, and a `run_json` blob of run-level metadata. |
-| `binderdash_designs` | One row per design: indexed columns (`run_id`, `design_id`, `tag`, `good`, `binder_chain`, `short_name`) plus a `data_json` blob holding all method-specific score columns, and `extra_data` for user-added fields. This is the durable copy of what gets loaded into the in-memory `designs_cache` at startup (see `cache.py`). |
-| `binderdash_auth_users` | Login history per (provider, identifier) — provider name, identifier, email, first/last login timestamps. Not credentials — those live in env vars (`LOCAL_USERS` bcrypt hashes) or are delegated (PAM, Google OAuth). |
-| `binderdash_tag_metrics_cache` | Cached results of tag-placement metric computation (SASA-based tag-site scoring), keyed by run/design/structure file/tag parameters, so repeated UI requests with the same parameters don't recompute. |
-| `binderdash_structural_metrics_cache` | Cached results of structural metrics computation (`backend/filtering/structural_metrics.py` — secondary structure, hydrophobic patch area, hbonds/saltbridges, delta SASA), keyed by run/design/structure file/chain selection. |
-| `binderdash_saved_sets` | **Saved Sets** (Filtering tab "save as a named set"): id, name, created timestamp, the source run IDs, the filter/ranking/diversity recipe (`filter_params` JSON), and a `result_summary` JSON. Yes — Saved Sets are server-side, not browser-local; they're visible to every user of the same Binderdash server/database and survive a browser reset. |
-| `binderdash_saved_set_designs` | The frozen list of designs belonging to each Saved Set at the time it was created (design/run/source-path identity, final rank, quality score, whether it was in the diversity-selected subset, and a metrics snapshot). Saved Sets are immutable snapshots — the only allowed mutation after creation is rename (`PATCH /api/saved-sets/{id}`); "reapply filters" in the UI builds a *new* set rather than editing one in place. |
+| `binderdash_runs` | Run-level metadata: method, run name, project ID, resolved run path, `ingested_at`, and a `run_json` blob. |
+| `binderdash_designs` | Per-design records with indexed columns (`run_id`, `design_id`, `tag`, `good`, `binder_chain`, `short_name`), a `data_json` blob for method-specific score columns, and `extra_data` for user-added fields. Startup reads this table into the in-memory `designs_cache` (see `cache.py`). |
+| `binderdash_users` | User accounts: email, display name, picture URL, `is_admin`, `is_active`, and first/last login timestamps. Non-null emails are unique and link logins across auth providers. |
+| `binderdash_user_identities` | Auth identities per `(provider, identifier)` mapped to `binderdash_users`. Credentials are stored separately in `LOCAL_USERS` bcrypt hashes or delegated to PAM or Google OAuth. |
+| `binderdash_api_keys` | Per-user API keys: name, key prefix, `key_hash`, and created/expires/revoked/last-used timestamps. Key names are unique among active keys for a given user. |
+| `binderdash_auth_users` | Legacy login-audit table kept for backward compatibility. Startup migrations copy existing rows into `binderdash_users` and `binderdash_user_identities`. |
+| `binderdash_tag_metrics_cache` | Cached tag-placement metrics (SASA-based tag-site scoring), keyed by run, design, structure file, and tag parameters to avoid recomputing repeated UI requests. |
+| `binderdash_structural_metrics_cache` | Cached structural metrics from `backend/filtering/structural_metrics.py` (secondary structure, hydrophobic patch area, hbonds/saltbridges, delta SASA), keyed by run, design, structure file, and chain selection. |
+| `binderdash_target_contacts_cache` | Cached per-design target contact records, keyed by run, design, structure file, chains, and a parameter hash (`params_key`). |
+| `binderdash_target_residues` | Per-run target residue reference data and `target_moves` flag, keyed by run, `params_key`, and chains. |
+| `binderdash_saved_sets` | Named Saved Sets created from the Filtering tab: id, name, creation timestamp, source run IDs, filter/ranking/diversity recipe (`filter_params` JSON), and `result_summary` JSON. Saved Sets are stored server-side, shared across all users of the server/database, and unaffected by clearing browser data. |
+| `binderdash_saved_set_designs` | Designs belonging to each Saved Set at creation time: design/run/source-path identifiers, final rank, quality score, diversity-subset membership, and a metrics snapshot. Saved Sets are immutable after creation except for renaming (`PATCH /api/saved-sets/{id}`); clicking "reapply filters" in the UI creates a new set instead of editing the existing one. |
 
-None of these tables store the structure files themselves (PDB/CIF) or raw
-run output — only metadata, computed metrics, and references (paths) back to
-files on the server filesystem (§3).
+None of these tables store structure files (PDB/CIF) or raw run output. They store only metadata, computed metrics, and filesystem paths pointing to the server files in §3.
 
-If `DATABASE` points at Postgres, the URL is currently accepted but falls
-back to the no-op repository (`Postgres repository not implemented yet`) —
-SQLite is the only real backend today.
+SQLite is the only implemented backend. Setting `DATABASE` to any non-`sqlite` scheme (including `postgres` or `postgresql`) causes startup to fail with a `RuntimeError` instead of falling back to `NoopDesignsRepository`. To run without persistence, leave `DATABASE` unset.
 
 ## 2. Browser storage (per-user, per-browser, client-side only)
 
-Binderdash uses **no `localStorage`**. All client-persisted UI state lives in
-**IndexedDB**, via `frontend/src/persistence/` (`db.ts`, `store.ts`,
-`keys.ts`, `hydrate.ts`) — a single IndexedDB database (`binderdash-app`,
-object store `kv`) holding a handful of namespaced keys
-(`PERSISTENCE_KEYS` in `keys.ts`):
+Binderdash does not use `localStorage`. Client-side UI state is stored in IndexedDB via `frontend/src/persistence/` (`db.ts`, `store.ts`, `keys.ts`, `hydrate.ts`), using a single database (`binderdash-app`, object store `kv`) with namespaced keys defined in `PERSISTENCE_KEYS` (`keys.ts`):
 
-| Key | What it holds |
+| Key | Contents |
 |---|---|
 | `binderdash:designs-view-state-v1` | DesignsView table state: selections, column visibility/order, sort, tag placements. |
 | `binderdash:plots-scatter-axes-v1` | Persisted X/Y axis choices per method for the Plots tab. |
-| `binderdash:filtering-view-state-v1` | Filtering tab: hard filters, ranking metrics, alpha/budget, diversity toggle state, etc. (this is the *in-progress* filter builder state — not the same thing as a Saved Set, which is committed server-side once you explicitly save it). |
+| `binderdash:filtering-view-state-v1` | Filtering tab working state: hard filters, ranking metrics, alpha/budget, and diversity toggle state. This is unsaved in-progress state, separate from server-side Saved Sets. |
+| `binderdash:seq-prep-state-v1` | Sequence Preparation tab UI state. |
 | `binderdash-viewer-controls-pos` | Mol* viewer floating-controls panel position. |
 | `binderdash-adv-ref-ui-global` | Advanced reference/overlay UI toggles (global). |
 | `binderdash-adv-ref:<runId>` | Per-run advanced-reference overlay state. |
 | `binderdash-tag-placement:<runId>` | Per-run tag placement UI state (independent of the DB-cached tag metrics in §1). |
+| `binderdash-target-contact-map:<runId>` | Per-run target contact map UI state. |
 | `binderdash:folders-ui-v1` | Folder Browser UI state (expanded folders, selection). |
 
-Because this is IndexedDB, it is scoped to one browser profile on one
-machine — it is **not** shared across users or devices, does not survive
-"clear site data," and is unrelated to anything the server persists. Session
-auth itself is a separate, small piece of client state: a signed cookie
-(`SessionMiddleware`, `backend/main.py`, keyed by `SECRET_KEY`), not
-IndexedDB/localStorage.
+IndexedDB data is scoped to a single browser profile on one machine. It is not shared across users or devices, is removed by "clear site data", and is independent of server-side persistence. Session authentication uses a separate signed cookie (`SessionMiddleware` in `backend/main.py`, signed with `SECRET_KEY`), not IndexedDB or `localStorage`.
 
 ## 3. Server filesystem
 
-Two independent things live on disk, outside the database:
+Binderdash uses two locations on the server filesystem:
 
-- **Run output directories** — the original, unmodified pipeline output
-  (results tables, structure files) under whatever directories `RUN_BASE_DIRS`
-  points at (or ad hoc folders picked via the Folder Browser). Binderdash never
-  copies or moves these; it only reads them (scanning in `run_discovery.py`,
-  and serving structure files on demand via `backend/routers/files.py`). The
-  DB only stores the resolved `run_path`/`source_path` references back into
-  this tree, so if a run folder is moved or deleted, structure-file requests
-  and Mol* viewing for that run will start failing even though the run's
-  design rows still exist in the DB/cache.
-- **The SQLite file itself** — by default `backend/data/binderdash.sqlite`
-  (see `default_sqlite_url()` in `backend/persistence/factory.py`), i.e. the
-  `data/` directory at the repo root when run via Docker Compose (mounted as a
-  volume — see `docker-compose.dev.yml`) so it survives container rebuilds.
+- Run output directories (`RUN_BASE_DIRS` or ad hoc folders opened via the Folder Browser): original pipeline outputs including results tables and structure files. Binderdash opens these read-only: `run_discovery.py` scans them and `backend/routers/files.py` serves structure files on demand. Because the database stores only `run_path` and `source_path` references, moving or deleting a run folder causes structure-file downloads and Mol* viewing to fail even while the design rows remain in the database and cache.
+- SQLite database file: stored at `backend/data/binderdash.sqlite` by default (see `default_sqlite_url()` in `backend/persistence/factory.py`). Under `docker-compose.yml`, `./data` on the host is mounted at `/app/data` so database state persists across container rebuilds.
 
 ## 4. Download bundles
 
-Nothing new is *stored* for these, but they are where the three locations above get
-combined into one file: a design bundle zip carries the run output (§3), the cached
-metrics (§1) and a JSON copy of the browser-side UI state (§2), so a download can be
-explained and restored later. See [Download bundles](download-bundles.md).
+Design bundle zips combine data from all three locations into a single archive without introducing a fourth storage backend: they include the run files (§3), cached metrics (§1), and a JSON snapshot of the browser UI state (§2) so a downloaded set can be inspected or restored later. See [Download bundles](download-bundles.md).
 
-Saved Sets now also store the UI state that was active when they were created, inside
-their existing `filter_params` JSON column - so a set downloaded months later reproduces
-the table layout, not just the filter recipe. Sets created before this have no such
-record and say so in the bundle.
+Saved Sets also store the active UI state inside their `filter_params` JSON column at creation time, so downloading a set later reproduces both the filter recipe and the table layout. Saved Sets created before this change do not include that field, and the exported bundle marks it as missing.
 
-## Quick answers
+## Storage persistence summary
 
-- **Are Saved Sets stored server-side?** Yes — `binderdash_saved_sets` /
-  `binderdash_saved_set_designs` tables in the SQLite DB. They're shared
-  across all users/browsers hitting the same server and DB file, and persist
-  independently of any browser's IndexedDB state.
-- **What's lost if I clear browser storage?** Only UI convenience state (table
-  column layout, in-progress/unsaved filter builder state, viewer panel
-  positions, tag placement scratch state) — no run data, computed metrics, or
-  Saved Sets.
-- **What's lost if the SQLite file is deleted?** All ingested run/design rows,
-  cached tag/structural metrics (both are cheap to recompute), login history,
-  and — unlike everything else in that list — **all Saved Sets**, since
-  they're not derivable from the run output on disk. The original run output
-  directories on the filesystem are unaffected either way.
+- Server-side storage of Saved Sets: Saved Sets are stored in the `binderdash_saved_sets` and `binderdash_saved_set_designs` SQLite tables. They are shared across all users connected to the same server and database file, independent of browser IndexedDB state.
+- Clearing browser storage: removes only local UI preferences (table column layout, unsaved filter builder state, viewer panel positions, and tag placement scratch state). Run data, computed metrics, and Saved Sets remain intact.
+- Deleting the SQLite file: removes ingested run and design rows and cached tag, structural, and target-contact metrics (which can be recomputed from disk), along with data that cannot be rebuilt from pipeline outputs on disk: Saved Sets, user accounts and identities, per-user API keys, login history, and user-added design fields (`good`, `tag`, `short_name`, `extra_data`). The original run output directories on the filesystem are not modified.

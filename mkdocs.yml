@@ -36,6 +36,9 @@ nav:
       - Authentication: setup/authentication.md
   - Usage:
       - Filtering and ranking: usage/filtering-ranking.md
+  - Administration:
+      - Backup and restore: admin/backup-restore.md
+      - Database migrations: admin/database-migrations.md
   - Development:
       - Development setup: development/setup.md
       - REST API: development/api.md

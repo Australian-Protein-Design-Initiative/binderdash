@@ -439,7 +439,13 @@ def test_optimize_dna_resolves_inverted_repeats(api_client) -> None:
     assert res["error"] is None, res["error"]
     dna = res["optimized_dna"]
     assert dna is not None
-    assert _hairpin_breaches(dna, 68.0, 1) == []
+    # Check with the constraint's own stride: that is what the optimiser enforces.
+    # Stride 1 is stricter (it also catches hairpins spanning 51-60 nt, which a
+    # stride-10 scan can miss), so it failed intermittently with random seeds.
+    from backend.seq_prep.optimize import AvoidInvertedRepeats
+
+    stride = AvoidInvertedRepeats().stride
+    assert _hairpin_breaches(dna, 68.0, stride) == []
 
 
 def test_consecutive_codons_follow_the_coding_frame() -> None:

@@ -65,6 +65,13 @@
                   <li class="toctree-l1"><a class="reference internal" href="../../usage/filtering-ranking/">Filtering and ranking</a>
                   </li>
               </ul>
+              <p class="caption"><span class="caption-text">Administration</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../admin/backup-restore/">Backup and restore</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../admin/database-migrations/">Database migrations</a>
+                  </li>
+              </ul>
               <p class="caption"><span class="caption-text">Development</span></p>
               <ul class="current">
                   <li class="toctree-l1"><a class="reference internal" href="../setup/">Development setup</a>
@@ -218,7 +225,7 @@
 </tr>
 <tr>
 <td>Docker dev (<code>docker-compose.dev.yml</code>)</td>
-<td><code>http://localhost:8911</code> (host port → container <code>8000</code>)</td>
+<td><code>http://localhost:8911</code> (host port mapped to container <code>8000</code>)</td>
 </tr>
 <tr>
 <td>Local uvicorn</td>
@@ -248,7 +255,7 @@
 </tr>
 <tr>
 <td>Health (no auth)</td>
-<td><code>/health</code> → <code>{"status": "healthy", "timestamp": "..."}</code></td>
+<td><code>/health</code> (returns <code>{"status": "healthy", "timestamp": "..."}</code>)</td>
 </tr>
 </tbody>
 </table>
@@ -296,15 +303,15 @@
 </tr>
 <tr>
 <td><code>DATABASE</code></td>
-<td>Required for per-user API keys to exist at all — they live in the DB</td>
+<td>Required for per-user API keys (stored in the database)</td>
 </tr>
 </tbody>
 </table>
 <h3 id="api-key-scripts-and-automation">API key (scripts and automation)<a class="headerlink" href="#api-key-scripts-and-automation" title="Permanent link">&para;</a></h3>
-<p>API keys are <strong>per-user, named, expiring, and revocable</strong> — there is no single shared server secret. Get one from the web UI (account menu, top-right → "API keys") or via CLI:</p>
+<p>API keys are <strong>per-user, named, expiring, and revocable</strong>; there is no single shared server secret. Create one in the web UI (account menu, top-right &gt; "API keys") or via CLI:</p>
 <pre class="highlight"><code class="language-bash">python -m backend.cli user create --email you@example.org --admin
 python -m backend.cli key create you@example.org --name bootstrap</code></pre>
-<p>The token is printed to stdout alone (a warning goes to stderr) and shown only once — the server stores a SHA-256 hash, not the plaintext. Keys require <code>DATABASE</code>; with no persistence, key endpoints return <code>503</code>.</p>
+<p>The token is printed to stdout (a warning goes to stderr) and shown once: the server stores a SHA-256 hash instead of plaintext. Keys require <code>DATABASE</code>; without persistence, key endpoints return <code>503</code>.</p>
 <p>Once you have a token, send it on <strong>every</strong> request, including <code>POST</code> / <code>PATCH</code> / <code>DELETE</code>. No session cookie or CSRF header is required.</p>
 <p>Supported headers (either is fine):</p>
 <ul>
@@ -316,18 +323,18 @@ export BASE='https://binderdash.example.com'
 
 curl -sS -H "Authorization: Bearer $BINDERDASH_TOKEN" "$BASE/api/runs"</code></pre>
 <p><code>GET /api/auth/status</code> reports <code>api_keys.enabled: true</code> when keys are usable (auth is enabled and <code>DATABASE</code> is configured). Invalid, expired, or missing keys receive <code>401 Authentication required</code>.</p>
-<p>Keys are managed via <code>GET/POST /api/api-keys</code> and <code>PATCH/DELETE /api/api-keys/{id}</code> — but only with a <strong>browser session</strong>; an API-key-authenticated request to those routes gets <code>403</code> (a leaked key must not be able to mint its own replacement). <code>GET /api/users</code> is admin-only, session-only. Do not commit keys to the repository.</p>
+<p>Manage keys via <code>GET/POST /api/api-keys</code> and <code>PATCH/DELETE /api/api-keys/{id}</code> using a <strong>browser session</strong> only. API-key requests to those routes receive <code>403</code> so a leaked key cannot create its own replacement. <code>GET /api/users</code> is admin-only and session-only. Do not commit keys to the repository.</p>
 <h3 id="browser-session-spa">Browser session (SPA)<a class="headerlink" href="#browser-session-spa" title="Permanent link">&para;</a></h3>
 <p>For interactive login (also required to create or manage API keys):</p>
 <ol>
-<li><strong><code>POST /api/auth/login</code></strong> — body <code>{"username": "...", "password": "..."}</code>. Sets an HTTP-only session cookie and returns <code>csrf_token</code> and <code>user</code>.</li>
-<li><strong>CSRF</strong> — state-changing methods (<code>POST</code>, <code>PUT</code>, <code>PATCH</code>, <code>DELETE</code>) must send header <code>X-CSRF-Token</code> matching the <code>binderdash_csrf</code> cookie. <code>GET</code> / <code>HEAD</code> / <code>OPTIONS</code> are exempt. Failure → <code>403</code> with plain text <code>CSRF token missing</code> or <code>CSRF token mismatch</code>.</li>
-<li><strong><code>POST /api/auth/logout</code></strong> — clears session and CSRF cookies.</li>
+<li><code>POST /api/auth/login</code>: body <code>{"username": "...", "password": "..."}</code>. Sets an HTTP-only session cookie and returns <code>csrf_token</code> and <code>user</code>.</li>
+<li>CSRF: state-changing methods (<code>POST</code>, <code>PUT</code>, <code>PATCH</code>, <code>DELETE</code>) must send header <code>X-CSRF-Token</code> matching the <code>binderdash_csrf</code> cookie. <code>GET</code>, <code>HEAD</code>, and <code>OPTIONS</code> are exempt. Missing or mismatched tokens return <code>403</code> with plain text <code>CSRF token missing</code> or <code>CSRF token mismatch</code>.</li>
+<li><code>POST /api/auth/logout</code>: clears session and CSRF cookies.</li>
 </ol>
 <p>Google OAuth: <code>GET /api/auth/google/login</code> and <code>GET /api/auth/google/callback</code> (browser redirect flow).</p>
-<p><strong><code>GET /api/auth/me</code></strong> — current user; requires a session cookie (API key alone is not accepted here — deliberately, see <code>backend/auth.py</code>). Returns <code>username</code>, <code>provider</code>, <code>email</code>, <code>display_name</code>, <code>picture_url</code>, <code>user_id</code>, <code>is_admin</code>, <code>auth_method</code>, <code>last_login_at</code>. The login response (<code>POST /api/auth/login</code>, and the Google callback) returns the same shape under <code>user</code>.</p>
+<p><code>GET /api/auth/me</code> returns the current user and requires a session cookie (API keys are not accepted; see <code>backend/auth.py</code>). It returns <code>username</code>, <code>provider</code>, <code>email</code>, <code>display_name</code>, <code>picture_url</code>, <code>user_id</code>, <code>is_admin</code>, <code>auth_method</code>, and <code>last_login_at</code>. The login response (<code>POST /api/auth/login</code>, and the Google callback) returns the same shape under <code>user</code>.</p>
 <h3 id="user-model">User model<a class="headerlink" href="#user-model" title="Permanent link">&para;</a></h3>
-<p>A <strong>user</strong> is a person; an <strong>identity</strong> is one login method, <code>(provider, identifier)</code> — e.g. <code>local:alice</code>, <code>google:alice@example.org</code>, <code>pam:alice</code>. Identities merge onto the same user only when they share a <strong>verified email</strong>; users are auto-created on first login. <code>BINDERDASH_ADMIN_USERS</code> (comma-separated; matches email, <code>provider:identifier</code>, or bare username — no <code>*</code> wildcard) grants <code>is_admin</code> and is re-applied at every startup and login, so admin status set only via the CLI (<code>user set-admin</code>) will not stick unless the user is also listed there.</p>
+<p>A <strong>user</strong> is a person; an <strong>identity</strong> is one login method, <code>(provider, identifier)</code> (for example, <code>local:alice</code>, <code>google:alice@example.org</code>, <code>pam:alice</code>). Identities merge onto the same user only when they share a <strong>verified email</strong>, and users are created automatically on first login. <code>BINDERDASH_ADMIN_USERS</code> (comma-separated; matches email, <code>provider:identifier</code>, or bare username, with no <code>*</code> wildcard) grants <code>is_admin</code> and is re-applied at every startup and login, so admin status set only via the CLI (<code>user set-admin</code>) is overwritten unless the user is also listed there.</p>
 <h2 id="data-model">Data model<a class="headerlink" href="#data-model" title="Permanent link">&para;</a></h2>
 <p>There is no separate “project” resource. Entities relate as follows:</p>
 <div class="mermaid">flowchart LR
@@ -424,7 +431,7 @@ curl -sS -H "Authorization: Bearer $BINDERDASH_TOKEN" "$BASE/api/runs"</code></p
 </tr>
 <tr>
 <td><code>tag</code></td>
-<td><code>"N"</code> or <code>"C"</code> — which terminus receives preset tags in Prepare Sequences</td>
+<td><code>"N"</code> or <code>"C"</code>: terminus receiving preset tags in Prepare Sequences</td>
 </tr>
 <tr>
 <td><code>Sequence</code></td>
@@ -440,7 +447,7 @@ curl -sS -H "Authorization: Bearer $BINDERDASH_TOKEN" "$BASE/api/runs"</code></p
 </tr>
 </tbody>
 </table>
-<p><strong>Persistence:</strong> Pipeline columns from the on-disk results table are stored in <strong><code>data_json</code></strong> and replaced on re-ingest. User annotations (uploaded table columns, extracted sequence, plugins) live in <strong><code>extra_data</code></strong> and are preserved across re-ingest. The API returns a single flat dict: <code>{**data_json, **extra_data}</code> plus dedicated columns.</p>
+<p><strong>Persistence:</strong> Pipeline columns from the on-disk results table are stored in <strong><code>data_json</code></strong> and replaced on re-ingest. User annotations (uploaded table columns, extracted sequence, plugins) are stored in <strong><code>extra_data</code></strong> and preserved across re-ingest. The API returns a single flat dict: <code>{**data_json, **extra_data}</code> plus dedicated columns.</p>
 <p>The in-memory designs list is sorted by each method’s primary score (see table below). Client-side filtering and re-sorting are normal.</p>
 <table>
 <thead>
@@ -769,7 +776,7 @@ curl -sS -H "Authorization: Bearer $BINDERDASH_TOKEN" "$BASE/api/runs"</code></p
 <tr>
 <td><code>POST</code></td>
 <td><code>/api/filtering/apply</code></td>
-<td>Hard filters only — passing design keys, debounced for live table narrowing</td>
+<td>Hard filters only: passing design keys, debounced for live table narrowing</td>
 </tr>
 <tr>
 <td><code>POST</code></td>
@@ -779,7 +786,7 @@ curl -sS -H "Authorization: Bearer $BINDERDASH_TOKEN" "$BASE/api/runs"</code></p
 <tr>
 <td><code>POST</code></td>
 <td><code>/api/filtering/diversity</code></td>
-<td>Full filter → rank → diversity pipeline, not persisted</td>
+<td>Full filter, rank, and diversity pipeline, not persisted</td>
 </tr>
 <tr>
 <td><code>POST</code></td>
@@ -816,7 +823,7 @@ curl -sS -H "Authorization: Bearer $BINDERDASH_TOKEN" "$BASE/api/runs"</code></p
 <tr>
 <td><code>PATCH</code></td>
 <td><code>/api/saved-sets/{id}</code></td>
-<td>Rename (the only allowed mutation — sets are otherwise immutable snapshots)</td>
+<td>Rename (the only allowed mutation; sets are otherwise immutable snapshots)</td>
 </tr>
 <tr>
 <td><code>DELETE</code></td>
@@ -826,14 +833,12 @@ curl -sS -H "Authorization: Bearer $BINDERDASH_TOKEN" "$BASE/api/runs"</code></p
 <tr>
 <td><code>GET</code></td>
 <td><code>/api/saved-sets/{id}/download</code></td>
-<td>ZIP: the standard <a href="../download-bundles/">design bundle</a> — ranked rows, structures, and the UI state the set was saved with</td>
+<td>ZIP: the standard <a href="../download-bundles/">design bundle</a> containing ranked rows, structures, and the saved UI state</td>
 </tr>
 </tbody>
 </table>
 <h3 id="download-bundles">Download bundles<a class="headerlink" href="#download-bundles" title="Permanent link">&para;</a></h3>
-<p>One zip carrying the data plus the UI state that produced it. See
-<a href="../download-bundles/">Download bundles</a> for the member list and the JSON schema contract.
-Requests carry design <strong>keys</strong>, not rows — the server re-reads each design from its cache.</p>
+<p>Each bundle is a single zip archive containing design data and the UI state that produced it. See <a href="../download-bundles/">Download bundles</a> for the member list and JSON schema contract. Requests send design <strong>keys</strong> instead of full rows, and the server reads each design from its cache.</p>
 <table>
 <thead>
 <tr>
@@ -928,14 +933,14 @@ curl -sS -H "Authorization: Bearer $BINDERDASH_TOKEN" \
   "frame": { "design_id_1": 0 }
 }</code></pre>
 <p>Optional <code>fixed</code> maps each <code>design_id</code> to a per-residue boolean array the same length as that protein. Residues marked <code>true</code> must be stops (<code>*</code>, frozen as <strong>TAA</strong>) or a leading Met (<code>M</code>, frozen as <strong>ATG</strong>), and are excluded from codon optimisation and from user constraints. When a design id is omitted from <code>fixed</code> (or <code>fixed</code> is omitted entirely), every <code>*</code> in that protein is treated as fixed.</p>
-<p>Each result row carries the <code>seed</code> that produced its DNA, and the response carries <code>tool_versions</code> (DnaChisel, python_codon_tables, numpy). Passing those seeds back as <code>seeds: { design_id: 12345 }</code> reproduces the same DNA, as long as the versions still match - a DnaChisel upgrade can change the search order and so the result for a given seed. Omit <code>seeds</code> and each design gets a fresh one, which is what makes re-running the solver worthwhile when a hard constraint set fails.</p>
-<p>Lowercase <code>a</code>/<code>c</code>/<code>g</code>/<code>t</code> in a sequence are literal nucleotides from a custom addition, not amino acids: they stay frozen and are not recoded. Optional <code>frame</code> maps each <code>design_id</code> to <code>0</code>, <code>1</code> or <code>2</code>, the nucleotide offset where design and preset-tag codons begin. A 5' addition whose length is not a multiple of 3 sets this to 1 or 2. <code>AvoidConsecutiveCodons</code> reads codons from that offset.</p>
+<p>Each result row includes the <code>seed</code> that produced its DNA, and the response includes <code>tool_versions</code> (DnaChisel, python_codon_tables, numpy). Passing those seeds back as <code>seeds: { design_id: 12345 }</code> reproduces the same DNA while package versions match (a DnaChisel upgrade can change the search order for a given seed). Omitting <code>seeds</code> assigns a new random seed per design, allowing retries to succeed when a strict constraint set fails.</p>
+<p>Lowercase <code>a</code>/<code>c</code>/<code>g</code>/<code>t</code> in a sequence are literal nucleotides from a custom addition, not amino acids: they stay frozen and are not recoded. Optional <code>frame</code> maps each <code>design_id</code> to <code>0</code>, <code>1</code> or <code>2</code>, the nucleotide offset where design and preset-tag codons begin. A 5' addition with a length not divisible by 3 sets this to 1 or 2. <code>AvoidConsecutiveCodons</code> reads codons from that offset.</p>
 <h3 id="preparing-constructs">Preparing constructs<a class="headerlink" href="#preparing-constructs" title="Permanent link">&para;</a></h3>
-<p><code>POST /api/sequences/prepare</code> builds the full constructs - N/C tags, linkers, terminal prefixes and suffixes, start methionine, stop codons, post-stop padding, vendor short names and the protein parameters - from a design selection plus a settings payload, and returns the prepared rows plus per-row warnings. The settings payload is the same JSON a Prepare Sequences download bundle records, so a saved bundle can be replayed. An invalid payload returns <code>validation_errors</code> instead of rows.</p>
-<p><code>POST /api/sequences/prepare/script</code> returns a standalone Python script (<code>text/x-python</code>) that reproduces those constructs offline. It is generated by inlining <code>backend/seq_prep/</code>'s own source alongside a <code>CONFIG</code> block holding the settings, so it cannot drift from the server that produced it. The script runs under <code>uv run</code> using a PEP 723 header, takes a TSV of designs with a <code>tag</code> column, writes Twist CSV by default (<code>--format</code> for FASTA/TSV/CSV/JSON), and embeds no sequences, hashes or seeds, so the same script works on a later similar set. It is POST rather than GET because the settings are a whole document, not a query string.</p>
+<p><code>POST /api/sequences/prepare</code> builds constructs (N/C tags, linkers, terminal prefixes and suffixes, start methionine, stop codons, post-stop padding, vendor short names, and protein parameters) from a design selection and a settings payload, returning the prepared rows and per-row warnings. The settings payload uses the same JSON format stored in a Prepare Sequences download bundle, so a saved bundle can be replayed. An invalid payload returns <code>validation_errors</code> instead of rows.</p>
+<p><code>POST /api/sequences/prepare/script</code> returns a standalone Python script (<code>text/x-python</code>) that reproduces those constructs offline. The server generates it by inlining <code>backend/seq_prep/</code> alongside a <code>CONFIG</code> block containing your settings, keeping the script matched to the server version. The script runs under <code>uv run</code> via a PEP 723 header, reads a TSV of designs with a <code>tag</code> column, outputs Twist CSV by default (<code>--format</code> for FASTA/TSV/CSV/JSON), and embeds no sequences, hashes, or seeds so you can reuse it on later sets. This endpoint uses POST because the settings payload is a full JSON document.</p>
 <h3 id="codon-tables">Codon tables<a class="headerlink" href="#codon-tables" title="Permanent link">&para;</a></h3>
 <p><code>GET /api/sequences/codon-tables</code> returns <code>{ "items": [ { "value", "label" }, ... ] }</code>.</p>
-<p><code>GET /api/sequences/codon-tables/{table_id}</code> returns <code>value</code>, <code>label</code>, <code>stop_codons</code>, and <code>codons_by_aa</code> (amino acid → codon → frequency).</p>
+<p><code>GET /api/sequences/codon-tables/{table_id}</code> returns <code>value</code>, <code>label</code>, <code>stop_codons</code>, and <code>codons_by_aa</code> (mapping amino acid to codon to frequency).</p>
 <p>Common <code>codon_table_id</code> values:</p>
 <table>
 <thead>
@@ -1033,7 +1038,7 @@ curl -sS -H "Authorization: Bearer $BINDERDASH_TOKEN" \
 </table>
 <p><code>EnforceTranslation</code> is always applied by the server; do not send it.</p>
 <p>The Prepare Sequences UI uses <code>DEFAULT_TWIST_CONSTRAINTS</code> in <code>frontend/src/stores/seqPrep.ts</code>, similar to the DNA optimisation/complexity rules used by Twist Biosciences for gene synthesis. The UI-only type <code>ExcludeRestrictionSite</code> with <code>params.enzyme</code> is serialised to <code>AvoidPattern</code> with <code>pattern: "&lt;enzyme&gt;_site"</code> before POST.</p>
-<p><code>AvoidInvertedRepeats</code> rejects sequences whose self-complementary structures (snapback hairpins) melt at or above <code>min_tm</code>, computed the same way primer3 / IDT do (concentration-free nearest-neighbour thermodynamic alignment). This catches the short GC-rich and imperfect inverted repeats that gene-synthesis vendors flag and that <code>AvoidHairpins</code> (exact stems only) misses. primer3's alignment scores at most 60 bp per sequence, so hairpins are scored on sliding 60 bp windows; structures spanning more than ~50 nt (long arms and loop) may not be detected.</p>
+<p><code>AvoidInvertedRepeats</code> rejects sequences with self-complementary structures (snapback hairpins) melting at or above <code>min_tm</code>, computed the same way primer3 and IDT do (concentration-free nearest-neighbour thermodynamic alignment). This detects the short GC-rich and imperfect inverted repeats that gene-synthesis vendors flag and that <code>AvoidHairpins</code> (exact stems only) misses. primer3's alignment scores at most 60 bp per sequence, so hairpins are scored on sliding 60 bp windows; structures spanning more than ~50 nt (long arms and loop) may not be detected.</p>
 <h3 id="optimisation-response">Optimisation response<a class="headerlink" href="#optimisation-response" title="Permanent link">&para;</a></h3>
 <pre class="highlight"><code class="language-json">{
   "results": [
@@ -1043,10 +1048,10 @@ curl -sS -H "Authorization: Bearer $BINDERDASH_TOKEN" \
   "elapsed_seconds": 2.31,
   "tool_versions": { "dnachisel": "3.2.16", "numpy": "2.3.2", "python_codon_tables": "0.1.18" }
 }</code></pre>
-<p>Failures are per design. DnaChisel's constraint search is stochastic, so a design that fails with "No solution found" is optimised again from the same starting sequence, up to five attempts with a fresh seed each time, before that error is returned. The <code>seed</code> reported is the one from the attempt that succeeded. Other errors are returned on the first failure. If many rows still fail, relax <code>UniquifyAllKmers</code> or windowed <code>EnforceGCContent</code> first.</p>
+<p>Failures are reported per design. Because DnaChisel's constraint search is stochastic, any design failing with "No solution found" is retried from the same starting sequence up to five times with a new seed each time before returning that error; the reported <code>seed</code> is from the succeeding attempt. All other errors return immediately. If many rows still fail, relax <code>UniquifyAllKmers</code> or windowed <code>EnforceGCContent</code> first.</p>
 <h2 id="sequence-tags">Sequence tags<a class="headerlink" href="#sequence-tags" title="Permanent link">&para;</a></h2>
 <p>Preset tag <strong>amino-acid sequences</strong> are not stored as DNA on the server. The API stores only which terminus is active (<code>tag</code>: <code>"N"</code> or <code>"C"</code>); <code>GET /api/sequences/tag-presets</code> returns the preset table itself.</p>
-<p>Construct assembly exists <strong>twice</strong>: in <code>backend/seq_prep/</code> behind <code>POST /api/sequences/prepare</code>, and in TypeScript in <code>frontend/src/stores/seqPrep.ts</code>, which is what the Prepare Sequences tab's live preview still uses. They are held in agreement by <code>backend/tests/test_seq_prep_parity.py</code>. Removing the TypeScript side is planned.</p>
+<p>Construct assembly is implemented in two places: in <code>backend/seq_prep/</code> behind <code>POST /api/sequences/prepare</code>, and in TypeScript in <code>frontend/src/stores/seqPrep.ts</code> for the Prepare Sequences tab's live preview. Parity between them is verified by <code>backend/tests/test_seq_prep_parity.py</code>. Removing the TypeScript implementation is planned.</p>
 <h3 id="preset-sequences">Preset sequences<a class="headerlink" href="#preset-sequences" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
@@ -1132,13 +1137,13 @@ curl -sS -H "Authorization: Bearer $BINDERDASH_TOKEN" \
 <p>Use <code>POST /api/designs/tag-placement</code> to let the server choose N vs C from structure SASA and contacts.</p>
 <p>Further UI behaviour (post-stop padding, short names, mixed-case sequences) is documented in <a href="../sequence_preparation/">Sequence preparation</a>.</p>
 <h2 id="filtering-ranking-and-diversity-selection">Filtering, ranking, and diversity selection<a class="headerlink" href="#filtering-ranking-and-diversity-selection" title="Permanent link">&para;</a></h2>
-<p>Run scope for every <code>/api/filtering/*</code> call is an explicit <code>run_ids</code> list — there is no server-side "currently selected" state. How the Filtering tab uses these stages, including the BoltzGen-style weighted ranking, is described in <a href="../../usage/filtering-ranking/">Filtering and ranking</a>. The pipeline has three independent stages, each individually reachable:</p>
+<p>Run scope for every <code>/api/filtering/*</code> call is an explicit <code>run_ids</code> list; there is no server-side "currently selected" state. How the Filtering tab uses these stages, including the BoltzGen-style weighted ranking, is described in <a href="../../usage/filtering-ranking/">Filtering and ranking</a>. The pipeline has three independent stages, each individually reachable:</p>
 <ol>
-<li><strong>Hard filters</strong> (<code>FilterSpec</code>) — <code>{ "column": "...", "operator": "...", "threshold": &lt;number|null&gt;, "text_value": &lt;string|null&gt; }</code>. <code>column</code> accepts a canonical metric name (see <code>backend/filtering/metrics.py</code>, e.g. <code>iptm</code>, <code>rmsd</code>, <code>pae_interaction</code>) resolved per-method, a raw column name, one of the identity columns <code>design_id</code>/<code>project_id</code>/<code>run_name</code>/<code>method</code>/<code>Sequence</code>, or the user columns <code>good</code> and <code>tag</code>. Numeric operators <code>&lt;</code>, <code>&lt;=</code>, <code>&gt;</code>, <code>&gt;=</code> take <code>threshold</code>; string operators <code>contains</code>, <code>not_contains</code>, <code>starts_with</code>, <code>ends_with</code>, <code>equals</code>, <code>not_equals</code>, <code>regex</code> take <code>text_value</code>; <code>is_empty</code>/<code>is_not_empty</code> take neither. <code>good</code> is a three-state rating: <code>equals</code> with <code>text_value</code> <code>"true"</code> (good) or <code>"false"</code> (bad), or <code>is_empty</code> (unrated). <code>tag</code> is text (<code>N</code> / <code>C</code>, or empty). Both columns are listed even when no design has a value yet; a missing column is treated as all null.</li>
-<li><strong>Ranking</strong> (<code>RankingMetric</code>) — <code>{ "column": "...", "weight": 1.0, "higher_is_better": true }</code>, plus <code>ranking_mode</code>. <code>worst_rank</code> (the default when the field is omitted, so older clients stay on boltzgen Algorithm 2) scales each design's rank on every metric by <code>1/weight</code> and takes the <em>worst</em> (max) scaled rank. <code>simple</code> sorts lexicographically: more filters passed first, then the metrics in list order, and <code>weight</code> is ignored. Either way <code>num_filters_passed</code> is folded into the sort and failing designs are <strong>not dropped</strong> — <code>ranked</code> always covers every input design. The Filtering tab sends <code>simple</code> by default.</li>
-<li><strong>Diversity selection</strong> (<code>select_diverse</code>) — lazy-greedy selection over binder sequence similarity + <code>quality_score</code>, controlled by <code>budget</code> (final set size), <code>alpha</code> (0 = quality only, 1 = diversity only), and optional <code>size_buckets</code> (<code>{"min", "max", "num_designs"}</code>, caps selections per sequence-length range). <strong>Only designs that passed every hard filter are eligible</strong> — a design failing a filter can never end up in the diverse/saved set, however small <code>passing_filters</code> is relative to <code>budget</code>. <code>best_mpnn_only</code> (default false) first keeps one design per <code>backbone_id</code> (best primary score; designs with no backbone are kept) so the budget is not spent on MPNN variants of the same backbone. It applies only when diversity selection runs.</li>
+<li>Hard filters (<code>FilterSpec</code>): <code>{ "column": "...", "operator": "...", "threshold": &lt;number|null&gt;, "text_value": &lt;string|null&gt; }</code>. <code>column</code> accepts a canonical metric name (see <code>backend/filtering/metrics.py</code>, e.g. <code>iptm</code>, <code>rmsd</code>, <code>pae_interaction</code>) resolved per-method, a raw column name, one of the identity columns <code>design_id</code>/<code>project_id</code>/<code>run_name</code>/<code>method</code>/<code>Sequence</code>, or the user columns <code>good</code> and <code>tag</code>. Numeric operators <code>&lt;</code>, <code>&lt;=</code>, <code>&gt;</code>, <code>&gt;=</code> take <code>threshold</code>; string operators <code>contains</code>, <code>not_contains</code>, <code>starts_with</code>, <code>ends_with</code>, <code>equals</code>, <code>not_equals</code>, <code>regex</code> take <code>text_value</code>; <code>is_empty</code>/<code>is_not_empty</code> take neither. <code>good</code> is a three-state rating: <code>equals</code> with <code>text_value</code> <code>"true"</code> (good) or <code>"false"</code> (bad), or <code>is_empty</code> (unrated). <code>tag</code> is text (<code>N</code> / <code>C</code>, or empty). Both columns are listed even when no design has a value yet; a missing column is treated as all null.</li>
+<li>Ranking (<code>RankingMetric</code>): <code>{ "column": "...", "weight": 1.0, "higher_is_better": true }</code>, plus <code>ranking_mode</code>. <code>worst_rank</code> (the default when omitted, keeping older clients on boltzgen Algorithm 2) scales each design's rank on every metric by <code>1/weight</code> and takes the <em>worst</em> (max) scaled rank. <code>simple</code> sorts lexicographically: more filters passed first, then the metrics in list order, ignoring <code>weight</code>. In both modes, <code>num_filters_passed</code> is included in the sort and failing designs are <strong>not dropped</strong>; <code>ranked</code> always covers every input design. The Filtering tab sends <code>simple</code> by default.</li>
+<li>Diversity selection (<code>select_diverse</code>): lazy-greedy selection over binder sequence similarity + <code>quality_score</code>, controlled by <code>budget</code> (final set size), <code>alpha</code> (0 = quality only, 1 = diversity only), and optional <code>size_buckets</code> (<code>{"min", "max", "num_designs"}</code>, capping selections per sequence-length range). <strong>Only designs that passed every hard filter are eligible</strong>: a design failing a filter cannot appear in the diverse or saved set, regardless of how small <code>passing_filters</code> is relative to <code>budget</code>. <code>best_mpnn_only</code> (default false) first keeps one design per <code>backbone_id</code> (best primary score; designs with no backbone are kept) so the budget is not spent on MPNN variants of the same backbone. It applies only when diversity selection runs.</li>
 </ol>
-<p><code>POST /api/filtering/run</code> body is <code>FilteringRunRequest</code>: <code>name</code>, <code>run_ids</code>, <code>filters</code>, <code>metrics</code>, <code>budget</code> (default 24), <code>alpha</code> (default 0 — quality only; BoltzGen uses 0.001 for proteins and 0.01 for its peptide-anything protocol), <code>size_buckets</code>, <code>random_state</code>, <code>apply_diversity</code> (default true — when false, the saved set is every design that passed the hard filters and <code>budget</code>/<code>alpha</code> are ignored for selection), <code>best_mpnn_only</code> (default false; see stage 3). <code>POST /api/filtering/diversity</code> accepts the same selection fields without persisting a set. Response:</p>
+<p><code>POST /api/filtering/run</code> accepts a <code>FilteringRunRequest</code> body: <code>name</code>, <code>run_ids</code>, <code>filters</code>, <code>metrics</code>, <code>budget</code> (default 24), <code>alpha</code> (default 0, quality only; BoltzGen uses 0.001 for proteins and 0.01 for its peptide-anything protocol), <code>size_buckets</code>, <code>random_state</code>, <code>apply_diversity</code> (default true; when false, the saved set includes every design that passed the hard filters and <code>budget</code>/<code>alpha</code> are ignored for selection), and <code>best_mpnn_only</code> (default false; see stage 3). <code>POST /api/filtering/diversity</code> accepts the same selection fields without persisting a set. Response:</p>
 <pre class="highlight"><code class="language-json">{
   "saved_set_id": "...",
   "name": "...",
@@ -1147,24 +1152,24 @@ curl -sS -H "Authorization: Bearer $BINDERDASH_TOKEN" \
   "top_set_count": 24,
   "diverse_set_count": 24
 }</code></pre>
-<p><code>total_input</code> is every design across <code>run_ids</code> before filtering; <code>passing_filters</code> is how many passed every hard filter; <code>top_set_count</code> is <code>min(budget, total_input)</code> (an upper bound, not necessarily reachable); <code>diverse_set_count</code> is the actual number of designs selected into the set — this is what <code>SavedSet.design_count</code> reports afterwards (<strong>not</strong> <code>total_input</code>).</p>
-<p><code>GET /api/saved-sets/{id}/designs</code> returns every ranked design (pass or fail), each with <code>in_diverse_set</code> — use this to browse the full ranked pool with a "made the cut" flag; use <code>SavedSet.design_count</code>/<code>total_input</code> from <code>GET /api/saved-sets/{id}</code> for the summary counts.</p>
-<p><code>SavedSet.source_run_ids</code> records which runs a set was built from — resolve to display names via <code>GET /api/runs</code>.</p>
+<p><code>total_input</code> is the total number of designs across <code>run_ids</code> before filtering; <code>passing_filters</code> is how many passed every hard filter; <code>top_set_count</code> is <code>min(budget, total_input)</code> (an upper bound, not necessarily reachable); <code>diverse_set_count</code> is the actual number of designs selected into the set, which <code>SavedSet.design_count</code> reports afterwards (<strong>not</strong> <code>total_input</code>).</p>
+<p><code>GET /api/saved-sets/{id}/designs</code> returns every ranked design (pass or fail) with an <code>in_diverse_set</code> boolean; use this to browse the full ranked pool, and use <code>SavedSet.design_count</code> and <code>total_input</code> from <code>GET /api/saved-sets/{id}</code> for summary counts.</p>
+<p><code>SavedSet.source_run_ids</code> lists the run IDs a set was built from; resolve them to display names via <code>GET /api/runs</code>.</p>
 <h2 id="run-ingestion">Run ingestion<a class="headerlink" href="#run-ingestion" title="Permanent link">&para;</a></h2>
 <p>Used by the <strong>Select Runs</strong> UI to discover and persist runs from <code>RUN_BASE_DIRS</code>:</p>
 <ol>
-<li><strong><code>GET /api/tree</code></strong> — browse allowed base directories.</li>
-<li><strong><code>POST /api/runs/scan</code></strong> — body <code>{ "folders": ["/path/..."], "force_rescan_of_ingested": false }</code>. Returns discovered run metadata; skips already-ingested runs unless forced.</li>
-<li><strong><code>POST /api/runs/ingest-preview</code></strong> — body <code>{ "runs": [ ... ] }</code>. Lists runs that would be re-ingested.</li>
-<li><strong><code>POST /api/runs/ingest</code></strong> — body <code>{ "runs": [ ... ] }</code>. Requires <code>DATABASE</code>. Assigns stable <code>run_id</code>, stores designs, refreshes cache. Only each run's <code>path</code> / <code>merged_paths</code> is read from the body: the server re-detects the run at those folders (which must be inside <code>RUN_BASE_DIRS</code>) and stores what it finds on disk. A folder outside the base dirs, or with no recognised run, is a 400.</li>
+<li><code>GET /api/tree</code>: browse allowed base directories.</li>
+<li><code>POST /api/runs/scan</code>: body <code>{ "folders": ["/path/..."], "force_rescan_of_ingested": false }</code>. Returns discovered run metadata; skips already-ingested runs unless forced.</li>
+<li><code>POST /api/runs/ingest-preview</code>: body <code>{ "runs": [ ... ] }</code>. Lists runs that would be re-ingested.</li>
+<li><code>POST /api/runs/ingest</code>: body <code>{ "runs": [ ... ] }</code>. Requires <code>DATABASE</code>. Assigns stable <code>run_id</code>, stores designs, and refreshes the cache. Only each run's <code>path</code> / <code>merged_paths</code> is read from the body: the server re-detects the run at those folders (which must be inside <code>RUN_BASE_DIRS</code>) and stores what it finds on disk. A folder outside the base dirs, or with no recognised run, returns <code>400</code>.</li>
 </ol>
-<p>The server refuses to start if <code>RUN_BASE_DIRS</code> is empty or any entry is not an existing directory (desktop builds excepted, which ask for folders on first run). At startup, stored runs whose folders or structure files lie outside the current <code>RUN_BASE_DIRS</code> are not loaded; each is logged as a warning and stays in the database.</p>
+<p>The server exits at startup if <code>RUN_BASE_DIRS</code> is empty or any entry is not an existing directory (except in desktop builds, which prompt for folders on first launch). Stored runs with folders or structure files outside the current <code>RUN_BASE_DIRS</code> are skipped at startup, logged as warnings, and left untouched in the database.</p>
 <p>Deleting a run (<code>DELETE /api/runs/{run_id}</code>) removes database and cache entries only; files on disk are unchanged.</p>
 <h2 id="related-documentation">Related documentation<a class="headerlink" href="#related-documentation" title="Permanent link">&para;</a></h2>
 <ul>
-<li><a href="../pipeline-methods/">Pipeline method types</a> — run signatures, score columns, structure paths</li>
-<li><a href="../sequence_preparation/">Sequence preparation</a> — short names, hashing, UI behaviour</li>
-<li><a href="../download-bundles/">Download bundles</a> — bundle contents, JSON schema versioning, restore</li>
+<li><a href="../pipeline-methods/">Pipeline method types</a>: run signatures, score columns, structure paths</li>
+<li><a href="../sequence_preparation/">Sequence preparation</a>: short names, hashing, UI behaviour</li>
+<li><a href="../download-bundles/">Download bundles</a>: bundle contents, JSON schema versioning, restore</li>
 <li>Agent-oriented quick reference: <a href="https://github.com/Australian-Protein-Design-Initiative/binderdash/blob/main/skills/binderdash-api/SKILL.md"><code>skills/binderdash-api/SKILL.md</code></a></li>
 </ul>
               

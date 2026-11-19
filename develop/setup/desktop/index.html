@@ -67,7 +67,7 @@
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#loading-your-runs">Loading your runs</a>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#where-data-is-stored">Where data is stored</a>
+    <li class="toctree-l2"><a class="reference internal" href="#data-directory">Data directory</a>
     </li>
     </ul>
                   </li>
@@ -79,6 +79,13 @@
               <p class="caption"><span class="caption-text">Usage</span></p>
               <ul>
                   <li class="toctree-l1"><a class="reference internal" href="../../usage/filtering-ranking/">Filtering and ranking</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Administration</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../admin/backup-restore/">Backup and restore</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../admin/database-migrations/">Database migrations</a>
                   </li>
               </ul>
               <p class="caption"><span class="caption-text">Development</span></p>
@@ -156,8 +163,8 @@
 <li>Scan the folder tree and ingest the runs you want. Binderdash detects RFdiffusion, RFdiffusion3, BindCraft and BoltzGen output layouts.</li>
 <li>Tick runs in <strong>Select Runs</strong>, then explore them in <strong>Designs</strong>, <strong>Plots</strong> and <strong>Filtering</strong>.</li>
 </ol>
-<p>Ingesting reads your results into the app's database. It never modifies or deletes files in the run folders, and removing a run from Binderdash leaves the files on disk untouched.</p>
-<h2 id="where-data-is-stored">Where data is stored<a class="headerlink" href="#where-data-is-stored" title="Permanent link">&para;</a></h2>
+<p>Ingesting imports run results into the app's database without changing or deleting any files in your run folders. Removing a run from Binderdash only deletes the database record; the original files remain on disk.</p>
+<h2 id="data-directory">Data directory<a class="headerlink" href="#data-directory" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
@@ -180,7 +187,7 @@
 </tr>
 </tbody>
 </table>
-<p>This folder holds <code>binderdash.sqlite</code> (the database), <code>desktop.json</code> (folder and window settings) and <code>binderdash.log</code>. If the app fails to start, check <code>binderdash.log</code> first.</p>
+<p>This folder contains <code>binderdash.sqlite</code> (the database), <code>desktop.json</code> (folder and window settings), and <code>binderdash.log</code>. If the app fails to start, check <code>binderdash.log</code> first.</p>
               
             </div>
           </div><footer>

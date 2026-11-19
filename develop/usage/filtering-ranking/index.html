@@ -87,6 +87,13 @@
     </ul>
                   </li>
               </ul>
+              <p class="caption"><span class="caption-text">Administration</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../admin/backup-restore/">Backup and restore</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../admin/database-migrations/">Database migrations</a>
+                  </li>
+              </ul>
               <p class="caption"><span class="caption-text">Development</span></p>
               <ul>
                   <li class="toctree-l1"><a class="reference internal" href="../../development/setup/">Development setup</a>
@@ -134,13 +141,13 @@
             <div class="section" itemprop="articleBody">
               
                 <h1 id="filtering-and-ranking">Filtering and ranking<a class="headerlink" href="#filtering-and-ranking" title="Permanent link">&para;</a></h1>
-<p>The <strong>Filtering</strong> tab works on the runs picked in <strong>Select Runs</strong>. Those runs are pooled into one table. An <strong>Available Metrics</strong> panel (collapsed by default) lists every column in that pool: its canonical name, which methods have it, the raw column each method uses, and the min–max range.</p>
-<p>Below that are six numbered sections. Hard filters and target contacts narrow the Designs table as you edit them. Ranking annotates every design with a rank and leaves the visible set as it is. Diversity selection, once applied and left on, narrows the table further. A Saved Set freezes the result on the server.</p>
+<p>The <strong>Filtering</strong> tab combines all runs selected in <strong>Select Runs</strong> into a single table. Expand the <strong>Available Metrics</strong> panel to inspect every column in the selection, including its canonical name, supporting methods, method-specific raw column names, and min-max range.</p>
+<p>Use the six numbered sections below it to narrow and order your designs. Hard filters and target contacts filter the Designs table as you edit them. Ranking adds a rank column to all designs without hiding rows. Diversity selection narrows the table further when enabled and applied, and Saved Sets store a fixed snapshot on the server.</p>
 <p>The in-progress recipe (filters, ranking metrics, budget, alpha, size buckets, diversity on/off) is stored in the browser (IndexedDB). A Saved Set is a separate server-side snapshot. See <a href="../../development/storage/">Storage architecture</a>.</p>
-<p>REST shapes for the same pipeline are in <a href="../../development/api/#filtering-ranking-and-diversity-selection">Filtering, ranking, and diversity selection</a>.</p>
+<p>For the REST API schemas, see <a href="../../development/api/#filtering-ranking-and-diversity-selection">Filtering, ranking, and diversity selection</a>.</p>
 <h2 id="1-hard-filters">1. Hard Filters<a class="headerlink" href="#1-hard-filters" title="Permanent link">&para;</a></h2>
-<p>Every enabled filter must pass for a design to count as passing. Edits apply on a short debounce and update the Designs table and the <a href="#5-filter-cascade">filter cascade</a>. The status line shows how many designs pass. <strong>Disable all filters</strong> turns every row off without deleting it; a disabled row is kept in the list and ignored.</p>
-<p>Each row is a column, an operator, and a value:</p>
+<p>A design must pass all enabled filters to remain visible. Edits apply automatically after a short debounce, updating both the Designs table and the <a href="#5-filter-cascade">filter cascade</a>. The status line displays the passing count. Click <strong>Disable all filters</strong> to turn off every row without deleting your rules; disabled rows stay in the list but are ignored.</p>
+<p>Each filter row specifies a column, an operator, and a threshold or value:</p>
 <table>
 <thead>
 <tr>
@@ -172,17 +179,17 @@
 </tr>
 </tbody>
 </table>
-<p>Contains, starts with, and ends with are case-insensitive. Equals, not equals, and regex are case-sensitive. A null or blank value passes a "does not contain" / "not equals" check.</p>
-<p>The column picker offers canonical metric names (<code>iptm</code>, <code>ptm</code>, <code>rmsd</code>, <code>pae_interaction</code>, <code>hbonds</code>, <code>saltbridge</code>, <code>delta_sasa</code>) and raw columns, plus <code>design_id</code>, <code>project_id</code>, <code>run_name</code>, <code>method</code>, and <code>Sequence</code>, and the user-set columns <strong>Good</strong> and <strong>Tag</strong>. Good is the thumbs rating: <strong>good</strong>, <strong>bad</strong>, or <strong>unrated</strong> (designs never marked). Tag is the N- or C-terminus choice (<code>N</code>, <code>C</code>, or empty). Both stay in the picker when no design has been rated or tagged yet. A canonical name is resolved per design from that design's method (<code>iptm</code> is <code>design_to_target_iptm</code> on BoltzGen, <code>Average_i_pTM</code> on BindCraft, <code>iptm</code> on RFdiffusion3, and <code>boltz_iptm</code> on RFdiffusion when a Boltz pulldown column is present). The mapping is <code>METRIC_ALIASES</code> in <code>backend/filtering/metrics.py</code>.</p>
-<p>Canonical score metrics also carry a known direction in <code>METRIC_DIRECTIONS</code> (same module): higher-is-better metrics such as <code>iptm</code> default a new hard filter to <code>&gt;</code>, and lower-is-better metrics such as <code>rmsd</code> / <code>pae_interaction</code> default to <code>&lt;</code>. Adding or changing a ranking metric row sets the "Higher is better" checkbox from the same source. Unknown raw columns keep the previous defaults (<code>&lt;</code> / higher-is-better). The columns API returns <code>higher_is_better</code> on each entry so the UI does not hardcode the map.</p>
-<p>A design whose method has no equivalent for a canonical metric is exempt from that filter. A design whose method has the metric, but whose value is null, fails it. A filter on a literal column name that is absent fails every row. <strong>Good</strong> and <strong>Tag</strong> are the exception: until a design is rated or tagged the column is missing, and that counts as unrated or empty rather than a failure.</p>
-<p>Per-replicate BindCraft columns (<code>1_pLDDT</code>, <code>2_i_pTM</code>, …) are omitted from the picker. They repeat the <code>Average_*</code> aggregates.</p>
-<p>Passing filters is what narrows the table. Failing a filter still leaves the design in the ranked pool used by <a href="#3-ranking-metrics-quality-score">section 3</a>: the failure lowers its rank, and diversity selection and Saved Sets skip it.</p>
+<p>Text matching for "contains", "starts with", and "ends with" is case-insensitive; "equals", "not equals", and "regex" are case-sensitive. Null or blank values pass "does not contain" and "not equals" filters.</p>
+<p>The column picker includes canonical metric names (<code>iptm</code>, <code>ptm</code>, <code>rmsd</code>, <code>pae_interaction</code>, <code>hbonds</code>, <code>saltbridge</code>, <code>delta_sasa</code>), raw columns, metadata fields (<code>design_id</code>, <code>project_id</code>, <code>run_name</code>, <code>method</code>, <code>Sequence</code>), and user-set columns (<strong>Good</strong> and <strong>Tag</strong>). <strong>Good</strong> stores the thumbs rating (<strong>good</strong>, <strong>bad</strong>, or <strong>unrated</strong>), and <strong>Tag</strong> stores the terminus choice (<code>N</code>, <code>C</code>, or empty); both appear in the picker even before you rate or tag any designs. Canonical names map to each method's corresponding column via <code>METRIC_ALIASES</code> in <code>backend/filtering/metrics.py</code> (for example, <code>iptm</code> maps to <code>design_to_target_iptm</code> for BoltzGen, <code>Average_i_pTM</code> for BindCraft, <code>iptm</code> for RFdiffusion3, and <code>boltz_iptm</code> for RFdiffusion when a Boltz pulldown column exists).</p>
+<p><code>METRIC_DIRECTIONS</code> in the same module defines default directions for canonical score metrics. Higher-is-better metrics like <code>iptm</code> default new hard filters to <code>&gt;</code>, while lower-is-better metrics like <code>rmsd</code> and <code>pae_interaction</code> default to <code>&lt;</code>. Adding or changing a ranking metric sets the "Higher is better" checkbox from the same map. Unrecognised raw columns keep the default (<code>&lt;</code> for filters, higher-is-better for ranking). The columns API includes <code>higher_is_better</code> on each entry so the UI reads these defaults dynamically.</p>
+<p>If a design's method has no equivalent column for a canonical metric, that design skips the filter. If the method defines the metric but the design's value is null, the design fails the filter. Filtering on a missing raw column name fails all rows. As an exception, missing <strong>Good</strong> and <strong>Tag</strong> values are treated as unrated or empty instead of failing.</p>
+<p>Per-replicate BindCraft columns (<code>1_pLDDT</code>, <code>2_i_pTM</code>, ...) are omitted from the picker because they duplicate the <code>Average_*</code> aggregates.</p>
+<p>Only passing designs appear in the Designs table, but failing designs remain in the ranking pool (<a href="#3-ranking-metrics-quality-score">section 3</a>) with a lower rank. Diversity selection and Saved Sets exclude failing designs.</p>
 <h2 id="2-target-contacts">2. Target contacts<a class="headerlink" href="#2-target-contacts" title="Permanent link">&para;</a></h2>
-<p>Target-contact conditions are extra hard filters, evaluated from each design's structure rather than from a results-table column. They require a design to approach, avoid, bury, or expose chosen residues on the target. They apply alongside section 1, on the same debounce, and count toward "designs passing" and toward the filter-pass count used in ranking.</p>
-<p><strong>Compute target contacts</strong> parses the structures in the current run selection and caches a per-residue record. The coverage line shows how many designs already have a record. A design with no record fails every condition. Residues are only stored when they fall within 12 Å of the binder, so a distance threshold above 12 Å cannot be answered and the value field stops there.</p>
-<p>Runs are grouped into targets by target sequence, so one target can span runs that letter the chain differently. With a single target the residue list is shown directly. With more than one, each group names its target and only applies to that target's runs; a design from another run is exempt from the group. A group whose target is no longer in the selection matches nothing until you pick a target that is in scope (that clears the residue chips) or remove the group.</p>
-<p>A condition is: residues, a comparison, a number, a qualifier, and a scope.</p>
+<p>Target-contact conditions act as additional hard filters computed directly from each design's 3D structure instead of table columns. Use them to require designs to contact, avoid, bury, or expose specific target residues. They apply on the same debounce as section 1 and count toward both the passing total and the filter-pass count used during ranking.</p>
+<p>Click <strong>Compute target contacts</strong> to parse structures in the selected runs and cache per-residue contact data. The coverage line reports how many designs have cached data; designs without cached contact data fail all target-contact conditions. Contact caching only records residues within 12 Å of the binder, so the distance threshold input caps at 12 Å.</p>
+<p>Binderdash groups runs by target sequence, allowing one target to span runs with different chain IDs. When only one target is present, the residue picker appears directly. With multiple targets, each condition group specifies one target and applies only to runs matching that target (designs from other targets skip the group). If you deselect a group's target run, that group matches zero designs until you remove it or select an active target (which clears the selected residue chips).</p>
+<p>Each condition combines target residues, a comparison operator, a numeric threshold, a measurement qualifier, and a scope.</p>
 <table>
 <thead>
 <tr>
@@ -236,14 +243,14 @@
 </tr>
 </tbody>
 </table>
-<p>Site total applies to SASA and ΔSASA. Distance has no site total. A residue the target does not have is skipped. If none of the listed residues can be evaluated, the condition passes. If the target chain moves between designs in a run, unbound SASA is computed per design; otherwise it is computed once per run.</p>
+<p>The "site total" scope applies only to SASA and ΔSASA, not distance. Listed residues absent from the target sequence are skipped, and if no listed residues exist on the target, the condition passes. Unbound SASA is computed once per run when the target chain coordinates stay fixed, or per design if the target chain moves between designs.</p>
 <h2 id="3-ranking-metrics-quality-score">3. Ranking Metrics (Quality Score)<a class="headerlink" href="#3-ranking-metrics-quality-score" title="Permanent link">&para;</a></h2>
-<p>The <strong>Mode</strong> menu chooses how the metric list becomes one order. A fresh session uses <strong>Simple ranking</strong>.</p>
+<p>Select a <strong>Mode</strong> to control how the metric list orders designs. New sessions default to <strong>Simple ranking</strong>.</p>
 <table>
 <thead>
 <tr>
 <th>Mode</th>
-<th>What the list means</th>
+<th>Metric ordering</th>
 </tr>
 </thead>
 <tbody>
@@ -257,9 +264,9 @@
 </tr>
 </tbody>
 </table>
-<p>Both modes rank a design that passed more filters ahead of one that passed fewer, and both leave failing designs in the table. <strong>Apply Ranking</strong> calls <code>POST /api/filtering/rank</code>, then adds a <strong>Ranking</strong> column (<code>binderdash_ranking</code>, 1 = best) as the first data column of the Designs table and sorts that table by it, ascending. Doing this again — or applying diversity, which recomputes the same ranks — puts that column back in front and re-sorts, even if it had been hidden or moved. The set of visible rows stays whatever sections 1, 2, and 4 have already decided.</p>
-<p>The preset menu lists recipes for the current mode and replaces the metric list. Editing a row afterwards clears the preset selection, because the list no longer matches a preset exactly.</p>
-<p>A fresh session loads <strong>ipTM + Binder pLDDT + Binder RMSD</strong>:</p>
+<p>In both modes, designs passing more filters always rank above designs passing fewer, and failing designs remain in the table. Clicking <strong>Apply Ranking</strong> calls <code>POST /api/filtering/rank</code>, inserts the <strong>Ranking</strong> column (<code>binderdash_ranking</code>, 1 = best) as the first data column of the Designs table, and sorts ascending. Re-applying ranking (or running diversity selection, which recomputes ranks) moves the Ranking column back to the front and re-sorts even if you hid or reordered it. Ranking does not change which rows are visible.</p>
+<p>Choosing a preset replaces the current metric list with a predefined recipe for the active mode. Modifying any row clears the preset dropdown selection.</p>
+<p>New sessions start with the <strong>ipTM + Binder pLDDT + Binder RMSD</strong> preset:</p>
 <table>
 <thead>
 <tr>
@@ -290,10 +297,10 @@
 </tr>
 </tbody>
 </table>
-<p><code>binder_plddt</code> is binder-chain confidence. BoltzGen's final metrics table often has no pLDDT column; that row is then skipped and the panel warns.</p>
-<p><strong>ipSAE + Binder pLDDT + Binder RMSD</strong> uses the same second and third keys, with <code>ipsae</code> (higher is better) first. That name resolves to BoltzGen <code>design_ipsae_min</code> and RFdiffusion3 <code>rf3_ipsae_min</code>. BindCraft and plain RFdiffusion have no ipSAE column, so that row is skipped and the panel warns. <strong>iptm only</strong> is the other simple-ranking preset.</p>
+<p><code>binder_plddt</code> measures binder-chain confidence. Because BoltzGen final metrics tables often omit pLDDT, Binderdash skips that row and displays a warning.</p>
+<p>The <strong>ipSAE + Binder pLDDT + Binder RMSD</strong> preset replaces the primary key with <code>ipsae</code> (higher is better), which maps to <code>design_ipsae_min</code> in BoltzGen and <code>rf3_ipsae_min</code> in RFdiffusion3. BindCraft and standard RFdiffusion lack an ipSAE column, so that row is skipped with a warning. Simple ranking also includes an <strong>iptm only</strong> preset.</p>
 <h3 id="weighted-worst-rank-boltzgen-style">Weighted worst rank (BoltzGen-style)<a class="headerlink" href="#weighted-worst-rank-boltzgen-style" title="Permanent link">&para;</a></h3>
-<p>In this mode a design is only as good as its weakest metric. For each enabled metric the engine ranks every design, divides that rank by the metric's weight, and keeps the worst (largest) of those numbers. A design that is excellent on one metric and poor on another is scored by the poor one.</p>
+<p>Weighted worst rank scores each design by its weakest metric. For every enabled metric, Binderdash ranks all designs, divides each rank by the metric's weight, and takes the largest (worst) scaled rank. Strong performance on one metric does not offset a poor score on another.</p>
 <table>
 <thead>
 <tr>
@@ -312,7 +319,7 @@
 </tr>
 </tbody>
 </table>
-<p><strong>BoltzGen defaults</strong> reproduces BoltzGen's own <code>Filter</code> recipe (<code>from_inverse_folded=True</code>, <code>use_affinity=False</code>), written with Binderdash canonical names so the same preset can run on other methods that have an equivalent column. BoltzGen stores interaction PAE already negated (<code>neg_min_design_to_target_pae</code>); here the raw PAE is used and <strong>Higher is better</strong> is off.</p>
+<p><strong>BoltzGen defaults</strong> mirrors BoltzGen's <code>Filter</code> recipe (<code>from_inverse_folded=True</code>, <code>use_affinity=False</code>) using canonical names so it works across other methods with matching columns. Instead of BoltzGen's negated <code>neg_min_design_to_target_pae</code>, Binderdash uses raw interaction PAE with <strong>Higher is better</strong> unchecked.</p>
 <table>
 <thead>
 <tr>
@@ -368,22 +375,22 @@
 </tr>
 </tbody>
 </table>
-<p><code>delta_sasa</code> is the pipeline's own buried-surface column. Binderdash's independently computed <code>binderdash_delta_sasa</code> (as-generated structure, any method) is a different column and is not part of this preset.</p>
-<p>A metric that resolves to no non-null value for the selected runs is skipped, and the panel warns. That is what happens to <code>saltbridge</code> on a non-BoltzGen selection. A disabled row is kept in the list and omitted from the request. Weight 0 is also omitted; the field in the UI starts at 0.01.</p>
+<p><code>delta_sasa</code> refers to the design pipeline's reported buried-surface column, not Binderdash's own <code>binderdash_delta_sasa</code> column (computed from as-generated structures).</p>
+<p>If an enabled metric has no non-null values in the selected runs (such as <code>saltbridge</code> outside BoltzGen), Binderdash skips it and shows a warning. Disabled rows and rows with weight <code>0</code> are omitted from the ranking request (the UI weight input starts at <code>0.01</code>).</p>
 <h3 id="per-metric-rank-weighted-worst-rank">Per-metric rank (weighted worst rank)<a class="headerlink" href="#per-metric-rank-weighted-worst-rank" title="Permanent link">&para;</a></h3>
-<p>Hard filters and target contacts are applied first as annotations. Each design gets <code>num_filters_passed</code> (how many enabled filters it passed) and <code>pass_filters</code> (whether it passed all of them). Rows stay in the table.</p>
-<p>For each enabled metric the engine then:</p>
+<p>Hard filters and target contacts are evaluated first as annotations, adding <code>num_filters_passed</code> (count of enabled filters passed) and <code>pass_filters</code> (whether all enabled filters passed) without removing rows.</p>
+<p>For each enabled metric, the ranking engine:</p>
 <ol>
-<li>Resolves a canonical name per row, the same way filters do. A method with no equivalent contributes a null. A raw column that exists is used as-is. A metric that matches nothing in the pool is skipped.</li>
-<li>Negates the value when <strong>Higher is better</strong> is off, so a larger number is always better.</li>
-<li>Ranks every design on the pair <code>(num_filters_passed, value)</code>, best first. Passing more filters outranks passing fewer, whatever the metric value is. Among designs with the same pass count, the better value wins. Ties share the best rank in the tie (two designs tied for 2nd are both rank 2; the next is 4). A null value sorts last on that metric.</li>
-<li>Divides that rank by the metric's weight.</li>
+<li>Maps canonical names per row using the same aliases as filters (methods without an equivalent yield null). Existing raw columns are used directly, and metrics with no values in the pool are skipped.</li>
+<li>Negates values when <strong>Higher is better</strong> is unchecked so larger numbers always rank higher.</li>
+<li>Ranks all designs by <code>(num_filters_passed, value)</code> descending. Designs passing more filters always rank ahead of those passing fewer. Ties share the top rank (two designs tied for 2nd both get rank 2, and the next gets rank 4), and null values sort last.</li>
+<li>Divides each rank by the metric's weight.</li>
 </ol>
-<p>Weight is inverse importance. Dividing by a larger weight shrinks that metric's rank number, so it is less likely to be the worst one and less likely to decide the design's place. BoltzGen's interface counts (hydrogen bonds, salt bridges, ΔSASA) use weight 2 for this reason: a mediocre hydrogen-bond count hurts half as much as a mediocre ipTM, which stays at weight 1.</p>
+<p>Weights represent inverse importance: dividing by a larger weight lowers the scaled rank, reducing how strongly that metric affects the final order. BoltzGen's interface metrics (hydrogen bonds, salt bridges, ΔSASA) use weight 2 so a weak interface count penalises a design half as much as a weak ipTM (weight 1).</p>
 <h3 id="combining-metrics">Combining metrics<a class="headerlink" href="#combining-metrics" title="Permanent link">&para;</a></h3>
-<p>The design's score key, <code>max_rank</code>, is the maximum of those scaled ranks — its worst metric. Designs are ordered by <code>max_rank</code> ascending (smaller is better). When two designs share the same worst rank, the tie breaks on the first available of <code>design_to_target_iptm</code>, <code>iptm</code>, or <code>Average_i_pTM</code>, higher first.</p>
-<p><code>final_rank</code> is 1…N in that order. That is the <strong>Ranking</strong> column. <code>quality_score</code> stretches the same order onto 1 (best) … 0 (worst); <a href="#4-diversity-selection">diversity selection</a> uses it, and the Designs table does not show it.</p>
-<p>With four designs, no filters, and two metrics at weight 1:</p>
+<p>Each design's score key, <code>max_rank</code>, is the maximum of its scaled ranks across enabled metrics. Binderdash orders designs by <code>max_rank</code> ascending (lower is better). Ties break using the first available column among <code>design_to_target_iptm</code>, <code>iptm</code>, or <code>Average_i_pTM</code> (higher is better).</p>
+<p><code>final_rank</code> assigns 1...N in that order and populates the <strong>Ranking</strong> column. <code>quality_score</code> normalises the same order to 1 (best) ... 0 (worst) for <a href="#4-diversity-selection">diversity selection</a> and is hidden from the Designs table.</p>
+<p>Example with four designs, no filters, and two metrics at weight 1:</p>
 <table>
 <thead>
 <tr>
@@ -420,14 +427,14 @@
 </tr>
 </tbody>
 </table>
-<p>A is best on both metrics, so it ranks first. B and C each have a worst rank of 4; the ipTM tie-break then prefers B. Raising RMSD's weight to 2 turns B's RMSD rank of 4 into 2, so B's worst rank becomes 2 and B moves up.</p>
-<p>A design that fails a hard filter ranks below every design that passed more filters, even when its metric values are better. Diversity selection and Saved Sets still omit that design: eligibility there is <code>pass_filters</code>, while the rank column covers the whole pool.</p>
+<p>Design A ranks first on both metrics. Designs B and C tie with a <code>max_rank</code> of 4, and the ipTM tie-break puts B ahead of C. Increasing the RMSD weight to 2 scales B's RMSD rank from 4 to 2, lowering B's <code>max_rank</code> to 2 and moving B above D.</p>
+<p>Designs that fail a hard filter always rank below designs passing more filters, regardless of metric scores. Diversity selection and Saved Sets require <code>pass_filters</code> and exclude failing designs, whereas the Ranking column scores the full pool.</p>
 <h2 id="4-diversity-selection">4. Diversity Selection<a class="headerlink" href="#4-diversity-selection" title="Permanent link">&para;</a></h2>
-<p>Diversity selection picks a subset of the designs that passed every hard filter and target-contact condition. The objective for each candidate is</p>
+<p>Diversity selection chooses a subset from designs that passed all hard filters and target-contact conditions, maximising:</p>
 <pre class="highlight"><code class="language-text">(1 − α) × quality_score + α × (1 − similarity to the closest design already picked)</code></pre>
-<p>Similarity is pairwise sequence identity from a Biopython global alignment, divided by the longer sequence (the same normalisation BoltzGen uses). The first pick is the highest <code>quality_score</code>. Later picks use a lazy-greedy loop: a candidate's gain is recomputed against the whole set so far, and it is accepted only when it is still the best pending candidate.</p>
-<p>The section is off by default. While it is off, <strong>Create Saved Set</strong> keeps every design that passed the filters, and budget is ignored. Turning it on does not run the selection. <strong>Apply Diversity Filter</strong> does; pairwise alignment is slow, so it is a deliberate click. After a successful apply the Designs table shows only the diverse subset and is sorted by <strong>Ranking</strong>.</p>
-<p>Changing budget, α, the size buckets, or the ranking metrics and mode after an apply marks the panel <strong>Unapplied</strong> and puts the table back to the hard-filter set until you apply again. <strong>Apply Diversity Filter</strong> re-ranks with the current metrics before it selects, and updates the Ranking column. Turning the section off does the same, and keeps the last diverse subset cached so turning it back on (with unchanged settings) restores it without another alignment pass. The same on/off state is the Diversity row in the <a href="#5-filter-cascade">filter cascade</a>.</p>
+<p>Pairwise similarity is sequence identity from a Biopython global alignment divided by the length of the longer sequence (matching BoltzGen's normalisation). Selection starts with the highest <code>quality_score</code>, then runs a lazy-greedy loop that recomputes each candidate's marginal gain against all previously selected designs and accepts it once it remains the top candidate.</p>
+<p>Diversity selection is off by default; while off, <strong>Create Saved Set</strong> includes all filter-passing designs and ignores the budget. Enabling the section does not run alignment automatically. Click <strong>Apply Diversity Filter</strong> to run selection (explicitly triggered because pairwise alignment can be slow). Once applied, the Designs table displays only the selected subset, sorted by <strong>Ranking</strong>.</p>
+<p>Editing the budget, α, size buckets, or ranking configuration after applying marks the section <strong>Unapplied</strong> and reverts the table to the hard-filter set until you apply again. Clicking <strong>Apply Diversity Filter</strong> re-runs ranking with the current metrics before selecting and updates the Ranking column. Toggling the section off also reverts the table while caching the last result, so turning it back on with unchanged settings restores the subset without recomputing alignments. The Diversity row in the <a href="#5-filter-cascade">filter cascade</a> mirrors this toggle state.</p>
 <table>
 <thead>
 <tr>
@@ -440,36 +447,36 @@
 <tr>
 <td>Budget</td>
 <td>24</td>
-<td>Maximum number of designs in the subset. If fewer designs pass with a usable sequence, the subset is smaller and the result says why.</td>
+<td>Maximum number of designs in the subset. If fewer passing designs have a usable sequence, the subset is smaller and the status message explains why.</td>
 </tr>
 <tr>
 <td>α</td>
 <td>0</td>
-<td>0 is quality only, 1 is diversity only. The slider is logarithmic from 0.0001 to 1 because the useful range sits near zero. The number field accepts an exact value, including 0. BoltzGen uses 0.001 for proteins and 0.01 for its peptide-anything protocol; those stay as slider marks.</td>
+<td>0 uses quality only; 1 uses diversity only. The slider uses a logarithmic scale from 0.0001 to 1 to give finer control near zero, while the number input accepts exact values including 0. Slider marks highlight BoltzGen's defaults: 0.001 for proteins and 0.01 for the peptide-anything protocol.</td>
 </tr>
 <tr>
 <td>Size buckets</td>
 <td>none</td>
-<td>Optional caps. A bucket <code>{min, max, num_designs}</code> allows at most <code>num_designs</code> selections whose sequence length is in <code>[min, max)</code>.</td>
+<td>Optional length caps. Each bucket <code>{min, max, num_designs}</code> allows at most <code>num_designs</code> selected sequences with length in <code>[min, max)</code>.</td>
 </tr>
 </tbody>
 </table>
-<p>Designs with a missing or blank sequence are left out of the pool. A blank sequence would look maximally dissimilar to everything, so including it would prefer the designs the selector knows least about. If the runs have no <code>Sequence</code> column at all, selection is skipped until sequences are extracted (<code>POST /api/sequences/extract</code>).</p>
-<p><strong>Keep only best MPNN variant per backbone</strong> sits above Budget. While diversity selection is on, designs that share a <code>backbone_id</code> collapse to the one with the best primary score, and designs with no <code>backbone_id</code> are kept. That collapse runs <strong>before</strong> diversity selection: the budget is spent on distinct backbones, not on several MPNN variants of one backbone. Turning diversity selection off leaves the checkbox as it was but stops the collapse, and a Saved Set created with diversity off still keeps every design that passed the hard filters. The <a href="#5-filter-cascade">filter cascade</a> lists it as <strong>Remove MPNN duplicates</strong>, above Diversity Selection, with the number of designs left after the collapse. Changing the checkbox after an apply marks diversity <strong>Unapplied</strong> until you apply again.</p>
+<p>Designs with missing or blank sequences are excluded from diversity selection; otherwise they would score as maximally dissimilar to every other design. If the selected runs lack a <code>Sequence</code> column, diversity selection is skipped until you extract sequences (<code>POST /api/sequences/extract</code>).</p>
+<p>Above Budget is <strong>Keep only best MPNN variant per backbone</strong>. When diversity selection is enabled, designs sharing a <code>backbone_id</code> collapse to the single variant with the best primary score (designs without a <code>backbone_id</code> are kept unchanged). This deduplication runs before diversity selection so the budget covers distinct backbones instead of multiple MPNN variants of the same backbone. Turning diversity selection off preserves the checkbox state but disables deduplication, so Saved Sets created with diversity off retain all filter-passing designs. The <a href="#5-filter-cascade">filter cascade</a> displays this step as <strong>Remove MPNN duplicates</strong> above Diversity Selection. Toggling this checkbox after applying marks diversity <strong>Unapplied</strong>.</p>
 <h2 id="5-filter-cascade">5. Filter cascade<a class="headerlink" href="#5-filter-cascade" title="Permanent link">&para;</a></h2>
 <p>The cascade is the sequential count of designs remaining after each enabled stage. It refreshes on the same debounce as hard filters and target contacts.</p>
-<p>Rows appear in order: each hard filter, then each target-contact condition, then <strong>Remove MPNN duplicates</strong> when <strong>Keep only best MPNN variant per backbone</strong> is collapsing the table, then Diversity Selection when that section is on or has a cached result, then a <strong>Final set</strong> row. Disabled filters stay in the list with no remaining count. The final count is the last stage that actually narrowed the set: the diverse subset when diversity is on and applied, otherwise the count after MPNN duplicate removal when that option is active, otherwise the last enabled filter, otherwise the unfiltered total.</p>
-<p>While diversity is on but not yet applied, the cascade says so. If MPNN duplicate removal is also on, the final count is the hard-filter set after that collapse; otherwise it stays at the hard-filter total. While diversity is off, MPNN duplicate removal does not run and the final set is every design that passes the hard filters and target contacts.</p>
+<p>Rows appear in execution order: each hard filter, each target-contact condition, <strong>Remove MPNN duplicates</strong> (when active), Diversity Selection (when enabled or cached), and <strong>Final set</strong>. Disabled filters remain listed without a remaining count. <strong>Final set</strong> shows the count from the last active stage: the applied diverse subset, the post-MPNN-deduplication count, the last enabled filter, or the unfiltered total.</p>
+<p>When diversity selection is enabled but unapplied, the cascade labels it as unapplied; <strong>Final set</strong> then reflects the hard-filter count after MPNN duplicate removal (if checked) or the hard-filter total. When diversity selection is off, MPNN deduplication does not run, and <strong>Final set</strong> equals all designs passing hard filters and target contacts.</p>
 <h2 id="6-create-saved-set">6. Create Saved Set<a class="headerlink" href="#6-create-saved-set" title="Permanent link">&para;</a></h2>
-<p><strong>Create Saved Set</strong> runs the same filter → rank → (best MPNN variant, when that option is on) → diversity pipeline and stores an immutable snapshot: the source run ids, the recipe, a result summary, the designs that made the cut (with <code>final_rank</code>, <code>quality_score</code>, and whether each was in the diverse subset), and the UI state at save time (table columns, sort, and <strong>Keep only best MPNN variant per backbone</strong>). <strong>Reapply filters</strong> / <strong>Load filters</strong> restore that UI state along with the recipe.</p>
-<p>With diversity on, the set is the diverse subset (at most Budget, and only designs that passed every filter and have a sequence). With diversity off, the set is every design that passed the filters. The confirmation line reports designs selected, how many passed the filters, and the total input.</p>
-<p>Sets are visible to every user of the same server and survive a browser reset. Rename and delete are the later mutations; reapplying filters builds a new set. Open the result under <strong>Saved Sets</strong>. Download is the standard design bundle (ranked rows, structures, and the UI state the set was saved with); see <a href="../../development/download-bundles/">Download bundles</a>.</p>
+<p><strong>Create Saved Set</strong> runs the full pipeline (filter, rank, optional best-MPNN-variant deduplication, and diversity selection) and saves an immutable snapshot containing the source run IDs, recipe, result summary, selected designs (with <code>final_rank</code>, <code>quality_score</code>, and diversity membership), and current UI state (table columns, sort order, and <strong>Keep only best MPNN variant per backbone</strong>). Clicking <strong>Reapply filters</strong> or <strong>Load filters</strong> restores both the recipe and that UI state.</p>
+<p>When diversity is enabled, the saved set contains the diverse subset (up to Budget, limited to filter-passing designs with sequences). When diversity is off, it contains all designs passing the filters. The confirmation message reports the selected count, passing count, and total input count.</p>
+<p>Saved sets are stored on the server, visible to all users on that instance, and unaffected by browser resets. You can rename or delete a saved set later; reapplying its filters creates a new set. Open saved sets under <strong>Saved Sets</strong> to inspect or export them as standard design bundles (ranked rows, structures, and saved UI state; see <a href="../../development/download-bundles/">Download bundles</a>).</p>
               
             </div>
           </div><footer>
     <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
         <a href="../../setup/authentication/" class="btn btn-neutral float-left" title="Authentication"><span class="icon icon-circle-arrow-left"></span> Previous</a>
-        <a href="../../development/setup/" class="btn btn-neutral float-right" title="Development setup">Next <span class="icon icon-circle-arrow-right"></span></a>
+        <a href="../../admin/backup-restore/" class="btn btn-neutral float-right" title="Backup and restore">Next <span class="icon icon-circle-arrow-right"></span></a>
     </div>
 
   <hr/>
@@ -499,7 +506,7 @@
       <span><a href="../../setup/authentication/" style="color: #fcfcfc">&laquo; Previous</a></span>
     
     
-      <span><a href="../../development/setup/" style="color: #fcfcfc">Next &raquo;</a></span>
+      <span><a href="../../admin/backup-restore/" style="color: #fcfcfc">Next &raquo;</a></span>
     
   </span>
 </div>

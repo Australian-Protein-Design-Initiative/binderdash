@@ -65,6 +65,13 @@
                   <li class="toctree-l1"><a class="reference internal" href="../../usage/filtering-ranking/">Filtering and ranking</a>
                   </li>
               </ul>
+              <p class="caption"><span class="caption-text">Administration</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../admin/backup-restore/">Backup and restore</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../admin/database-migrations/">Database migrations</a>
+                  </li>
+              </ul>
               <p class="caption"><span class="caption-text">Development</span></p>
               <ul class="current">
                   <li class="toctree-l1"><a class="reference internal" href="../setup/">Development setup</a>
@@ -77,15 +84,15 @@
                   </li>
                   <li class="toctree-l1 current"><a class="reference internal current" href="#">Sequence preparation</a>
     <ul class="current">
-    <li class="toctree-l2"><a class="reference internal" href="#short-names-base52-hashes-uid-length-and-hash-length">Short names: base52 hashes (UID length and hash length)</a>
+    <li class="toctree-l2"><a class="reference internal" href="#base52-short-name-hashing">Base52 short-name hashing</a>
         <ul>
-    <li class="toctree-l3"><a class="reference internal" href="#1-hash-primitive-utf-8-fnv-1a-64-base52">1. Hash primitive: UTF-8 → FNV-1a 64 → base52</a>
+    <li class="toctree-l3"><a class="reference internal" href="#1-hash-primitive-utf-8-fnv-1a-64-base52">1. Hash primitive (UTF-8, FNV-1a 64, base52)</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#2-prefix-sorted-dna-set-uid-index-uid-length">2. “Prefix + sorted DNA-set uid + index” (UID length)</a>
+    <li class="toctree-l3"><a class="reference internal" href="#2-pattern-strategy-uid-length">2. Pattern strategy (UID length)</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#3-other-strategies-that-hash-only-the-original-aa-per-row">3. Other strategies that hash only the original AA (per row)</a>
+    <li class="toctree-l3"><a class="reference internal" href="#3-per-row-amino-acid-hash-strategies">3. Per-row amino acid hash strategies</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#4-summary-table">4. Summary table</a>
+    <li class="toctree-l3"><a class="reference internal" href="#4-strategy-summary">4. Strategy summary</a>
     </li>
         </ul>
     </li>
@@ -126,41 +133,38 @@
             <div class="section" itemprop="articleBody">
               
                 <h1 id="sequence-preparation-development-notes">Sequence preparation (development notes)<a class="headerlink" href="#sequence-preparation-development-notes" title="Permanent link">&para;</a></h1>
-<h2 id="short-names-base52-hashes-uid-length-and-hash-length">Short names: base52 hashes (UID length and hash length)<a class="headerlink" href="#short-names-base52-hashes-uid-length-and-hash-length" title="Permanent link">&para;</a></h2>
-<p>Prepare Sequences builds short names (≤32 characters by default) in the frontend (<code>frontend/src/stores/shortName.ts</code>). Several strategies embed a <strong>fixed-length base52</strong> token from <strong><code>hashBase52</code></strong>. The <strong>pattern</strong> strategy uses one <strong>set-wide</strong> uid from sorted <strong>prepared DNA</strong> strings; <strong>stem / regex / split</strong> hashes use the row’s <strong><code>original_aa</code></strong> (pre-tag amino acid sequence), or <strong><code>design_id</code></strong> if that is empty.</p>
-<p>The following describes how those tokens are produced and how <strong>length</strong> (UID length or hash length) affects the output.</p>
-<h3 id="1-hash-primitive-utf-8-fnv-1a-64-base52">1. Hash primitive: UTF-8 → FNV-1a 64 → base52<a class="headerlink" href="#1-hash-primitive-utf-8-fnv-1a-64-base52" title="Permanent link">&para;</a></h3>
+<h2 id="base52-short-name-hashing">Base52 short-name hashing<a class="headerlink" href="#base52-short-name-hashing" title="Permanent link">&para;</a></h2>
+<p>Prepare Sequences builds short names (&lt;=32 characters by default) in the frontend (<code>frontend/src/stores/shortName.ts</code>). Several strategies embed a fixed-length base52 token from <code>hashBase52</code>. The pattern strategy uses one set-wide <code>uid</code> derived from sorted prepared DNA strings; stem, regex, and split strategies hash each row's <code>original_aa</code> (pre-tag amino acid sequence), falling back to <code>design_id</code> if empty.</p>
+<h3 id="1-hash-primitive-utf-8-fnv-1a-64-base52">1. Hash primitive (UTF-8, FNV-1a 64, base52)<a class="headerlink" href="#1-hash-primitive-utf-8-fnv-1a-64-base52" title="Permanent link">&para;</a></h3>
 <ol>
-<li><strong>Input string</strong> is encoded as <strong>UTF-8</strong> bytes.</li>
-<li><strong>FNV-1a</strong> over 64 bits (offset basis <code>14695981039346656037</code>, prime <code>1099511628211</code>), XOR/multiply per byte, result <strong>masked to 64 bits</strong>.</li>
-<li><strong><code>base52(value, L)</code></strong> maps the masked integer to exactly <strong><code>L</code></strong> characters from the alphabet<br />
-<code>ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz</code> (52 symbols).<br />
-   It repeatedly takes <code>value mod 52</code> as the next digit (least-significant side of the radix expansion), integer-divides by 52, then <strong>reverses</strong> the digit order so the string reads <strong>most significant digit first</strong> for a fixed width <strong><code>L</code></strong>.</li>
+<li>Encode the input string as UTF-8 bytes.</li>
+<li>Compute a 64-bit FNV-1a hash (offset basis <code>14695981039346656037</code>, prime <code>1099511628211</code>), XORing and multiplying per byte, masked to 64 bits.</li>
+<li>Convert the 64-bit integer to <code>L</code> characters with <code>base52(value, L)</code> using the 52-symbol alphabet <code>ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz</code>. Each step takes <code>value mod 52</code> and integer-divides by 52, then reverses the digits so the output reads most-significant digit first at fixed width <code>L</code>.</li>
 </ol>
 <p>The exported helper is:</p>
 <pre class="highlight"><code class="language-text">hashBase52(input: string, length: number) := base52(fnv1a64(input), length)</code></pre>
-<p>In code, <code>base52</code> clamps <strong><code>L</code></strong> to <strong><code>1 … 32</code></strong>. Strategies that expose “hash length” or “UID length” in the UI use <strong><code>clampHashLen</code></strong>, which further restricts those lengths to <strong><code>3 … 10</code></strong> for Prepare Sequences short-name use.</p>
-<p>So <strong>changing UID / hash length only changes how many base52 characters are emitted</strong>; it does <strong>not</strong> change the hash algorithm. A longer length exposes more of the 64-bit digest in base 52 (more distinguishing power, longer strings). A shorter length truncates to the leading (most significant) base52 digits of the same underlying 64-bit value.</p>
-<h3 id="2-prefix-sorted-dna-set-uid-index-uid-length">2. “Prefix + sorted DNA-set uid + index” (UID length)<a class="headerlink" href="#2-prefix-sorted-dna-set-uid-index-uid-length" title="Permanent link">&para;</a></h3>
-<p>For the <strong>pattern</strong> strategy, the middle token (<strong>uid</strong>) is <strong>identical for every row</strong> in the current prepared set. It is the base52 digest of the ** multiset of nucleotide strings** for that set:</p>
+<p>In code, <code>base52</code> clamps <code>L</code> to <code>1..32</code>. Strategies that expose "hash length" or "UID length" in the UI use <code>clampHashLen</code>, which restricts lengths to <code>3..10</code> for Prepare Sequences short names.</p>
+<p>Changing UID or hash length adjusts how many base52 characters are emitted without changing the hash algorithm. Longer lengths include more of the 64-bit digest (fewer collisions, longer strings); shorter lengths truncate to the leading (most-significant) base52 digits of the same 64-bit value.</p>
+<h3 id="2-pattern-strategy-uid-length">2. Pattern strategy (UID length)<a class="headerlink" href="#2-pattern-strategy-uid-length" title="Permanent link">&para;</a></h3>
+<p>In the pattern strategy, all rows in the current prepared set share the same middle token (<code>uid</code>), computed from the multiset of nucleotide strings in the set:</p>
 <ol>
-<li>Take each row’s <strong><code>prepared_dna</code></strong>, or <strong><code>''</code></strong> if DNA is not available yet.</li>
-<li><strong>Sort</strong> those strings lexicographically (<code>localeCompare</code>).</li>
-<li>Join with record separator <strong><code>\x1e</code></strong>.</li>
-<li><strong><code>uid = hashBase52(joined, uidLength)</code></strong> with <strong><code>uidLength</code></strong> clamped to <strong>3–10</strong>.</li>
+<li>Take each row's <code>prepared_dna</code>, or <code>''</code> if DNA is not available yet.</li>
+<li>Sort those strings lexicographically (<code>localeCompare</code>).</li>
+<li>Join with record separator <code>\x1e</code>.</li>
+<li>Compute <code>uid = hashBase52(joined, uidLength)</code> with <code>uidLength</code> clamped to <code>3..10</code>.</li>
 </ol>
-<p>So the uid changes when <strong>any</strong> row’s prepared DNA changes, when rows are added or removed, or when duplicate counts of identical DNA strings change. It does <strong>not</strong> use amino acid sequence or <code>design_id</code> for the uid.</p>
-<p>The final short name is <strong><code>prefix_uid_index</code></strong> (optional prefix, same <strong>uid</strong>, 1-based row index with optional zero padding), then truncated to the global max length.</p>
-<h3 id="3-other-strategies-that-hash-only-the-original-aa-per-row">3. Other strategies that hash <strong>only</strong> the original AA (per row)<a class="headerlink" href="#3-other-strategies-that-hash-only-the-original-aa-per-row" title="Permanent link">&para;</a></h3>
-<p>These use <strong><code>hashBase52(original_aa || design_id, hashLen)</code></strong> with <strong><code>hashLen</code></strong> clamped <strong>3–10</strong>:</p>
+<p>The <code>uid</code> changes when any row's prepared DNA changes, when rows are added or removed, or when duplicate counts of identical DNA strings change. Amino acid sequences and <code>design_id</code> are not included in the input.</p>
+<p>The final short name is <code>prefix_uid_index</code> (optional prefix, shared <code>uid</code>, and 1-based row index with optional zero padding), truncated to the global max length.</p>
+<h3 id="3-per-row-amino-acid-hash-strategies">3. Per-row amino acid hash strategies<a class="headerlink" href="#3-per-row-amino-acid-hash-strategies" title="Permanent link">&para;</a></h3>
+<p>These strategies compute <code>hashBase52(original_aa || design_id, hashLen)</code> with <code>hashLen</code> clamped to <code>3..10</code>:</p>
 <ul>
-<li><strong>Smart: stem + hash</strong> (when “Include hash” is on)</li>
-<li><strong>Smart: Regex drop prefix / suffix</strong> (suffix hash after stem)</li>
-<li><strong>Split + take indices</strong> (when “Add hash” is on)</li>
+<li><code>Smart: stem + hash</code> (when "Include hash" is enabled)</li>
+<li><code>Smart: Regex drop prefix / suffix</code> (suffix hash after stem)</li>
+<li><code>Split + take indices</code> (when "Add hash" is enabled)</li>
 </ul>
-<p>So for the same sequence and same <code>hashLen</code>, two rows with the same <code>design_id</code> / <code>original_aa</code> would yield the <strong>same</strong> hash segment; deduplication of final short names is handled elsewhere (<code>uniqueify</code> in the same module).</p>
-<p>A repeated <code>design_id</code> in the current set warns <strong>Long name not unique</strong>. A repeated pre-suffix short name warns <strong>Short name not unique</strong> on every row in that group (including the one that kept the unsuffixed name). Both appear in the warnings column and the “less than ideal” banner, and turn the Short name panel border red. Rows that received an <code>_N</code> suffix also show the auto-dedupe warning inside that panel.</p>
-<h3 id="4-summary-table">4. Summary table<a class="headerlink" href="#4-summary-table" title="Permanent link">&para;</a></h3>
+<p>Matching <code>original_aa</code> (or <code>design_id</code>) values with the same <code>hashLen</code> generate the same hash segment; <code>uniqueify</code> in <code>shortName.ts</code> deduplicates final short names afterward.</p>
+<p>A duplicate <code>design_id</code> in the current set triggers a "Long name not unique" warning. A duplicate pre-suffix short name triggers a "Short name not unique" warning on all rows in the colliding group, including the unsuffixed row. Both warnings appear in the warnings column and the "less than ideal" banner, and highlight the Short name panel border in red. Rows given an <code>_N</code> suffix also display the auto-dedupe warning inside that panel.</p>
+<h3 id="4-strategy-summary">4. Strategy summary<a class="headerlink" href="#4-strategy-summary" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
 <tr>
@@ -174,18 +178,18 @@
 <tr>
 <td>Pattern uid</td>
 <td>UID length</td>
-<td>3–10</td>
+<td>3-10</td>
 <td>Sorted list of <code>prepared_dna</code> (empty if missing), joined with <code>\x1e</code></td>
 </tr>
 <tr>
 <td>Stem / regex / split hash</td>
 <td>Hash length (base52)</td>
-<td>3–10</td>
+<td>3-10</td>
 <td><code>original_aa</code> or <code>design_id</code> if AA missing</td>
 </tr>
 </tbody>
 </table>
-<p><code>computeSetFingerprint</code> remains in <code>shortName.ts</code> as an exported helper for other stable-set digests if needed; <strong>pattern</strong> uids do not use it.</p>
+<p><code>computeSetFingerprint</code> remains in <code>shortName.ts</code> as an exported helper for other stable-set digests if needed; pattern uids do not use it.</p>
 <p>Implementation reference: <code>frontend/src/stores/shortName.ts</code> (<code>fnv1a64</code>, <code>base52</code>, <code>hashBase52</code>, <code>computeShortNames</code>, <code>rawNameForRow</code>).</p>
               
             </div>

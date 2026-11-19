@@ -128,12 +128,19 @@ def _claims_to_user(sub: str, provider: str, email: Optional[str]) -> AuthUser:
     )
 
 
+def _account_disabled(status_code: int) -> HTTPException:
+    """401 for a request on an existing session (the client treats it as signed
+    out), 403 at login (the credentials were fine; the account is not)."""
+    return HTTPException(status_code=status_code, detail="This account is disabled")
+
+
 def _enrich_from_db(user: AuthUser, uid: Optional[int]) -> AuthUser:
     """Attach user_id/is_admin to a session user.
 
     Authorization still comes from settings (``_claims_to_user`` has already
-    re-validated the allowlists); the database only enriches. Any failure here
-    degrades to "not an admin" rather than rejecting the request.
+    re-validated the allowlists); the database only enriches, with one exception:
+    a user marked inactive is rejected, as their API keys already are. Any other
+    failure here degrades to "not an admin" rather than rejecting the request.
     """
     try:
         from .persistence.factory import get_designs_repository
@@ -147,6 +154,8 @@ def _enrich_from_db(user: AuthUser, uid: Optional[int]) -> AuthUser:
             row = repo.get_user_by_identity(user.provider, identity_for(user))
         if row is None:
             return user
+        if not row.get("is_active", True):
+            raise _account_disabled(status.HTTP_401_UNAUTHORIZED)
         return user.model_copy(
             update={
                 "user_id": row.get("id"),
@@ -156,6 +165,8 @@ def _enrich_from_db(user: AuthUser, uid: Optional[int]) -> AuthUser:
                 "email": user.email or row.get("email"),
             }
         )
+    except HTTPException:
+        raise
     except RuntimeError:
         return user
     except Exception:
@@ -315,6 +326,8 @@ def issue_session_cookies(response: Response, user: AuthUser) -> str:
     if user.email:
         token_data["email"] = user.email
     row = record_login_audit(user)
+    if row and not row.get("is_active", True):
+        raise _account_disabled(status.HTTP_403_FORBIDDEN)
     if row and row.get("id") is not None:
         # Cached so per-request auth needs no database round trip. is_admin is
         # deliberately NOT in the token: the cookie lives 24h, so a demoted

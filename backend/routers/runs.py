@@ -10,11 +10,12 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from ..auth import get_current_user_optional
 from ..cache import get_run_metadata, refresh_designs_cache, run_cache
-from ..path_policy import is_allowed_path
+from ..path_policy import is_allowed_path, is_within_bases, normalised_path
 from ..persistence import run_group_key
 from ..persistence.factory import get_designs_repository
 from ..run_discovery import (
     compute_primary_score_stats,
+    discover_run_at,
     find_runs_recursive,
     load_run_table,
     parse_designs_from_run,
@@ -45,9 +46,7 @@ def _scan_runs_sync(request: ScanRequest) -> Dict[str, Any]:
         ).start()
         runs: List[Dict[str, Any]] = []
         for folder_path in request.folders:
-            if settings.run_base_dirs and not is_allowed_path(
-                folder_path, settings.run_base_dirs
-            ):
+            if not is_allowed_path(folder_path, settings.run_base_dirs):
                 logger.warning(
                     "Skipping path not within allowed base directories: %s (bases=%s)",
                     folder_path,
@@ -123,6 +122,37 @@ async def ingest_preview(
     return {"reingest": reingest}
 
 
+def rediscover_runs(submitted: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Rebuild each submitted run from disk, taking only its folder path(s) from the client.
+
+    The ingest body is the run dicts that ``/scan`` (or ``GET /api/runs``) returned, but
+    nothing in them is trusted beyond ``path`` / ``merged_paths``. Persisting them as sent
+    would let a caller store any ``pdb_files`` or ``results_table`` and then read those
+    files back through the structure and table endpoints.
+    """
+    rebuilt: List[Dict[str, Any]] = []
+    for run in submitted:
+        if not isinstance(run, dict):
+            raise HTTPException(status_code=400, detail="Each run must be an object")
+        folders = run.get("merged_paths") or [run.get("path")]
+        if not isinstance(folders, list):
+            raise HTTPException(status_code=400, detail="merged_paths must be a list")
+        for folder in folders:
+            if not is_within_bases(folder, settings.run_base_dirs):
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Run folder is not within the allowed base directories: {folder}",
+                )
+            path = Path(normalised_path(folder))
+            found = discover_run_at(path) if path.is_dir() else None
+            if found is None:
+                raise HTTPException(
+                    status_code=400, detail=f"No recognised run found at: {folder}"
+                )
+            rebuilt.append(found)
+    return rebuilt
+
+
 def _ingest_runs_sync(body: IngestRequest) -> Dict[str, Any]:
     repo = get_designs_repository()
     if not repo.is_enabled():
@@ -131,7 +161,7 @@ def _ingest_runs_sync(body: IngestRequest) -> Dict[str, Any]:
             detail="DATABASE is not configured or persistence is disabled",
         )
     try:
-        merged = merge_runs(body.runs)
+        merged = merge_runs(rediscover_runs(body.runs))
         out: List[Dict[str, Any]] = []
         for run in merged:
             gk = run_group_key(run)

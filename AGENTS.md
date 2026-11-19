@@ -37,7 +37,7 @@
 
 - Use `.env` (create from `.env.example`) and ensure `.env` is in `.gitignore`
 - Expected variables:
-  - `RUN_BASE_DIRS="/data/runs,/data2/runs"` (comma-separated list of base directories)
+  - `RUN_BASE_DIRS="/data/runs,/data2/runs"` (comma-separated list of base directories; **required**: the server refuses to start if it is empty or any entry is not an existing directory, except in desktop builds)
   - `DISABLE_AUTHENTICATION="true|false"`
   - `BINDERDASH_ADMIN_USERS` (optional; comma-separated; matches a user's email, `provider:identifier`, or bare username; re-applied at every startup and login, so this file is authoritative; no `*` wildcard)
   - `PAM_GECOS_EMAIL` (optional, default false; read a PAM user's email from the **5th GECOS field only** so their PAM and Google logins share one account. Field 5 is used because `chfn` cannot write it — the earlier fields are user-editable under the usual `CHFN_RESTRICT="rwh"`, so trusting them would allow account takeover. Set with `sudo usermod -c "user,,,,addr@example.org" user`.)

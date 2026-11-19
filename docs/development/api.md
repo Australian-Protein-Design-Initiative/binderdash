@@ -502,7 +502,9 @@ Used by the **Select Runs** UI to discover and persist runs from `RUN_BASE_DIRS`
 1. **`GET /api/tree`** — browse allowed base directories.
 2. **`POST /api/runs/scan`** — body `{ "folders": ["/path/..."], "force_rescan_of_ingested": false }`. Returns discovered run metadata; skips already-ingested runs unless forced.
 3. **`POST /api/runs/ingest-preview`** — body `{ "runs": [ ... ] }`. Lists runs that would be re-ingested.
-4. **`POST /api/runs/ingest`** — body `{ "runs": [ ... ] }`. Requires `DATABASE`. Assigns stable `run_id`, stores designs, refreshes cache.
+4. **`POST /api/runs/ingest`** — body `{ "runs": [ ... ] }`. Requires `DATABASE`. Assigns stable `run_id`, stores designs, refreshes cache. Only each run's `path` / `merged_paths` is read from the body: the server re-detects the run at those folders (which must be inside `RUN_BASE_DIRS`) and stores what it finds on disk. A folder outside the base dirs, or with no recognised run, is a 400.
+
+The server refuses to start if `RUN_BASE_DIRS` is empty or any entry is not an existing directory (desktop builds excepted, which ask for folders on first run). At startup, stored runs whose folders or structure files lie outside the current `RUN_BASE_DIRS` are not loaded; each is logged as a warning and stays in the database.
 
 Deleting a run (`DELETE /api/runs/{run_id}`) removes database and cache entries only; files on disk are unchanged.
 

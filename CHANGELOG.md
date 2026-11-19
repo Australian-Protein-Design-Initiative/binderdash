@@ -20,6 +20,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Docs**: The documentation site and repository links now point at [Australian-Protein-Design-Initiative/binderdash](https://github.com/Australian-Protein-Design-Initiative/binderdash). The published docs are at <https://australian-protein-design-initiative.github.io/binderdash/>.
 
+### Security
+
+- **Ingest**: `POST /api/runs/ingest` no longer stores the run details sent by the client. It takes only each run's folder path(s), re-detects the run on disk, and rejects folders outside `RUN_BASE_DIRS`. Previously a signed-in user could store arbitrary `pdb_files` / `results_table` paths and then read those files through the structure and run-table endpoints.
+- **Startup**: The server refuses to start if `RUN_BASE_DIRS` is empty or lists a directory that does not exist (desktop builds excepted). An empty `RUN_BASE_DIRS` used to let `/api/tree` and `/api/runs/scan` reach any path, with the working directory offered as a fallback root.
+- **Stored runs**: Runs whose folders, structure files or results table lie outside the current `RUN_BASE_DIRS` are not loaded at startup. Each is logged as a warning and kept in the database, and reappears if its directory is added back. A database shared between Docker and a local server (different paths for the same runs) will show only the runs whose paths exist under the current setting.
+- **Accounts**: A user marked inactive is refused at login and on existing sessions, as their API keys already were.
+
 ### Fixed
 
 - **Designs / tables**: Clicking the row-selection cell toggles that row. On Designs, a click beside the checkbox keeps the rest of a multi-selection. Select Runs and Ingest scan results use the same toggle.

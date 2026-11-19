@@ -27,18 +27,16 @@ def ingested(tmp_path_factory):
     from fastapi.testclient import TestClient
 
     tmp_path = tmp_path_factory.mktemp("target_contacts_e2e")
+    # Before the copy below: the runs router holds the original settings object and
+    # main's lifespan reads the copy, and both must allow the example directory.
+    original_base_dirs = list(settings_mod.settings.run_base_dirs)
+    settings_mod.update_run_base_dirs([str(EXAMPLE_RUNS)])
     patched = main_mod.settings.model_copy(update={"auth_disabled": True})
     originals = [(mod, mod.settings) for mod in (main_mod, settings_mod, auth_mod)]
     original_default = main_mod.default_sqlite_url
     for mod, _ in originals:
         mod.settings = patched
     main_mod.default_sqlite_url = lambda: f"sqlite:///{tmp_path}/api.sqlite"
-
-    # The runs router reads the shared settings object directly (not main's reference),
-    # and allows only folders under run_base_dirs when that is set. Declare the example
-    # directory explicitly so this test does not depend on what other tests left there.
-    original_base_dirs = list(settings_mod.settings.run_base_dirs)
-    settings_mod.update_run_base_dirs([str(EXAMPLE_RUNS)])
 
     async def _auth_bypass():
         return None

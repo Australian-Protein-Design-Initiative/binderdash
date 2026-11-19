@@ -25,7 +25,13 @@ from .routers import desktop as desktop_routes
 from .routers import sequences as sequences_routes
 from .persistence.factory import default_sqlite_url, init_designs_repository_from_url
 from .runtime_paths import static_root
-from .settings import CORS_ALLOWED_ORIGINS, SECRET_KEY, raw_settings, settings
+from .settings import (
+    CORS_ALLOWED_ORIGINS,
+    SECRET_KEY,
+    raw_settings,
+    run_base_dir_problems,
+    settings,
+)
 from .version import build_label, build_payload
 
 
@@ -46,6 +52,12 @@ _MCP_APP = build_mcp_http_app()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Desktop builds are exempt: they start with no run dirs and ask for them in a
+    # first-run setup screen (PUT /api/desktop/run-base-dirs).
+    if not settings.binderdash_desktop:
+        problems = run_base_dir_problems(settings.run_base_dirs)
+        if problems:
+            raise RuntimeError("Refusing to start: " + "; ".join(problems))
     db_url = (raw_settings.database or "").strip() or default_sqlite_url()
     init_designs_repository_from_url(db_url)
     from .cache import hydrate_caches_from_repository

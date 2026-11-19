@@ -1,4 +1,5 @@
 import secrets
+from pathlib import Path
 from typing import List, Optional
 
 from pydantic import BaseModel
@@ -153,6 +154,22 @@ def _initial_run_base_dirs(raw: RawSettings) -> List[str]:
         except ImportError:
             pass
     return dirs
+
+
+def run_base_dir_problems(dirs: List[str]) -> List[str]:
+    """Why RUN_BASE_DIRS is unusable, or an empty list if every entry is a directory.
+
+    The server refuses to start on any problem (see ``main.lifespan``): the base dirs are
+    the only thing limiting which server paths users can browse, scan and ingest.
+    """
+    cleaned = [d.strip() for d in dirs if d.strip()]
+    if not cleaned:
+        return ["RUN_BASE_DIRS is empty; set it to one or more comma-separated run directories"]
+    return [
+        f"RUN_BASE_DIRS entry is not an existing directory: {d}"
+        for d in cleaned
+        if not Path(d).expanduser().is_dir()
+    ]
 
 
 def update_run_base_dirs(dirs: List[str]) -> None:

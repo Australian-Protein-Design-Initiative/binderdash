@@ -223,5 +223,10 @@ async def google_callback(request: Request):
         picture_url=(userinfo.get("picture") or "").strip() or None,
     )
     resp = RedirectResponse(url=next_url, status_code=302)
-    issue_session_cookies(resp, user)
+    try:
+        issue_session_cookies(resp, user)
+    except HTTPException as e:
+        if e.status_code == status.HTTP_403_FORBIDDEN:
+            return _auth_error_redirect(next_url, "account_disabled")
+        raise
     return resp

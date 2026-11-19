@@ -506,6 +506,67 @@ def detect_run_type(path: Path) -> Optional[Dict[str, Any]]:
     return None
 
 
+def _run_record(current_dir: Path, detected_run: Dict[str, Any]) -> Dict[str, Any]:
+    """Build the run dict for a folder that detect_run_type matched."""
+    run_id = str(uuid.uuid4())
+    guessed_project_id = guess_project_id(current_dir)
+    run_name = detected_run["run_name"]
+
+    results_table = detected_run["results_table"]
+    pdb_pattern = detected_run["pdb_pattern"]
+    extra_pats = detected_run.get("additional_pdb_patterns", [])
+
+    _glob_t = Timer(
+        logger,
+        "run_glob",
+        method=detected_run.get("method"),
+        path=str(current_dir),
+        primary_pattern=pdb_pattern,
+        extra_patterns=len(extra_pats),
+    ).start()
+    pdb_paths = list(current_dir.glob(pdb_pattern))
+    for extra_pat in extra_pats:
+        pdb_paths.extend(current_dir.glob(extra_pat))
+    pdb_files = sorted({str(p) for p in pdb_paths})
+    _glob_t.log(pdb_files=len(pdb_files))
+
+    is_nf_binder_design = detected_run["submethod"] == "nf-binder-design"
+
+    trajectory_count = resolve_trajectory_count(current_dir, detected_run)
+    target_count = resolve_target_count(current_dir, detected_run)
+    meta: Dict[str, Any] = {
+        "name": run_name,
+        "original_name": current_dir.name,
+        "parent_path": str(current_dir.parent),
+        "pdb_count": len(pdb_files),
+    }
+    if trajectory_count is not None:
+        meta["trajectory_count"] = trajectory_count
+    if target_count is not None and target_count > 1:
+        meta["target_count"] = target_count
+
+    return {
+        "run_id": run_id,
+        "project_id": guessed_project_id,
+        "path": str(current_dir),
+        "method": detected_run["method"],
+        "submethod": detected_run["submethod"],
+        "results_table": results_table,
+        "pdb_files": pdb_files,
+        "is_nf_binder_design": is_nf_binder_design,
+        "signature": detected_run,
+        "metadata": meta,
+    }
+
+
+def discover_run_at(run_path: Path) -> Optional[Dict[str, Any]]:
+    """The run whose folder is exactly ``run_path``, or None. Does not descend."""
+    detected_run = detect_run_type(run_path)
+    if not detected_run:
+        return None
+    return _run_record(run_path, detected_run)
+
+
 def find_runs_recursive(root_path: Path) -> List[Dict[str, Any]]:
     # Build combined set of directories to skip from all signatures
     skip_dirs_set = set()
@@ -532,58 +593,7 @@ def find_runs_recursive(root_path: Path) -> List[Dict[str, Any]]:
         _det_t.log(min_ms=100)
 
         if detected_run:
-            run_id = str(uuid.uuid4())
-            guessed_project_id = guess_project_id(current_dir)
-            run_name = detected_run["run_name"]
-
-            results_table = detected_run["results_table"]
-            pdb_pattern = detected_run["pdb_pattern"]
-            extra_pats = detected_run.get("additional_pdb_patterns", [])
-
-            _glob_t = Timer(
-                logger,
-                "run_glob",
-                method=detected_run.get("method"),
-                path=str(current_dir),
-                primary_pattern=pdb_pattern,
-                extra_patterns=len(extra_pats),
-            ).start()
-            pdb_paths = list(current_dir.glob(pdb_pattern))
-            for extra_pat in extra_pats:
-                pdb_paths.extend(current_dir.glob(extra_pat))
-            pdb_files = sorted({str(p) for p in pdb_paths})
-            _glob_t.log(pdb_files=len(pdb_files))
-
-            is_nf_binder_design = detected_run["submethod"] == "nf-binder-design"
-
-            trajectory_count = resolve_trajectory_count(current_dir, detected_run)
-            target_count = resolve_target_count(current_dir, detected_run)
-            meta: Dict[str, Any] = {
-                "name": run_name,
-                "original_name": current_dir.name,
-                "parent_path": str(current_dir.parent),
-                "pdb_count": len(pdb_files),
-            }
-            if trajectory_count is not None:
-                meta["trajectory_count"] = trajectory_count
-            if target_count is not None and target_count > 1:
-                meta["target_count"] = target_count
-
-            runs.append(
-                {
-                    "run_id": run_id,
-                    "project_id": guessed_project_id,
-                    "path": str(current_dir),
-                    "method": detected_run["method"],
-                    "submethod": detected_run["submethod"],
-                    "results_table": results_table,
-                    "pdb_files": pdb_files,
-                    "is_nf_binder_design": is_nf_binder_design,
-                    "signature": detected_run,
-                    "metadata": meta,
-                }
-            )
-
+            runs.append(_run_record(current_dir, detected_run))
             dirnames[:] = []
 
     _walk_t.log(walk_dirs=walk_dirs, runs_found=len(runs))

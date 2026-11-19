@@ -2,9 +2,15 @@ from pathlib import Path
 
 import pytest
 
+import backend.settings as _settings_mod
 from backend.persistence.factory import set_designs_repository
 from backend.persistence.noop_repo import NoopDesignsRepository
 from backend.persistence.sqlite_repo import SqliteDesignsRepository
+
+# The app refuses to start without an existing RUN_BASE_DIRS (main.lifespan), and pytest
+# runs without the repo's .env. Tests that need specific base dirs set their own.
+if not _settings_mod.settings.run_base_dirs:
+    _settings_mod.settings.run_base_dirs = [str(Path(__file__).resolve().parent / "fixtures")]
 
 
 @pytest.fixture(autouse=True)

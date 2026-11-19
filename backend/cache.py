@@ -145,6 +145,10 @@ def hydrate_caches_from_repository() -> None:
     if not repo.is_enabled():
         logger.info("hydrate_caches_from_repository: persistence disabled, caches empty")
         return
+    from .path_policy import run_paths_within_bases
+    from .settings import settings
+
+    skipped = 0
     for row in repo.list_run_records():
         rj = row["run_json"]
         run_dict = json.loads(rj) if isinstance(rj, str) else rj
@@ -152,7 +156,24 @@ def hydrate_caches_from_repository() -> None:
         run_dict["run_id"] = rid
         if row.get("ingested_at"):
             run_dict["ingested_at"] = row["ingested_at"]
+        # Older releases stored client-supplied run dicts verbatim, so a stored run may
+        # point at files outside the base dirs. The same applies to runs from a base dir
+        # that has since been removed. Not serving them is the safe default; the rows
+        # stay in the database and reappear if their directory is added back.
+        if not run_paths_within_bases(run_dict, settings.run_base_dirs):
+            skipped += 1
+            logger.warning(
+                "Not loading run %s (%s): it references files outside RUN_BASE_DIRS",
+                rid,
+                run_dict.get("path"),
+            )
+            continue
         run_cache[rid] = run_dict
+    if skipped:
+        logger.warning(
+            "%s stored run(s) skipped because they reference files outside RUN_BASE_DIRS",
+            skipped,
+        )
     # Designs are loaded on demand via get_designs_for_run_ids (not refresh_designs_cache here).
     logger.info(
         "Hydrated run metadata from database: %s runs (designs loaded on demand)",

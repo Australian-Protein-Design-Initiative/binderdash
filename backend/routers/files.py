@@ -464,32 +464,16 @@ async def get_tree(
                     )
             if not folders:
                 logging.getLogger(__name__).warning(
-                    "No base directories configured in RUN_BASE_DIRS"
+                    "No usable base directories configured in RUN_BASE_DIRS"
                 )
-                current_dir = os.getcwd()
-                if os.path.exists(current_dir) and os.path.isdir(current_dir):
-                    folders.append(
-                        {
-                            "name": "Current Directory",
-                            "path": current_dir,
-                            "has_children": True,
-                        }
-                    )
             return {"folders": folders}
         else:
+            # Containment first, so the error for a path outside the bases does not
+            # reveal whether it exists.
+            if not is_allowed_path(path, settings.run_base_dirs):
+                raise ValueError(f"Path not within allowed base directories: {path}")
             if not os.path.exists(path) or not os.path.isdir(path):
                 raise ValueError(f"Path does not exist or is not a directory: {path}")
-
-            if settings.run_base_dirs and not is_allowed_path(
-                path, settings.run_base_dirs
-            ):
-                raise ValueError(
-                    f"Path not within allowed base directories: {path}"
-                )
-            else:
-                logging.getLogger(__name__).warning(
-                    f"No base directories configured, allowing access to: {path}"
-                )
 
             folders = []
             logging.getLogger(__name__).info(f"Listing contents of directory: {path}")

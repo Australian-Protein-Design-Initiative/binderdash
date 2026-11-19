@@ -171,6 +171,13 @@ onMounted(async () => {
       detail: 'Your Google account is not on the allowed list.',
       life: 8000
     })
+  } else if (authErr === 'account_disabled') {
+    toast.add({
+      severity: 'error',
+      summary: 'Sign-in denied',
+      detail: 'This account has been disabled. Contact an administrator.',
+      life: 8000
+    })
   } else if (authErr === 'oauth_failed') {
     toast.add({
       severity: 'error',

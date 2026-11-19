@@ -256,7 +256,7 @@ section fills these three values in and shows the form.</p>
 </tr>
 <tr>
 <td><code>saved_sets</code></td>
-<td>List, read, rename Saved Sets</td>
+<td>List, read, create (from design keys), rename Saved Sets</td>
 </tr>
 <tr>
 <td><code>extract_sequences</code></td>
@@ -285,6 +285,10 @@ section fills these three values in and shows the form.</p>
 <tr>
 <td><code>prepare_sequences</code></td>
 <td>Add N/C tags, linkers, stops and short names; return a download URL for the ordering table</td>
+</tr>
+<tr>
+<td><code>merge_design_columns</code></td>
+<td>Add TSV/CSV columns to the design table (same as Upload extra data)</td>
 </tr>
 </tbody>
 </table>
@@ -353,9 +357,10 @@ rendered when the URL is fetched, so the URL stops working after the TTL or a re
 <p>Designs without a placed tag are skipped and listed, so a selection that was never set
 up in the UI returns an explicit skip list rather than untagged constructs; <code>default_tag</code>
 overrides that for designs with no tag recorded.</p>
-<p><strong>Write scope</strong> is read + analysis + Saved Sets, plus the compute-and-cache writes
+<p><strong>Write scope</strong> is read + analysis + Saved Sets (including create from a design list)
+and merging extra TSV/CSV columns into designs, plus the compute-and-cache writes
 (sequence extraction, structural metrics) that only populate derived caches. Scanning,
-ingesting, deleting, cache refresh and merge-table upload are not exposed.</p>
+ingesting, deleting and cache refresh are not exposed.</p>
 <h2 id="how-the-tool-surface-differs-from-rest">How the tool surface differs from REST<a class="headerlink" href="#how-the-tool-surface-differs-from-rest" title="Permanent link">&para;</a></h2>
 <p>The MCP layer deliberately does not mirror the REST API — it is where the problems
 catalogued in <code>BINDERDASH_API_OVERHAUL.md</code> get fixed without changing existing REST

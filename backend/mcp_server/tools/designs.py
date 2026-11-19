@@ -10,6 +10,7 @@ from pydantic import Field
 from .. import contacts, errors, refs, tables, vocab
 from ..columns import canonical_expr
 from ..descriptions import (
+    MERGE_DESIGN_COLUMNS,
     QUERY_DESIGNS,
     SUMMARIZE_DESIGNS,
     TARGET_CONTACT_GROUPS_ARG,
@@ -24,6 +25,7 @@ PRIMARY_SCORE = "primary_score"
 DEFAULT_SORT = "default"
 _SORT_KEY = "__binderdash_sort_key"
 _SORT_KEY_2 = "__binderdash_sort_key_2"
+MERGE_TABLE_MAX_BYTES = 1_048_576
 
 
 def _default_sort(df: pl.DataFrame, warnings: List[Dict[str, Any]]) -> Optional[pl.DataFrame]:
@@ -369,6 +371,58 @@ def _summarize(
     }
 
 
+def _merge_columns(
+    run_ids: List[str],
+    table: str,
+    fmt: str,
+    design_id_column: Optional[str],
+    preview: bool,
+) -> Dict[str, Any]:
+    from ...cache import refresh_designs_cache
+    from ...design_merge import apply_merge_table_upload
+    from ...persistence.factory import get_designs_repository
+
+    refs.validate_run_ids(run_ids)
+    if not table or not str(table).strip():
+        errors.fail(
+            errors.INVALID_MERGE_TABLE,
+            "table is empty. Pass TSV or CSV text including a header row with a "
+            "design_id column.",
+        )
+    encoded = table.encode("utf-8")
+    if len(encoded) > MERGE_TABLE_MAX_BYTES:
+        errors.fail(
+            errors.FILE_TOO_LARGE,
+            f"table is {len(encoded)} bytes; the maximum is {MERGE_TABLE_MAX_BYTES}. "
+            "Split the upload or drop unused columns.",
+        )
+
+    repo = get_designs_repository()
+    if not repo.is_enabled():
+        errors.fail(
+            errors.PERSISTENCE_REQUIRED,
+            "Merging columns needs DATABASE persistence. Set DATABASE in .env.",
+        )
+
+    filename = "upload.csv" if fmt == "csv" else "upload.tsv"
+    try:
+        result = apply_merge_table_upload(
+            encoded,
+            filename,
+            run_ids,
+            design_id_column=design_id_column,
+            preview=preview,
+        )
+    except ValueError as exc:
+        errors.fail(
+            errors.INVALID_MERGE_TABLE,
+            f"{exc}. Check the header row and design_id_column.",
+        )
+    if not preview:
+        refresh_designs_cache()
+    return result
+
+
 def register(mcp: Any) -> None:
     @mcp.tool(description=QUERY_DESIGNS)
     async def query_designs(
@@ -441,4 +495,30 @@ def register(mcp: Any) -> None:
     ) -> Dict[str, Any]:
         return await run_blocking(
             _summarize, run_ids, columns, group_by, histogram_bins, heavy=True
+        )
+
+    @mcp.tool(description=MERGE_DESIGN_COLUMNS)
+    async def merge_design_columns(
+        run_ids: Annotated[
+            List[str], Field(description="Runs whose designs to annotate.")
+        ],
+        table: Annotated[
+            str,
+            Field(description="Full TSV or CSV text, including a header row."),
+        ],
+        format: Annotated[
+            Literal["tsv", "csv"],
+            Field(description="How to parse `table`. Default tsv."),
+        ] = "tsv",
+        design_id_column: Annotated[
+            Optional[str],
+            Field(description="Column that identifies designs; defaults to design_id."),
+        ] = None,
+        preview: Annotated[
+            bool,
+            Field(description="If true, report matches without writing."),
+        ] = False,
+    ) -> Dict[str, Any]:
+        return await run_blocking(
+            _merge_columns, run_ids, table, format, design_id_column, preview
         )

@@ -155,22 +155,49 @@ compute-heavy (pairwise alignment); expect seconds to a minute on large selectio
 be fetched. Call `inspect_structures` for one file or `export_structures` for many.
 """
 
-SAVED_SETS = """List, read, or rename Saved Sets — curated design panels shared with the Binderdash web UI.
+SAVED_SETS = """List, read, create, or rename Saved Sets — curated design panels shared with the Binderdash web UI.
 
 `action="list"` gives every saved set with its name, creation time, source runs and
 counts. `action="get"` returns its designs; `action="rename"` renames one.
+`action="create"` persists an explicit list of designs as a new Saved Set visible in
+the web UI — the natural way to hand a panel chosen with `query_designs` or
+`rank_designs` back to a human.
 
-A saved set stores the entire ranked pool with an `in_diverse_set` flag, not just the
-selection, so a "24-design panel" contains thousands of rows. `get` therefore defaults
-to `in_diverse_set_only=true`; set it false only when you specifically want the ranked
-pool, and page through it.
+`create` takes `name` and `designs` (each `{run_id, design_id}`, plus `source_path`
+when a merged run has colliding ids). Every listed design is the panel
+(`in_diverse_set=true`). A set created this way has no filter recipe to reapply.
+Capped at 500 designs; split larger panels.
 
-Create saved sets with `select_diverse_designs(save_as=...)`. Deleting them is
+A ranked/diversity set (from `select_diverse_designs(save_as=...)`) stores the
+entire ranked pool with an `in_diverse_set` flag, so a "24-design panel" contains
+thousands of rows. `get` therefore defaults to `in_diverse_set_only=true`; set it
+false only when you specifically want the ranked pool, and page through it.
+
+Create a diverse panel with `select_diverse_designs(save_as=...)`. Deleting is
 deliberately not available here — do that in the web UI.
 
 `structure_url` on a design row is a relative path with no download token and
 cannot be fetched. Call `inspect_structures` for one file or `export_structures`
 for many.
+"""
+
+MERGE_DESIGN_COLUMNS = """Add columns to the design table from TSV or CSV text, the same as Upload extra data in the web UI.
+
+Call this to attach annotations (batch IDs, wet-lab scores, notes) to designs that
+already exist in Binderdash. New columns land in extra_data and survive re-ingest;
+pipeline fields (iptm, pae_interaction, ...) are never overwritten.
+
+`table` is the full TSV or CSV text, including the header row. One column must
+identify designs (`design_id` by default; pass `design_id_column` if yours is named
+differently). `run_ids` scopes which runs to update — a design_id that exists only
+in another run is counted as unknown.
+
+Set `preview=true` first to see match counts, new column names, and pipeline-name
+collisions without writing. Then re-call with `preview=false` to apply. After apply,
+`query_designs` and `describe_columns` see the new columns immediately.
+
+Capped at 1 MiB of table text. An empty table or a missing design-id column is an
+error, not a no-op.
 """
 
 INSPECT_STRUCTURES = """Analyse the 3D structures of specific designs: chains, roles, sequences, and interface metrics.

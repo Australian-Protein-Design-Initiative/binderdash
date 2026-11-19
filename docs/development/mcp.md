@@ -124,7 +124,7 @@ section fills these three values in and shows the form.
 | `summarize_designs` | Quantiles and histograms without returning rows |
 | `rank_designs` | Multi-metric rank-based scoring with a filter cascade |
 | `select_diverse_designs` | Filter → rank → de-duplicate by sequence; optional Saved Set |
-| `saved_sets` | List, read, rename Saved Sets |
+| `saved_sets` | List, read, create (from design keys), rename Saved Sets |
 | `extract_sequences` | Extract sequences from structures into the derived cache |
 | `inspect_structures` | Chains, roles, sequences, `binderdash_*` interface metrics, and a tokenised structure URL |
 | `read_structure_file` | Raw structure text, size-capped. Over the cap, the error includes a download URL |
@@ -132,6 +132,7 @@ section fills these three values in and shows the form.
 | `list_target_residues` | Targets in a run scope, residue labels to filter on, contact coverage |
 | `target_contact_profile` | Per-residue mean ΔSASA / closest approach / contact frequency |
 | `prepare_sequences` | Add N/C tags, linkers, stops and short names; return a download URL for the ordering table |
+| `merge_design_columns` | Add TSV/CSV columns to the design table (same as Upload extra data) |
 
 There is deliberately **no plotting tool**: `query_designs` returns column-selected
 tabular data and an agent charts it itself. For bulk dumps, `list_runs` includes
@@ -213,9 +214,10 @@ Designs without a placed tag are skipped and listed, so a selection that was nev
 up in the UI returns an explicit skip list rather than untagged constructs; `default_tag`
 overrides that for designs with no tag recorded.
 
-**Write scope** is read + analysis + Saved Sets, plus the compute-and-cache writes
+**Write scope** is read + analysis + Saved Sets (including create from a design list)
+and merging extra TSV/CSV columns into designs, plus the compute-and-cache writes
 (sequence extraction, structural metrics) that only populate derived caches. Scanning,
-ingesting, deleting, cache refresh and merge-table upload are not exposed.
+ingesting, deleting and cache refresh are not exposed.
 
 ## How the tool surface differs from REST
 

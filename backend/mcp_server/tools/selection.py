@@ -387,6 +387,70 @@ def _saved_set_designs(
     )
 
 
+def _create_saved_set(name: Optional[str], designs: List[Dict[str, Any]]) -> Dict[str, Any]:
+    from ...filtering.service import MAX_SAVED_SET_DESIGNS, create_saved_set_from_designs
+    from ...persistence.factory import get_designs_repository
+
+    trimmed = (name or "").strip()
+    if not trimmed:
+        errors.fail(
+            errors.INVALID_SAVED_SET_REQUEST,
+            "action='create' needs a non-empty name.",
+        )
+    if not designs:
+        errors.fail(
+            errors.INVALID_SAVED_SET_REQUEST,
+            "action='create' needs designs: a list of {run_id, design_id}. "
+            "Call query_designs or rank_designs first.",
+        )
+    if len(designs) > MAX_SAVED_SET_DESIGNS:
+        errors.fail(
+            errors.INVALID_SAVED_SET_REQUEST,
+            f"action='create' accepts at most {MAX_SAVED_SET_DESIGNS} designs; "
+            f"got {len(designs)}. Split into multiple saved sets or narrow the selection.",
+        )
+
+    repo = get_designs_repository()
+    if not repo.is_enabled():
+        errors.fail(
+            errors.PERSISTENCE_REQUIRED,
+            "Saved Sets need DATABASE persistence. Set DATABASE in .env.",
+        )
+
+    resolved: List[Dict[str, Any]] = []
+    run_ids: List[str] = []
+    for index, ref in enumerate(designs):
+        run_id = str(ref.get("run_id") or "").strip()
+        design_id = str(ref.get("design_id") or "").strip()
+        if not run_id or not design_id:
+            errors.fail(
+                errors.INVALID_SAVED_SET_REQUEST,
+                f"designs[{index}] needs run_id and design_id. "
+                "Call query_designs for valid keys.",
+            )
+        run_ids.append(run_id)
+        resolved.append(
+            {
+                "run_id": run_id,
+                "design_id": design_id,
+                "source_path": ref.get("source_path"),
+            }
+        )
+    refs.validate_run_ids(list(dict.fromkeys(run_ids)))
+    rows = [
+        refs.resolve_design(item["run_id"], item["design_id"], item.get("source_path"))
+        for item in resolved
+    ]
+
+    saved = create_saved_set_from_designs(trimmed, rows)
+    return {
+        "saved_set_id": saved.saved_set_id,
+        "name": saved.name,
+        "design_count": saved.diverse_set_count,
+        "source_run_ids": list(dict.fromkeys(str(r.get("run_id")) for r in rows)),
+    }
+
+
 def _saved_sets(
     action: str,
     saved_set_id: Optional[str],
@@ -395,6 +459,7 @@ def _saved_sets(
     limit: int,
     offset: int,
     columns: Optional[List[str]],
+    designs: Optional[List[Dict[str, Any]]],
 ) -> Dict[str, Any]:
     from ...filtering.service import list_saved_sets, rename_saved_set
 
@@ -404,6 +469,9 @@ def _saved_sets(
             "saved_sets": [s.model_dump(mode="json") for s in listing.saved_sets],
             "total": len(listing.saved_sets),
         }
+
+    if action == "create":
+        return _create_saved_set(name, designs or [])
 
     if not saved_set_id:
         errors.fail(
@@ -560,12 +628,23 @@ def register(mcp: Any) -> None:
     @mcp.tool(description=SAVED_SETS)
     async def saved_sets(
         action: Annotated[
-            Literal["list", "get", "rename"], Field(description="What to do.")
+            Literal["list", "get", "rename", "create"], Field(description="What to do.")
         ] = "list",
         saved_set_id: Annotated[
             Optional[str], Field(description="Required for get and rename.")
         ] = None,
-        name: Annotated[Optional[str], Field(description="New name, for rename.")] = None,
+        name: Annotated[
+            Optional[str],
+            Field(description="New name for rename, or the set name for create."),
+        ] = None,
+        designs: Annotated[
+            Optional[List[Dict[str, Any]]],
+            Field(
+                description=(
+                    "For create: designs to persist, each {run_id, design_id, source_path?}."
+                )
+            ),
+        ] = None,
         in_diverse_set_only: Annotated[
             bool, Field(description="Return only the selected panel, not the ranked pool.")
         ] = True,
@@ -576,7 +655,15 @@ def register(mcp: Any) -> None:
         offset: Annotated[int, Field(ge=0, description="Rows to skip.")] = 0,
     ) -> Dict[str, Any]:
         return await run_blocking(
-            _saved_sets, action, saved_set_id, name, in_diverse_set_only, limit, offset, columns
+            _saved_sets,
+            action,
+            saved_set_id,
+            name,
+            in_diverse_set_only,
+            limit,
+            offset,
+            columns,
+            designs,
         )
 
     @mcp.tool(description=EXTRACT_SEQUENCES)

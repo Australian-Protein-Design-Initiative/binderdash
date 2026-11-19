@@ -9,23 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **MCP**: `saved_sets(action="create")` saves an explicit `{run_id, design_id}` list as a Saved Set in the web UI (diverse panels still use `select_diverse_designs(save_as=...)`). `merge_design_columns` adds TSV/CSV columns the same way **Upload extra data** does, with an optional preview.
 - **Filtering**: **Good** and **Tag** are hard-filter columns. Good filters as **good**, **bad**, or **unrated**. Tag uses the text operators (`N`, `C`, or empty).
-- **MCP / UI**: **Use Claude Science** on the new API key panel. Settings → Connectors → Add Connector (Local URL), with the connector name, server address and header `echo` command filled in, plus a screenshot of the form.
-- **MCP**: Structure downloads without the API key. `inspect_structures` returns an absolute `structure_url` with a short-lived token scoped to that file, and `export_structures` returns an absolute `GET /api/pdbs/tar` URL for a stashed tar. `list_runs` and `prepare_sequences` download URLs are absolute the same way. Set `PUBLIC_BASE_URL` when the request host is not the public origin; otherwise `DOMAIN` or the incoming request is used.
+- **MCP / UI**: **Use Claude Science** on the API key panel fills Settings → Connectors → Add Connector (Local URL) — name, server address and header `echo` command — and shows a screenshot of the form.
+- **MCP**: Structure downloads no longer need the API key. `inspect_structures` returns an absolute `structure_url` with a short-lived file token; `export_structures` returns an absolute `GET /api/pdbs/tar` URL; `list_runs` and `prepare_sequences` download URLs are absolute the same way. Set `PUBLIC_BASE_URL` when the request host is not the public origin; otherwise `DOMAIN` or the request host is used. `read_structure_file` stays size-capped and, over the cap, returns an error with a download URL. Design-table `structure_url` values have no token.
 - **Sequence prep**: **SNAC-tag** (`GSHHW`, shown as `G↓SHHW`) and **TEV-site** (`ENLYFQS`, shown as `ENLYFQ↓S`) on the N- and C-side palettes.
-- **Sequence prep / DNA optimisation**: New `AvoidInvertedRepeats` constraint (default `min_tm: 68`), added to the DNA optimisation defaults, which rejects sequences whose snapback hairpins melt at or above a Tm threshold scored with primer3/IDT-style thermodynamic alignment. Catches the short, GC-rich and imperfect inverted repeats that gene-synthesis vendors flag (e.g. "inverted repeat with ≥68°C Tm") and that `AvoidHairpins` (exact Watson-Crick stems only) misses. Existing persisted constraint lists are unaffected; reset to defaults in the DNA optimisation panel to pick it up.
-- **Sequence prep / DNA optimisation**: New `AvoidConsecutiveCodons` constraint (on in the DNA optimisation defaults) rejects runs of more than two consecutive `CGG`, `CGA` or `CCC` codons — the Arg/Pro codons synthesis vendors flag. Runs are counted in the design and preset-tag reading frame, so a 5' nucleotide addition whose length is not a multiple of 3 does not shift which triplets count as codons.
+- **Sequence prep / DNA optimisation**: Defaults now include `AvoidInvertedRepeats` (`min_tm: 68`; primer3/IDT Tm, so short GC-rich snapbacks that `AvoidHairpins` misses are rejected) and `AvoidConsecutiveCodons` (no more than two consecutive `CGG`, `CGA` or `CCC`, counted in the design and tag reading frame). Saved constraint lists are unchanged until reset to defaults.
 
 ### Changed
 
 - **Docs**: The documentation site and repository links now point at [Australian-Protein-Design-Initiative/binderdash](https://github.com/Australian-Protein-Design-Initiative/binderdash). The published docs are at <https://australian-protein-design-initiative.github.io/binderdash/>.
-- **MCP**: `read_structure_file` stays size-capped. A file over the cap is an error that includes a download URL, so the file is parsed locally rather than returned in the tool result. `structure_url` on design-table rows has no download token.
 
 ### Fixed
 
-- **Designs / tables**: Clicking the row-selection cell (not only the checkbox) toggles that row. On Designs, missing the checkbox no longer replaces a multi-selection with the single clicked design; Select Runs and Ingest scan-result tables use the same checkbox-style toggle for selection-cell / row clicks.
-- **Downloads**: A design bundle zip unpacks into one folder named after the download (the order name, or `saved_set_<name>`), instead of scattering `designs.tsv`, `structures/` and the rest into the current directory.
-- **Sequence prep / DNA optimisation**: A custom nucleotide addition that is not a whole number of codons is kept as literal DNA during optimisation, instead of being recoded as amino acids, so the design and tag reading frame stays aligned with the construct.
+- **Designs / tables**: Clicking the row-selection cell toggles that row. On Designs, a click beside the checkbox keeps the rest of a multi-selection. Select Runs and Ingest scan results use the same toggle.
+- **Downloads**: A design bundle zip unpacks into one folder named after the download (the order name, or `saved_set_<name>`).
+- **Sequence prep / DNA optimisation**: A custom nucleotide addition that is not a whole number of codons stays as literal DNA during optimisation, so the design and tag reading frame stays aligned.
 
 ## [0.4.2] - 2026-11-03
 

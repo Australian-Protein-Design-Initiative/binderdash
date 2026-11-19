@@ -546,6 +546,110 @@ def run_filtering_and_save(request: FilteringRunRequest) -> FilteringRunResponse
     )
 
 
+# Hand-picked MCP panels; agents that need more should split across sets.
+MAX_SAVED_SET_DESIGNS = 500
+_SAVED_SET_METRIC_SKIP = {"run_id", "design_id", "source_path", "pdb_file"}
+
+
+def create_saved_set_from_designs(
+    name: str, designs: List[Dict[str, Any]]
+) -> FilteringRunResponse:
+    """Persist an explicit design list as a Saved Set.
+
+    ``designs`` are already-resolved cache dicts. Every listed design is marked
+    ``in_diverse_set`` so the default Saved Set get returns the panel. There is no
+    filter recipe to reapply — ``filter_params`` records the keys that were saved.
+    """
+    trimmed = name.strip()
+    if not trimmed:
+        raise ValueError("Name must not be empty")
+    if not designs:
+        raise ValueError("At least one design is required")
+    if len(designs) > MAX_SAVED_SET_DESIGNS:
+        raise ValueError(
+            f"At most {MAX_SAVED_SET_DESIGNS} designs can be saved in one call; "
+            f"got {len(designs)}"
+        )
+
+    repo = get_designs_repository()
+    if not repo.is_enabled():
+        raise ValueError(
+            "DATABASE is not configured or persistence is disabled; set DATABASE in .env"
+        )
+
+    seen: set[tuple[str, str, str]] = set()
+    unique: List[Dict[str, Any]] = []
+    for row in designs:
+        key = (
+            str(row.get("run_id") or ""),
+            str(row.get("design_id") or ""),
+            str(row.get("source_path") or ""),
+        )
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(row)
+
+    source_run_ids = list(dict.fromkeys(str(row.get("run_id")) for row in unique))
+    design_keys: List[Dict[str, Any]] = []
+    for row in unique:
+        entry: Dict[str, Any] = {
+            "run_id": str(row.get("run_id")),
+            "design_id": str(row.get("design_id")),
+        }
+        source_path = row.get("source_path")
+        if source_path:
+            entry["source_path"] = str(source_path)
+        design_keys.append(entry)
+
+    count = len(unique)
+    saved_set_id = str(uuid.uuid4())
+    repo.create_saved_set(
+        saved_set_id=saved_set_id,
+        name=trimmed,
+        source_run_ids=source_run_ids,
+        filter_params={"source": "mcp_create", "design_keys": design_keys},
+        result_summary={
+            "total_input": count,
+            "passing_filters": count,
+            "top_set_count": count,
+            "diverse_set_count": count,
+            "warnings": [],
+        },
+    )
+
+    design_rows: List[Dict[str, Any]] = []
+    for index, row in enumerate(unique, start=1):
+        design_rows.append(
+            {
+                "design_id": str(row.get("design_id")),
+                "run_id": str(row.get("run_id")),
+                "source_path": row.get("source_path"),
+                "final_rank": index,
+                "quality_score": None,
+                "in_diverse_set": True,
+                "metrics": {
+                    k: v
+                    for k, v in row.items()
+                    if k not in _SAVED_SET_METRIC_SKIP
+                    and not str(k).startswith("__tc_")
+                    and _is_json_scalar(v)
+                },
+            }
+        )
+    repo.add_saved_set_designs(saved_set_id, design_rows)
+
+    return FilteringRunResponse(
+        saved_set_id=saved_set_id,
+        name=trimmed,
+        total_input=count,
+        passing_filters=count,
+        top_set_count=count,
+        diverse_set_count=count,
+        warnings=[],
+    )
+
+
 def _safe_int(value: Any) -> Optional[int]:
     try:
         if value is None or (isinstance(value, float) and math.isnan(value)):

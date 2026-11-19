@@ -128,7 +128,12 @@ class TestAuth:
     async def test_valid_key_lists_tools(self, app, seeded):
         async with mcp_client(app, seeded["token"]) as client:
             names = {tool.name for tool in await client.list_tools()}
-        assert {"list_runs", "describe_methods", "describe_columns"} <= names
+        assert {
+            "list_runs",
+            "describe_methods",
+            "describe_columns",
+            "merge_design_columns",
+        } <= names
 
     async def test_binderdash_header_is_accepted(self, app, seeded):
         async with mcp_client(app, seeded["token"], header="X-Binderdash-Api-Key") as client:
@@ -491,6 +496,182 @@ class TestDiversityAndSavedSets:
         assert panel.data["returned"] == 1
         assert pool.data["returned"] == 2
         assert "TRUNCATED" in {w["code"] for w in pool.data["warnings"]}
+
+    async def test_create_from_design_keys_is_visible_to_rest(
+        self, app, seeded, designs_loaded
+    ):
+        async with mcp_client(app, seeded["token"]) as client:
+            created = await client.call_tool(
+                "saved_sets",
+                {
+                    "action": "create",
+                    "name": "hand pick",
+                    "designs": [
+                        {"run_id": "bc", "design_id": "d1"},
+                        {"run_id": "rf", "design_id": "r1"},
+                    ],
+                },
+            )
+            listed = await client.call_tool("saved_sets", {"action": "list"})
+            panel = await client.call_tool(
+                "saved_sets",
+                {"action": "get", "saved_set_id": created.data["saved_set_id"]},
+            )
+
+        assert created.data["name"] == "hand pick"
+        assert created.data["design_count"] == 2
+        names = {s["name"] for s in listed.data["saved_sets"]}
+        assert "hand pick" in names
+
+        columns = panel.data["columns"]
+        ids = {r[columns.index("design_id")] for r in panel.data["rows"]}
+        assert ids == {"d1", "r1"}
+        assert all(r[columns.index("in_diverse_set")] for r in panel.data["rows"])
+
+        async with http_client(app) as http:
+            resp = await http.get(
+                "/api/saved-sets", headers={"Authorization": f"Bearer {seeded['token']}"}
+            )
+        assert resp.status_code == 200
+        assert "hand pick" in {s["name"] for s in resp.json()["saved_sets"]}
+
+    async def test_create_unknown_design_is_an_error(self, app, seeded, designs_loaded):
+        with pytest.raises(Exception, match="DESIGN_NOT_FOUND"):
+            async with mcp_client(app, seeded["token"]) as client:
+                await client.call_tool(
+                    "saved_sets",
+                    {
+                        "action": "create",
+                        "name": "missing",
+                        "designs": [{"run_id": "bc", "design_id": "nope"}],
+                    },
+                )
+
+    async def test_create_ambiguous_design_is_an_error(self, app, seeded, designs_loaded):
+        import backend.cache as cache_mod
+
+        cache_mod.run_cache["merged"] = {
+            "run_id": "merged",
+            "project_id": "proj",
+            "method": "bindcraft",
+            "metadata": {"name": "merged-run"},
+            "merged": True,
+            "pdb_files": [],
+        }
+        cache_mod.designs_by_run_id["merged"] = [
+            {
+                "run_id": "merged",
+                "design_id": "d1",
+                "method": "bindcraft",
+                "source_path": "/a",
+            },
+            {
+                "run_id": "merged",
+                "design_id": "d1",
+                "method": "bindcraft",
+                "source_path": "/b",
+            },
+        ]
+        cache_mod._rebuild_flat_cache_from_index()
+
+        with pytest.raises(Exception, match="AMBIGUOUS_DESIGN_REF"):
+            async with mcp_client(app, seeded["token"]) as client:
+                await client.call_tool(
+                    "saved_sets",
+                    {
+                        "action": "create",
+                        "name": "ambig",
+                        "designs": [{"run_id": "merged", "design_id": "d1"}],
+                    },
+                )
+
+    async def test_create_without_designs_is_an_error(self, app, seeded, designs_loaded):
+        with pytest.raises(Exception, match="INVALID_SAVED_SET_REQUEST"):
+            async with mcp_client(app, seeded["token"]) as client:
+                await client.call_tool(
+                    "saved_sets",
+                    {"action": "create", "name": "empty", "designs": []},
+                )
+
+
+def _persist_cache_designs(repo) -> None:
+    """Write the in-memory cache into sqlite so merge-table can match designs."""
+    import backend.cache as cache_mod
+
+    for run_id, run in list(cache_mod.run_cache.items()):
+        designs = list(cache_mod.designs_by_run_id.get(run_id) or [])
+        project = str(run.get("project_id") or "proj")
+        repo.upsert_run_and_replace_designs(f"{project}/{run_id}", run_id, dict(run), designs)
+
+
+class TestMergeDesignColumns:
+    async def test_preview_then_apply_adds_a_column(self, app, seeded, designs_loaded):
+        _persist_cache_designs(seeded["repo"])
+        table = "design_id\tlab_score\nd1\t1.5\nd3\t9.0\n"
+
+        async with mcp_client(app, seeded["token"]) as client:
+            preview = await client.call_tool(
+                "merge_design_columns",
+                {
+                    "run_ids": ["bc"],
+                    "table": table,
+                    "preview": True,
+                },
+            )
+            assert preview.data["preview"] is True
+            assert preview.data["matched_design_count"] == 1
+            assert preview.data["unknown_design_id_count"] == 1
+            assert "lab_score" in preview.data["new_columns"]
+
+            with pytest.raises(Exception, match="UNKNOWN_COLUMN"):
+                await client.call_tool(
+                    "query_designs",
+                    {"run_ids": ["bc"], "columns": ["lab_score"], "limit": 10},
+                )
+
+            applied = await client.call_tool(
+                "merge_design_columns",
+                {
+                    "run_ids": ["bc"],
+                    "table": table,
+                    "preview": False,
+                },
+            )
+            assert applied.data["preview"] is False
+            assert applied.data["updated"] >= 1
+
+            after = await client.call_tool(
+                "query_designs",
+                {"run_ids": ["bc"], "columns": ["lab_score"], "limit": 10},
+            )
+            rows = {r[after.data["columns"].index("design_id")]: r for r in after.data["rows"]}
+            score = after.data["columns"].index("lab_score")
+            assert rows["d1"][score] == 1.5
+            assert rows["d2"][score] is None
+
+            described = await client.call_tool(
+                "describe_columns",
+                {"run_ids": ["bc"], "include_raw": True},
+            )
+        names = {c["name"] for c in described.data["columns"]}
+        assert "lab_score" in names
+
+    async def test_empty_table_is_an_error(self, app, seeded, designs_loaded):
+        with pytest.raises(Exception, match="INVALID_MERGE_TABLE"):
+            async with mcp_client(app, seeded["token"]) as client:
+                await client.call_tool(
+                    "merge_design_columns",
+                    {"run_ids": ["bc"], "table": ""},
+                )
+
+    async def test_missing_design_id_column_is_an_error(self, app, seeded, designs_loaded):
+        _persist_cache_designs(seeded["repo"])
+        with pytest.raises(Exception, match="INVALID_MERGE_TABLE"):
+            async with mcp_client(app, seeded["token"]) as client:
+                await client.call_tool(
+                    "merge_design_columns",
+                    {"run_ids": ["bc"], "table": "batch\nB1\n"},
+                )
 
 
 class TestDiscoveryTools:

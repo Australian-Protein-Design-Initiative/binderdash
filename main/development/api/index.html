@@ -1156,8 +1156,9 @@ curl -sS -H "Authorization: Bearer $BINDERDASH_TOKEN" \
 <li><strong><code>GET /api/tree</code></strong> — browse allowed base directories.</li>
 <li><strong><code>POST /api/runs/scan</code></strong> — body <code>{ "folders": ["/path/..."], "force_rescan_of_ingested": false }</code>. Returns discovered run metadata; skips already-ingested runs unless forced.</li>
 <li><strong><code>POST /api/runs/ingest-preview</code></strong> — body <code>{ "runs": [ ... ] }</code>. Lists runs that would be re-ingested.</li>
-<li><strong><code>POST /api/runs/ingest</code></strong> — body <code>{ "runs": [ ... ] }</code>. Requires <code>DATABASE</code>. Assigns stable <code>run_id</code>, stores designs, refreshes cache.</li>
+<li><strong><code>POST /api/runs/ingest</code></strong> — body <code>{ "runs": [ ... ] }</code>. Requires <code>DATABASE</code>. Assigns stable <code>run_id</code>, stores designs, refreshes cache. Only each run's <code>path</code> / <code>merged_paths</code> is read from the body: the server re-detects the run at those folders (which must be inside <code>RUN_BASE_DIRS</code>) and stores what it finds on disk. A folder outside the base dirs, or with no recognised run, is a 400.</li>
 </ol>
+<p>The server refuses to start if <code>RUN_BASE_DIRS</code> is empty or any entry is not an existing directory (desktop builds excepted, which ask for folders on first run). At startup, stored runs whose folders or structure files lie outside the current <code>RUN_BASE_DIRS</code> are not loaded; each is logged as a warning and stays in the database.</p>
 <p>Deleting a run (<code>DELETE /api/runs/{run_id}</code>) removes database and cache entries only; files on disk are unchanged.</p>
 <h2 id="related-documentation">Related documentation<a class="headerlink" href="#related-documentation" title="Permanent link">&para;</a></h2>
 <ul>

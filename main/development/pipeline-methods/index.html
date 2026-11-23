@@ -125,7 +125,7 @@
             <div class="section" itemprop="articleBody">
               
                 <h1 id="adding-a-pipeline-method-type">Adding a pipeline method type<a class="headerlink" href="#adding-a-pipeline-method-type" title="Permanent link">&para;</a></h1>
-<p>Binderdash recognises design pipelines by <code>method</code> string (e.g. <code>bindcraft</code>, <code>rfd</code>, <code>boltzgen</code>, <code>rfd3</code>). When you add a new method, keep the backend detection/metadata and the frontend display config in sync.</p>
+<p>Binderdash recognises design pipelines by <code>method</code> string (e.g. <code>bindcraft</code>, <code>bindcraft2</code>, <code>rfd</code>, <code>rfd3</code>, <code>rfd4_proteina</code>, <code>boltzgen</code>). When you add a new method, keep the backend detection/metadata and the frontend display config in sync.</p>
 <h2 id="backend">Backend<a class="headerlink" href="#backend" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -145,7 +145,7 @@
 </tr>
 <tr>
 <td><code>backend/run_discovery.py</code></td>
-<td>Search for <code>method ==</code> and <code>get("method")</code> for branches covering target sequence, backbone id, dataframe standardisation, and structure resolution. Add branches only where the new pipeline needs custom handling.</td>
+<td>Search for <code>method ==</code> and <code>get("method")</code> for branches covering target sequence, backbone id, dataframe standardisation, and structure resolution. Add branches only where the new pipeline needs custom handling. One such branch merges RFD4-Proteina's oracle metrics from a sibling table (<code>_merge_rfd4_inline_metrics</code>); it is a stopgap until that pipeline writes its scores into <code>combined_scores.tsv</code>, and is the pattern to copy if another method needs a secondary table.</td>
 </tr>
 <tr>
 <td><code>backend/config/score_labels.py</code></td>

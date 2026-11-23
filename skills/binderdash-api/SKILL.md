@@ -146,8 +146,8 @@ When auth is fully disabled, plain `curl "$BASE/api/runs"` is enough for all met
 Binderdash has three nested entities:
 
 1. **Project** - a logical grouping (`project_id`), inferred from a parent directory name in the run's filesystem path. There is no dedicated project endpoint; you discover projects by listing runs and grouping by `project_id`.
-2. **Run** - one execution of a binder design pipeline; has a stable `run_id` (UUID), a `method` (`bindcraft`, `rfd`, `rfd3`, `boltzgen`, ...), and `metadata` (display `name`, `pdb_count`, `trajectory_count`, `primary_score_stats`, `results_file`). A run may merge multiple ingestion paths under the same `project_id`/`name` - `merged_count` and `total_pdb_count` then appear in `metadata`.
-3. **Design** - one row from the run's results table, augmented with `design_id`, `backbone_id` (design id with MPNN/AF2 suffixes stripped), `run_id`, `project_id`, `run_name`, `method`, `run_path`, `pdb_file` (**full server-side filesystem path** — use `split("/")[-1]` or `basename` when passing to endpoints that expect a filename), and **all original columns of the upstream results table flattened in**. The exact extra keys therefore depend on the method - anything you saw in BindCraft's `final_design_stats.csv` or RFD3's score table will appear here verbatim.
+2. **Run** - one execution of a binder design pipeline; has a stable `run_id` (UUID), a `method` (`bindcraft`, `bindcraft2`, `rfd`, `rfd3`, `rfd4_proteina`, `boltzgen`, ...), and `metadata` (display `name`, `pdb_count`, `trajectory_count`, `primary_score_stats`, `results_file`). A run may merge multiple ingestion paths under the same `project_id`/`name` - `merged_count` and `total_pdb_count` then appear in `metadata`.
+3. **Design** - one row from the run's results table, augmented with `design_id`, `backbone_id` (design id with MPNN/AF2 suffixes stripped; for BindCraft2 also `_candidate{n}` and `_seq{n}`, so a trajectory's refolded candidates and its accepted design share one backbone), `run_id`, `project_id`, `run_name`, `method`, `run_path`, `pdb_file` (**full server-side filesystem path** — use `split("/")[-1]` or `basename` when passing to endpoints that expect a filename), and **all original columns of the upstream results table flattened in**. The exact extra keys therefore depend on the method - anything you saw in BindCraft's `final_design_stats.csv` or RFD3's score table will appear here verbatim.
 
 Designs may also carry user-edited fields persisted by Binderdash itself: `good` (boolean ★), `tag` (`"N"` or `"C"` - see DNA tag section), `Sequence` (binder amino-acid sequence, extracted on demand from the PDB), `binder_chain`, `short_name` (Twist-friendly short identifier), and method-derived metric columns like `Average_i_pTM`, `iptm`, `pae_interaction`, `Average_pLDDT`, `design_to_target_iptm`, `rf3_ipsae_min`, `pair_pae`, `rf3_rmsd_target_aligned_binder_rmsd_all`.
 
@@ -159,12 +159,16 @@ Per-method primary score columns and their preferred sort direction:
 | `rfd`       | `pae_interaction`                                                                                  | asc    |
 | `boltzgen`  | `design_to_target_iptm`                                                                            | desc   |
 | `rfd3`      | `iptm`, `pair_pae`, `rf3_ipsae_min`, `rf3_rmsd_target_aligned_binder_rmsd_all` (first available)  | desc   |
+| `rfd4_proteina` | `consensus_z` (only written when the run was refolded with `--refold_with`)                     | desc   |
+| `bindcraft2` | `i_pDAE` (absent where a design has no interface contacts; those sort last)                       | desc   |
 
 > **Column name gotcha:** "iptm" is NOT a universal column. The actual JSON key differs by method:
 > - BindCraft → `Average_i_pTM` (higher is better, sort descending)
 > - RFD3 → `iptm` (higher is better, sort descending)
 > - BoltzGen → `design_to_target_iptm` (higher is better, sort descending)
 > - RFD → `pae_interaction` (lower is better, sort ascending)
+> - BindCraft2 → `i_pDAE` (its own ranking metric: distance-masked interface confidence, 0-1, higher is better) and `i_pTM` (higher is better). Note `i_pAE` is the lower-is-better one, and that bare `pLDDT` is the **binder chain's**, not the complex average (`Target_pLDDT` and `Unbound_Binder_pLDDT` are separate columns).
+> - RFD4-Proteina → `oracle_ppi_iptm_coi` (higher is better), merged from the oracle's `of3_`/`af3_inline_metrics.csv` and **rescaled from that file's 0-100 to 0-1**, so it is comparable with the other methods. `_coi` is the chain of interest (the binder). `oracle_ppi_ipae_coi` is the lower-is-better interface PAE, in angstroms. If the run was also refolded with `--refold_with`, the refold engine prefixes its own columns (`boltz_iptm_max`, `chai1_ipsae_max`, …) and `consensus_z` summarises across engines
 >
 > Always check the method first and use the correct column name. Do NOT assume `iptm` exists.
 

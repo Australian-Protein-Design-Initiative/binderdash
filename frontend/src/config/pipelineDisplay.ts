@@ -8,7 +8,14 @@ import type { Design } from '../types/store'
 
 // --- Methods (filter dropdowns, tags, icons) --------------------------------
 
-export const PIPELINE_METHOD_IDS = ['bindcraft', 'rfd', 'boltzgen', 'rfd3'] as const
+export const PIPELINE_METHOD_IDS = [
+    'bindcraft',
+    'rfd',
+    'boltzgen',
+    'rfd3',
+    'rfd4_proteina',
+    'bindcraft2',
+] as const
 
 export type PipelineMethodId = (typeof PIPELINE_METHOD_IDS)[number]
 
@@ -41,6 +48,8 @@ const METHOD_TAG_PALETTE: Record<string, PipelineTagPalette> = {
     bindcraft: 'emerald',
     rfd: 'sky',
     rfd3: 'sky',
+    rfd4_proteina: 'sky',
+    bindcraft2: 'emerald',
     boltzgen: 'amber',
 }
 
@@ -50,6 +59,8 @@ const METHOD_TAG_DISPLAY: Record<string, { iconClass: string }> = {
     bindcraft: { iconClass: 'pi pi-code' },
     rfd: { iconClass: 'pi pi-file' },
     rfd3: { iconClass: 'pi pi-box' },
+    rfd4_proteina: { iconClass: 'pi pi-box' },
+    bindcraft2: { iconClass: 'pi pi-code' },
     boltzgen: { iconClass: 'pi pi-info-circle' },
 }
 
@@ -167,6 +178,79 @@ export const SCORE_FIELD_DEFS: readonly ScoreFieldDef[] = [
         scoreRangeFilter: true,
         color: { kind: 'neutral' },
     }),
+    // RFD4-Proteina inline oracle metrics, merged from of3_/af3_inline_metrics.csv.
+    // "coi" is the chain of interest: the binder. pTM/ipTM/pLDDT arrive rescaled to
+    // 0-1 by the backend merge; PAE and RMSD stay in angstroms.
+    d('oracle_ppi_iptm_coi', 'Interface pTM (binder)', {
+        niceName: 'Interface pTM, binder chain (oracle)',
+        scoreRangeFilter: true,
+        globalFilterScore: true,
+        color: { kind: 'span', min: 0, max: 1, higherBetter: true },
+    }),
+    d('oracle_ppi_plddt_coi', 'pLDDT (binder)', {
+        niceName: 'pLDDT, binder chain (oracle)',
+        scoreRangeFilter: true,
+        color: { kind: 'span', min: 0, max: 1, higherBetter: true },
+    }),
+    d('oracle_ppi_overall_ptm', 'pTM (complex)', {
+        niceName: 'pTM, whole complex (oracle)',
+        scoreRangeFilter: true,
+        color: { kind: 'span', min: 0, max: 1, higherBetter: true },
+    }),
+    d('oracle_ppi_ipae_coi', 'Interface PAE (binder)', {
+        niceName: 'Interface PAE, binder chain (oracle)',
+        scoreRangeFilter: true,
+        color: { kind: 'pae_angstrom' },
+    }),
+    d('oracle_ppi_ranking_score', 'Oracle ranking score', {
+        niceName: 'Oracle ranking score',
+        scoreRangeFilter: true,
+        color: { kind: 'span', min: 0, max: 1, higherBetter: true },
+    }),
+    d('hotspot_obedience_hotspot_obedience', 'Hotspot obedience', {
+        niceName: 'Hotspot obedience',
+        scoreRangeFilter: true,
+        color: { kind: 'span', min: 0, max: 1, higherBetter: true },
+    }),
+    d('refolded_target_aligned_binder_rmsd_rmsd', 'Refolded binder RMSD', {
+        niceName: 'Refolded binder RMSD, target-aligned (A)',
+        color: { kind: 'span', min: 0, max: 3.5, higherBetter: false },
+    }),
+    d('consensus_z', 'Consensus z', {
+        niceName: 'Cross-engine consensus z-score',
+        scoreRangeFilter: true,
+        color: { kind: 'neutral' },
+    }),
+    d('i_pDAE', 'i_pDAE', {
+        niceName: 'Interface pDAE (distance-masked interface confidence)',
+        scoreRangeFilter: true,
+        globalFilterScore: true,
+        color: { kind: 'span', min: 0, max: 1, higherBetter: true },
+    }),
+    d('i_pAE', 'i_pAE', {
+        niceName: 'Interface PAE',
+        scoreRangeFilter: true,
+        color: { kind: 'span', min: 0, max: 1, higherBetter: false },
+    }),
+    d('Binder_RMSD', 'Binder RMSD', {
+        niceName: 'Binder RMSD',
+        color: { kind: 'span', min: 0, max: 3.5, higherBetter: false },
+    }),
+    d('Hotspot_Contact_Fraction', 'Hotspot Contact Fraction', {
+        niceName: 'Hotspot contact fraction',
+        scoreRangeFilter: true,
+        color: { kind: 'span', min: 0, max: 1, higherBetter: true },
+    }),
+    d('Coldspot_Contact_Fraction', 'Coldspot Contact Fraction', {
+        niceName: 'Coldspot contact fraction',
+        scoreRangeFilter: true,
+        color: { kind: 'span', min: 0, max: 1, higherBetter: false },
+    }),
+    d('Off_Epitope_Contact_Fraction', 'Off-epitope Contact Fraction', {
+        niceName: 'Off-epitope contact fraction',
+        scoreRangeFilter: true,
+        color: { kind: 'span', min: 0, max: 1, higherBetter: false },
+    }),
     d('interaction_pae', 'Interaction PAE', {
         niceName: 'Interaction PAE',
         color: { kind: 'pae_angstrom' },
@@ -251,6 +335,20 @@ export const STRUCTURE_CARD_SCORE_ORDER: readonly string[] = [
     'pair_pae',
     'rf3_ipsae_min',
     'rf3_rmsd_target_aligned_binder_rmsd_all',
+    'i_pDAE',
+    'i_pAE',
+    'Binder_RMSD',
+    'oracle_ppi_iptm_coi',
+    'oracle_ppi_plddt_coi',
+    'oracle_ppi_overall_ptm',
+    'oracle_ppi_ipae_coi',
+    'oracle_ppi_ranking_score',
+    'hotspot_obedience_hotspot_obedience',
+    'refolded_target_aligned_binder_rmsd_rmsd',
+    'Hotspot_Contact_Fraction',
+    'Coldspot_Contact_Fraction',
+    'Off_Epitope_Contact_Fraction',
+    'consensus_z',
 ]
 
 /** Static design keys excluded from “extra” structure sections (not scores). */
@@ -322,6 +420,16 @@ export const METHOD_BEST_SCORE: Readonly<Record<string, MethodBestScoreConfig>> 
     rfd3: {
         primary: 'iptm',
         secondary: ['rf3_ipsae_min'],
+        higherIsBetter: true,
+    },
+    bindcraft2: {
+        primary: 'i_pDAE',
+        secondary: ['i_pTM'],
+        higherIsBetter: true,
+    },
+    rfd4_proteina: {
+        primary: 'oracle_ppi_iptm_coi',
+        secondary: ['oracle_ppi_plddt_coi'],
         higherIsBetter: true,
     },
 }
@@ -412,6 +520,25 @@ export const PRIMARY_SCORE_CHIP_RULES: readonly ChipRule[] = [
         kind: 'column',
         columns: ['rf3_rmsd_target_aligned_binder_rmsd_all'],
         tagPalette: 'slate',
+    },
+    {
+        id: 'bindcraft2_i_pdae',
+        kind: 'column',
+        columns: ['i_pdae'],
+        tagPalette: 'emerald',
+    },
+    {
+        id: 'rfd4_oracle_iptm',
+        kind: 'column',
+        columns: ['oracle_ppi_iptm_coi'],
+        tagPalette: 'sky',
+    },
+    {
+        id: 'rfd4_consensus_z',
+        kind: 'column',
+        columns: ['consensus_z'],
+        chipLabel: 'consensus z',
+        tagPalette: 'sky',
     },
     {
         id: 'fallback_pae',

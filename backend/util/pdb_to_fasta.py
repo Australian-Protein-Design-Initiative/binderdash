@@ -18,6 +18,8 @@ from typing import List, Optional, Dict, Any
 from Bio import PDB
 from Bio.PDB.Polypeptide import protein_letters_3to1, is_aa
 
+from .structure_io import parse_mmcif
+
 
 def _load_structure(pdb_file: str):
     path = Path(pdb_file)
@@ -29,13 +31,11 @@ def _load_structure(pdb_file: str):
             tmp.write(data)
             tmp_path = tmp.name
         try:
-            parser = PDB.MMCIFParser(QUIET=True)
-            return parser.get_structure("structure", tmp_path)
+            return parse_mmcif(tmp_path)
         finally:
             os.unlink(tmp_path)
     if lower.endswith(".cif"):
-        parser = PDB.MMCIFParser(QUIET=True)
-        return parser.get_structure("structure", pdb_file)
+        return parse_mmcif(pdb_file)
     if lower.endswith(".pdb.gz"):
         with gzip.open(pdb_file, "rb") as gz_f:
             data = gz_f.read()

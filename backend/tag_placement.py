@@ -6,13 +6,13 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 import numpy as np
-from Bio.PDB.MMCIFParser import MMCIFParser
 from Bio.PDB.PDBParser import PDBParser
 from Bio.PDB import Residue, Structure
 from Bio.PDB.PDBExceptions import PDBConstructionWarning
 from Bio.PDB.Polypeptide import PPBuilder, is_aa
 
 from .util.sasa import annotate_residue_sasa
+from .util.structure_io import parse_mmcif
 from .util.sasa_constants import TIEN_2023_THEORETICAL
 
 logger = logging.getLogger(__name__)
@@ -536,12 +536,10 @@ def load_structure(path: Path) -> Structure.Structure:
     sid = _structure_id_for_path(path)
     lower = str(path).lower()
     if lower.endswith(".cif.gz"):
-        parser = MMCIFParser(QUIET=True)
         with gzip.open(path, "rt") as fh:
-            return parser.get_structure(sid, fh)
+            return parse_mmcif(fh, sid)
     if lower.endswith(".cif"):
-        parser = MMCIFParser(QUIET=True)
-        return parser.get_structure(sid, str(path))
+        return parse_mmcif(str(path), sid)
     parser = PDBParser(QUIET=True)
     if lower.endswith(".pdb.gz") or lower.endswith(".ent.gz"):
         with gzip.open(path, "rt") as fh:

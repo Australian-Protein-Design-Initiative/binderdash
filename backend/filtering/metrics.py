@@ -43,6 +43,10 @@ METRIC_ALIASES: Dict[str, Dict[str, Optional[Union[str, List[str]]]]] = {
         # rfd has no native iptm; if the run was re-scored via Boltz pulldown,
         # boltz_iptm may be present as an extra column.
         "rfd": ["boltz_iptm"],
+        "bindcraft2": "i_pTM",
+        # Interface pTM for the chain of interest (the binder), from the oracle's
+        # inline metrics table; rescaled to 0-1 on merge.
+        "rfd4_proteina": "oracle_ppi_iptm_coi",
     },
     # Interface ipSAE (higher is better, same 0–1 sense as iptm). BindCraft and
     # plain RFdiffusion do not write an ipSAE column.
@@ -54,6 +58,8 @@ METRIC_ALIASES: Dict[str, Dict[str, Optional[Union[str, List[str]]]]] = {
         "boltzgen": "design_ptm",
         "bindcraft": "Average_pTM",
         "rfd3": "ptm",
+        "bindcraft2": "pTM",
+        "rfd4_proteina": "oracle_ppi_overall_ptm",
     },
     # Binder-chain confidence (pLDDT), not the complex-wide average. Candidates are
     # tried in order; a method with none of them present has no equivalent.
@@ -64,6 +70,13 @@ METRIC_ALIASES: Dict[str, Dict[str, Optional[Union[str, List[str]]]]] = {
         # issue #202); these are the names that appear when a run does carry one.
         "boltzgen": ["complex_plddt", "design_plddt"],
         "rfd3": ["plddt"],
+        # BindCraft2's bare ``pLDDT`` is the binder chain's, not the complex average:
+        # in the ranked mmCIF the binder chain's mean B-factor matches ``pLDDT`` and the
+        # target chain's matches ``Target_pLDDT``. ``Unbound_Binder_pLDDT`` is the binder
+        # predicted in isolation, a different quantity, so it is not a fallback here.
+        "bindcraft2": "pLDDT",
+        # ``_coi`` is the chain of interest, which for a binder run is the binder.
+        "rfd4_proteina": "oracle_ppi_plddt_coi",
     },
     "rmsd": {
         "boltzgen": "bb_rmsd",
@@ -74,24 +87,36 @@ METRIC_ALIASES: Dict[str, Dict[str, Optional[Union[str, List[str]]]]] = {
         # nothing for every bindcraft design (it is kept as a fallback candidate in
         # case an older/derived table has it).
         "bindcraft": ["Average_Binder_RMSD", "Binder_RMSD"],
+        "bindcraft2": "Binder_RMSD",
+        "rfd4_proteina": "refolded_target_aligned_binder_rmsd_rmsd",
     },
     "pae_interaction": {
         "rfd": "pae_interaction",
         "rfd3": "pair_pae",
         "boltzgen": "interaction_pae",
         "bindcraft": "Average_i_pAE",
+        "bindcraft2": "i_pAE",
+        # Mean interface PAE, in angstroms (not rescaled). ``min_ipae_coi`` is the
+        # best single contact, a different statistic, so it stays a raw column.
+        "rfd4_proteina": "oracle_ppi_ipae_coi",
     },
     "sequence": {
         "boltzgen": "designed_sequence",
         "rfd": "seq",
         "rfd3": "sequence",
+        # ``_standardise_dataframe_columns`` folds ``sequence`` / ``Binder_Sequence``
+        # into ``Sequence`` before the design reaches the cache.
+        "rfd4_proteina": "Sequence",
         "bindcraft": "Sequence",
+        "bindcraft2": "Sequence",
     },
     "design_id": {
         "boltzgen": "id",
         "rfd": "description",
         "rfd3": "id",
+        "rfd4_proteina": "id",
         "bindcraft": "Design",
+        "bindcraft2": "design",
     },
     "hbonds": {
         "boltzgen": "plip_hbonds_refolded",
@@ -110,6 +135,13 @@ METRIC_ALIASES: Dict[str, Dict[str, Optional[Union[str, List[str]]]]] = {
     "delta_sasa": {
         "boltzgen": "delta_sasa_refolded",
         "bindcraft": "Average_dSASA",
+        "bindcraft2": "Interface_BuriedArea",
+    },
+    # BindCraft2's own ranking metric: a distance-masked interface confidence
+    # derived from the interface PAE, 0-1, higher better. No other run type
+    # writes an equivalent.
+    "ipdae": {
+        "bindcraft2": "i_pDAE",
     },
 }
 
@@ -125,6 +157,7 @@ METRIC_DIRECTIONS: Dict[str, tuple[bool, str]] = {
     "hbonds": (True, "Hydrogen bonds across the interface."),
     "saltbridge": (True, "Salt bridges across the interface."),
     "delta_sasa": (True, "Interface area buried on complex formation, Angstrom^2."),
+    "ipdae": (True, "Distance-masked interface confidence, 0-1 (BindCraft2 ranking metric)."),
 }
 
 # Metrics that are identifiers/sequences rather than scores — rankable never.
@@ -236,7 +269,7 @@ def resolve_column_map_for_methods(
 def available_columns_for_methods_pandas(
     df: pd.DataFrame, method_column: str = "method"
 ) -> Dict[str, List[str]]:
-    """Numeric columns actually populated (at least one non-null value) for each method
+    """Numeric and boolean columns actually populated (at least one non-null value) for each method
     in ``df`` (pandas variant). A column that's numeric-dtype but entirely null for a
     given method (because it's another method's column in the union schema) is *not*
     reported as present for that method.
@@ -245,14 +278,14 @@ def available_columns_for_methods_pandas(
     if method_column not in df.columns:
         return result
     for method, group in df.groupby(method_column):
-        numeric_cols = group.select_dtypes(include="number").columns
-        present = [c for c in numeric_cols if group[c].notna().any()]
+        cols = group.select_dtypes(include=["number", "bool"]).columns
+        present = [c for c in cols if group[c].notna().any()]
         result[str(method)] = present
     return result
 
 
 def available_columns_for_methods(df, method_column: str = "method") -> Dict[str, List[str]]:
-    """Numeric columns actually populated (at least one non-null value) for each method
+    """Numeric and boolean columns actually populated (at least one non-null value) for each method
     in ``df`` (polars.DataFrame, used by ``filtering.service`` — the pandas variant
     above is kept for standalone/test use of the other metrics.py helpers, which still
     operate on pandas). A column that's numeric-dtype but entirely null for a given
@@ -268,9 +301,16 @@ def available_columns_for_methods(df, method_column: str = "method") -> Dict[str
         return available_columns_for_methods_pandas(df, method_column=method_column)
     if method_column not in df.columns:
         return result
-    numeric_cols = sorted(c for c, dt in zip(df.columns, df.dtypes) if dt.is_numeric())
+    # Booleans alongside numerics: a pipeline's own pass/fail flag (RFD4-Proteina's
+    # ``ppi_pass``, say) is a filterable column too, and the picker renders it as a
+    # yes/no choice rather than a threshold.
+    cols = sorted(
+        c
+        for c, dt in zip(df.columns, df.dtypes)
+        if dt.is_numeric() or dt == pl.Boolean
+    )
     for method in df[method_column].unique().to_list():
         sub = df.filter(pl.col(method_column) == method)
-        present = [c for c in numeric_cols if sub[c].drop_nulls().len() > 0]
+        present = [c for c in cols if sub[c].drop_nulls().len() > 0]
         result[str(method)] = present
     return result

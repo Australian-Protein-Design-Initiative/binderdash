@@ -58,13 +58,26 @@ function isBooleanColumn(column: string): boolean {
   return filteringStore.columnKind(column) === 'boolean'
 }
 
-// Good is good / bad / unrated. The choice encodes operator + text_value; there is
-// no separate threshold field. "true"/"false" match the engine's normalised text.
+// A boolean column is filtered by a three-way choice rather than an operator plus a
+// threshold: the choice encodes operator + text_value, and "true"/"false" match the
+// engine's normalised text. Good is a user rating, so it reads good / bad / unrated;
+// any other boolean column (a pipeline's own pass/fail flag, say) reads yes / no / not
+// set, which is the same three states under honest labels.
 const GOOD_OPERATORS: { label: string; value: string }[] = [
   { label: 'good', value: 'good' },
   { label: 'bad', value: 'bad' },
   { label: 'unrated', value: 'unrated' }
 ]
+
+const FLAG_OPERATORS: { label: string; value: string }[] = [
+  { label: 'yes', value: 'good' },
+  { label: 'no', value: 'bad' },
+  { label: 'not set', value: 'unrated' }
+]
+
+function booleanOperatorsForColumn(column: string): { label: string; value: string }[] {
+  return column === 'good' ? GOOD_OPERATORS : FLAG_OPERATORS
+}
 
 function booleanChoice(filter: FilterSpecDto): string {
   if (filter.operator === 'is_empty') return 'unrated'
@@ -444,7 +457,7 @@ const alphaLogSlider = computed<number>({
         <Select
           v-if="isBooleanColumn(filter.column)"
           :model-value="booleanChoice(filter)"
-          :options="GOOD_OPERATORS"
+          :options="booleanOperatorsForColumn(filter.column)"
           option-label="label"
           option-value="value"
           :disabled="filter.enabled === false"

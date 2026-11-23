@@ -11,7 +11,14 @@ from typing import Dict, Final, FrozenSet, Optional, Sequence, Tuple
 
 # --- Known method string literals (run metadata, folder layouts) -------------
 
-PIPELINE_METHOD_IDS: Final[tuple[str, ...]] = ("bindcraft", "rfd", "boltzgen", "rfd3")
+PIPELINE_METHOD_IDS: Final[tuple[str, ...]] = (
+    "bindcraft",
+    "rfd",
+    "boltzgen",
+    "rfd3",
+    "rfd4_proteina",
+    "bindcraft2",
+)
 
 PIPELINE_METHOD_IDS_SET: Final[FrozenSet[str]] = frozenset(PIPELINE_METHOD_IDS)
 
@@ -25,6 +32,9 @@ _RUN_NAME_SEGMENT_BLOCKLIST: Final[tuple[re.Pattern[str], ...]] = tuple(
         r"^rfd$",
         r"^boltzgen$",
         r"^rfd3$",
+        r"^rfd4$",
+        r"^rfd4_proteina$",
+        r"^bc2$",
         r"^batches$",
         r"^\d+$",
     )
@@ -40,6 +50,9 @@ _PROJECT_ID_SEGMENT_BLOCKLIST: Final[tuple[re.Pattern[str], ...]] = tuple(
         r"^rfd$",
         r"^boltzgen$",
         r"^rfd3$",
+        r"^rfd4$",
+        r"^rfd4_proteina$",
+        r"^bc2$",
         r"^\d+$",
     )
 )
@@ -95,6 +108,20 @@ STRUCTURE_PARAM_KEYS_BY_METHOD: Final[Dict[str, Tuple[str, ...]]] = {
         "target_pdb",
         "input_pdb",
         "pdb_path",
+    ),
+    # Config mode (--rfd4_config) names the target inside the YAML spec, not in
+    # params.json; only params mode (--input_pdb) is resolvable from here.
+    "rfd4_proteina": (
+        "input_pdb",
+        "target_pdb",
+        "pdb_path",
+    ),
+    "bindcraft2": (
+        "input_pdb",
+        "target_pdb",
+        "target_path",
+        "pdb_path",
+        "binder_scaffold",
     ),
 }
 

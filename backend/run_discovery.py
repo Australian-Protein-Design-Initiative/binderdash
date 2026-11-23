@@ -89,6 +89,9 @@ def extract_backbone_id(design_id: str, method: str) -> str:
 
     For bindcraft: removes _mpnn{n} suffix
     For rfd: removes _mpnn{n} suffix and _af2pred suffix
+    For bindcraft2: removes the _candidate{n} (refolded.csv) or _seq{n} (ranked.csv)
+    suffix, so the ProteinMPNN candidates
+    of one gradient trajectory group together (they share BindCraft2's recipe hash)
 
     Args:
         design_id: The design identifier
@@ -102,10 +105,13 @@ def extract_backbone_id(design_id: str, method: str) -> str:
 
     # bindcraft_design_111_l93_s308700_mpnn10 -> bindcraft_design_111_l93_s308700
     # design_ppi_1Ty4GSo_6_dldesign_0_cycle1_mpnn1_af2pred -> design_ppi_1Ty4GSo_6_dldesign_0_cycle1
+    # cxcr2_denovo_l117_2637c435ac2716c4_candidate3 -> cxcr2_denovo_l117_2637c435ac2716c4
 
     # Remove _mpnn{n} pattern, optionally followed by _af2pred
     # This handles both bindcraft (_mpnn{n}) and RFD (_mpnn{n}_af2pred) patterns
-    backbone_id = re.sub(r"_mpnn\d+(?:_af2pred)?$", "", design_id)
+    backbone_id = re.sub(
+        r"_(?:mpnn\d+(?:_af2pred)?|candidate\d+|seq\d+)$", "", design_id
+    )
 
     return backbone_id
 
@@ -313,6 +319,11 @@ def compute_primary_score_stats(
             col = c
             break
     if col is None:
+        # The first numeric column is a guess, and a wrong one for a method whose
+        # table starts with bookkeeping columns, so a signature can opt out and
+        # report no primary score at all rather than a nonsense one.
+        if not signature.get("primary_score_fallback", True):
+            return None
         numeric_cols = df.select_dtypes(include=["number"]).columns.tolist()
         if not numeric_cols:
             return None
@@ -685,6 +696,144 @@ def update_design_sequence_and_binder_chain(
         )
 
 
+# --- RFD4-Proteina inline oracle metrics -------------------------------------------
+#
+# ponytail: a stopgap. RFD4-Proteina's combined_scores.tsv currently carries identity and
+# sequence but no scores; the oracle's confidence metrics sit in a sibling CSV named after
+# the refolding oracle. Delete this whole block once the pipeline writes them into
+# combined_scores.tsv itself, which is planned upstream.
+_RFD4_INLINE_METRICS_FILES: Dict[str, str] = {
+    "of3_inline_metrics.csv": "of3",  # OpenFold3
+    "af3_inline_metrics.csv": "af3",  # AlphaFold3
+}
+
+# Column groups worth merging. The file's other ~40 columns are generation
+# hyperparameters, checkpoint names and absolute work-directory paths: constant across
+# designs, and of no use in the design table.
+_RFD4_INLINE_METRIC_PREFIXES = (
+    "oracle_ppi.",
+    "refolded_",
+    "hotspot_obedience.",
+    "amino_acid_composition.",
+)
+_RFD4_INLINE_METRIC_COLUMNS = (
+    "ppi.pass",
+    "pre_oracle_pass",
+    # Distinguishes "failed this metric" from "this metric was never computed".
+    "ppi.all_metrics_present",
+)
+
+# Written as 0.0 / 1.0 but boolean in meaning. Stored as real booleans so the Filtering
+# tab offers a yes/no choice rather than a 0-1 range slider, and the table reads
+# true/false rather than 1.0/0.0.
+_RFD4_INLINE_FLAG_COLUMNS = (
+    "ppi.pass",
+    "pre_oracle_pass",
+    "ppi.all_metrics_present",
+    "oracle_ppi.has_clash",
+)
+# Paths rather than metrics, and they point into the pipeline's work directory.
+_RFD4_INLINE_METRIC_EXCLUDED = (
+    "oracle_ppi.refolded_structure_path",
+    "oracle_ppi.confidence_json_path",
+)
+# The oracle reports these three on 0-100; every other binderdash method reports pTM,
+# ipTM and pLDDT on 0-1. Rescaled on merge so the canonical iptm / ptm / binder_plddt
+# metrics stay comparable across methods and the frontend needs no per-method span.
+_RFD4_INLINE_PERCENT_SUFFIXES = ("plddt", "ptm", "iptm")
+
+
+def _rfd4_inline_metric_columns(columns: List[str]) -> List[str]:
+    return [
+        c
+        for c in columns
+        if c not in _RFD4_INLINE_METRIC_EXCLUDED
+        and (
+            c.startswith(_RFD4_INLINE_METRIC_PREFIXES)
+            or c in _RFD4_INLINE_METRIC_COLUMNS
+        )
+    ]
+
+
+def _rfd4_inline_is_percent(column: str) -> bool:
+    """True for a 0-100 confidence column: one whose metric name contains plddt, ptm or
+    iptm as a whole word (``overall_iptm``, ``plddt_coi``, ``iptm_A_1_B_1``).
+
+    Matching whole tokens keeps the angstrom columns out: ``ipae_coi`` and
+    ``min_ipae_coi`` contain no such token, and neither does ``ranking_score``.
+    """
+    metric_name = column.rsplit(".", 1)[-1]
+    return any(
+        token in _RFD4_INLINE_PERCENT_SUFFIXES for token in metric_name.split("_")
+    )
+
+
+def _merge_rfd4_inline_metrics(df: pd.DataFrame, run_path: Path) -> pd.DataFrame:
+    """Join the oracle's per-design metrics onto RFD4-Proteina's results table.
+
+    ``example_id`` repeats across batches (one set of examples per batch), so it is not a
+    key on its own; the oracle table's ``dataset_name`` names the batch's input JSON
+    (``<prefix>_b<n>.json``), and ``<prefix>_b<n>_<example_id>`` is the design ``id``.
+    """
+    if "id" not in df.columns:
+        return df
+
+    table_dir = run_path / "results" / "rfd4_proteina"
+    for file_name, oracle in _RFD4_INLINE_METRICS_FILES.items():
+        metrics_path = table_dir / file_name
+        if not metrics_path.is_file():
+            continue
+        try:
+            metrics = pd.read_csv(metrics_path)
+        except Exception as e:  # a malformed sidecar must not lose the run
+            logger.warning("Could not read %s: %s", metrics_path, e)
+            continue
+        if not {"dataset_name", "example_id"}.issubset(metrics.columns):
+            logger.warning("%s has no dataset_name/example_id to join on", metrics_path)
+            continue
+
+        wanted = _rfd4_inline_metric_columns(list(metrics.columns))
+        if not wanted:
+            continue
+        joined = metrics[["dataset_name", "example_id"] + wanted].copy()
+        joined["id"] = (
+            joined["dataset_name"].astype(str).str.replace(r"\.json$", "", regex=True)
+            + "_"
+            + joined["example_id"].astype(str)
+        )
+        joined = joined.drop(columns=["dataset_name", "example_id"])
+        # A duplicated key would multiply the design rows on merge.
+        joined = joined.drop_duplicates(subset=["id"], keep="first")
+
+        for col in wanted:
+            if col in _RFD4_INLINE_FLAG_COLUMNS:
+                # Not ``astype(bool)``: that would turn a missing value into True.
+                # Object dtype keeps None as None, which stays JSON-serialisable.
+                joined[col] = [
+                    None if pd.isna(v) else bool(v)
+                    for v in pd.to_numeric(joined[col], errors="coerce")
+                ]
+            elif _rfd4_inline_is_percent(col):
+                joined[col] = pd.to_numeric(joined[col], errors="coerce") / 100.0
+        # Vega-Lite reads a dot in a field name as nested access, so flatten them.
+        joined = joined.rename(columns={c: c.replace(".", "_") for c in wanted})
+        # Columns the results table already provides win: this merge goes away once
+        # combined_scores.tsv carries them itself.
+        overlap = [c for c in joined.columns if c != "id" and c in df.columns]
+        if overlap:
+            joined = joined.drop(columns=overlap)
+
+        merged = df.merge(joined, on="id", how="left")
+        merged["inline_metrics_oracle"] = oracle
+        matched = int(merged[joined.columns[0]].notna().sum()) if len(joined.columns) else 0
+        logger.info(
+            "Merged %s metrics from %s for %d/%d designs",
+            oracle, file_name, matched, len(merged),
+        )
+        return merged
+    return df
+
+
 def load_run_table(run_metadata: Dict[str, Any]) -> Optional[pd.DataFrame]:
     _t = Timer(logger, "load_run_table", path=run_metadata.get("path")).start()
     try:
@@ -714,6 +863,8 @@ def load_run_table(run_metadata: Dict[str, Any]) -> Optional[pd.DataFrame]:
                 df = _standardise_dataframe_columns(
                     df, run_metadata.get("method", "")
                 )
+                if run_metadata.get("method") == "rfd4_proteina":
+                    df = _merge_rfd4_inline_metrics(df, path)
                 df["source_path"] = str(path)
                 all_dfs.append(df)
             except Exception as e:
@@ -749,6 +900,8 @@ def _standardise_dataframe_columns(df: pd.DataFrame, method: str) -> pd.DataFram
             "Sequence",
             "sequence",
             "binder_sequence",
+            # BindCraft2's stage tables name it this.
+            "Binder_Sequence",
             "binder_seq",
             "seq",
         ],

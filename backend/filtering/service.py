@@ -112,6 +112,9 @@ def _sample_values(series: pl.Series) -> Optional[Dict[str, float]]:
     series = series.drop_nulls()
     if series.len() == 0:
         return None
+    # A flag has no meaningful range; the picker shows a yes/no choice, not a slider.
+    if series.dtype == pl.Boolean:
+        return None
     return {
         "min": float(series.min()),  # type: ignore[arg-type]
         "max": float(series.max()),  # type: ignore[arg-type]
@@ -129,7 +132,11 @@ def compute_available_columns(run_ids: List[str]) -> List[ColumnInfo]:
     if by_method:
         all_numeric_cols = sorted({c for cols in by_method.values() for c in cols})
     else:
-        all_numeric_cols = sorted(c for c, dt in zip(df.columns, df.dtypes) if dt.is_numeric())
+        all_numeric_cols = sorted(
+            c
+            for c, dt in zip(df.columns, df.dtypes)
+            if dt.is_numeric() or dt == pl.Boolean
+        )
     all_numeric_cols = [
         c
         for c in all_numeric_cols

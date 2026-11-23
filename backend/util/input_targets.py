@@ -14,6 +14,11 @@ _STRUCTURE_EXT_RE = re.compile(
     r".+\.(?:pdb|cif)(?:\.gz)?$", re.IGNORECASE
 )
 
+# Config-mode workflows (``--rfd4_config``, ``--bc2_config``, ``--boltzgen_config``)
+# name their target inside a spec file rather than in params.json, so params alone
+# yields no structure. One hop into such a spec covers all of them.
+_CONFIG_EXT_RE = re.compile(r".+\.(?:ya?ml|json)$", re.IGNORECASE)
+
 
 @dataclass(frozen=True)
 class InputTargetInfo:
@@ -30,6 +35,39 @@ def _is_structure_like_string(s: str) -> bool:
     if len(t) < 5 or t.startswith(("http://", "https://")):
         return False
     return bool(_STRUCTURE_EXT_RE.match(t))
+
+
+def _is_config_like_string(s: str) -> bool:
+    t = s.strip()
+    if len(t) < 5 or t.startswith(("http://", "https://")):
+        return False
+    return bool(_CONFIG_EXT_RE.match(t))
+
+
+def _structure_paths_in_config(config_path: Path) -> List[str]:
+    """Structure paths named inside a YAML/JSON spec, resolved against the spec's own
+    directory (how every config-mode workflow resolves them)."""
+    try:
+        text = config_path.read_text()
+    except OSError:
+        return []
+    try:
+        import yaml  # YAML is a superset of JSON, so this covers both.
+
+        data = yaml.safe_load(text)
+    except Exception:
+        return []
+    strings: List[str] = []
+    _walk_string_values(data, strings)
+    out: List[str] = []
+    for value in strings:
+        if not _is_structure_like_string(value):
+            continue
+        candidate = Path(value.strip())
+        out.append(
+            str(candidate if candidate.is_absolute() else config_path.parent / candidate)
+        )
+    return out
 
 
 def _resolve_under_run(run_path: Path, raw: str) -> Optional[Path]:
@@ -132,6 +170,15 @@ def list_input_targets(run_metadata: Dict[str, Any]) -> List[InputTargetInfo]:
         for s in strings:
             if _is_structure_like_string(s):
                 pairs.append(("params", s))
+
+        for s in strings:
+            if not _is_config_like_string(s):
+                continue
+            config_path = _resolve_under_run(run_path, s)
+            if config_path is None:
+                continue
+            for nested in _structure_paths_in_config(config_path):
+                pairs.append((config_path.name, nested))
 
     ordered = _ordered_unique_paths(run_path, pairs)
 

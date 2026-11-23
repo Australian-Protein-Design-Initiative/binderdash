@@ -21,6 +21,17 @@ PLOT_DEFAULT_XY_BY_METHOD: Dict[str, Dict[str, Tuple[str, ...]]] = {
         "x": ("rf3_ipsae_min", "pair_pae"),
         "y": ("iptm",),
     },
+    # RFD4-Proteina's scores are merged in from the oracle's inline metrics table;
+    # consensus_z only exists when the run was also refolded (--refold_with). Column
+    # names are post-standardisation ("Length") and post-merge.
+    "rfd4_proteina": {
+        "x": ("oracle_ppi_plddt_coi", "Length"),
+        "y": ("oracle_ppi_iptm_coi", "consensus_z"),
+    },
+    "bindcraft2": {
+        "x": ("pLDDT", "i_pAE"),
+        "y": ("i_pTM", "i_pDAE"),
+    },
 }
 
 

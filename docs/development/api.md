@@ -116,7 +116,7 @@ One pipeline execution. Key fields:
 | ----- | ----------- |
 | `run_id` | Stable UUID (assigned at ingest) |
 | `project_id` | Project name |
-| `method` | `bindcraft`, `rfd`, `rfd3`, `boltzgen`, … |
+| `method` | `bindcraft`, `bindcraft2`, `rfd`, `rfd3`, `rfd4_proteina`, `boltzgen`, … |
 | `path` | Filesystem path at ingest |
 | `metadata.name` | Display name |
 | `metadata.pdb_count` | Structure file count |
@@ -135,7 +135,7 @@ Common Binderdash fields:
 | Field | Description |
 | ----- | ----------- |
 | `design_id` | Primary identifier from results table |
-| `backbone_id` | `design_id` with MPNN / AF2 suffixes removed |
+| `backbone_id` | `design_id` with MPNN / AF2 / BindCraft2 `_candidate{n}` and `_seq{n}` suffixes removed |
 | `run_id`, `project_id`, `run_name`, `method`, `run_path` | Run context |
 | `pdb_file` | Structure basename (not full path) |
 | `source_path` | Distinguishes rows when runs are merged |
@@ -155,6 +155,12 @@ The in-memory designs list is sorted by each method’s primary score (see table
 | `rfd` | `pae_interaction` | ascending |
 | `boltzgen` | `design_to_target_iptm` | descending |
 | `rfd3` | `iptm`, `pair_pae`, `rf3_ipsae_min`, `rf3_rmsd_target_aligned_binder_rmsd_all` | descending |
+| `rfd4_proteina` | `oracle_ppi_iptm_coi`, else `consensus_z` (refolded runs only) | descending |
+| `bindcraft2` | `i_pDAE` (absent for a design with no interface contacts; those sort last) | descending |
+
+RFD4-Proteina's `combined_scores.tsv` carries only identity and sequence. Its scores are merged on ingest from the oracle's sibling table (`of3_inline_metrics.csv` for OpenFold3, `af3_inline_metrics.csv` for AlphaFold3) in the same directory, joined per batch - `example_id` repeats across batches, so the key is the batch from `dataset_name` plus `example_id`. Merged columns have their dots flattened to underscores (`oracle_ppi.iptm_coi` becomes `oracle_ppi_iptm_coi`), generation hyperparameters and work-directory paths are dropped, and `inline_metrics_oracle` records which oracle produced them. **The oracle reports pTM, ipTM and pLDDT on 0-100; these are rescaled to 0-1 on merge** so they match every other method, while the PAE and RMSD columns stay in angstroms. `_coi` means the chain of interest, which for a binder run is the binder chain.
+
+BindCraft2 publishes structures per stage: accepted designs (`ranked.csv`) in `results/bc2/ranked/`, refolded candidates (`refolded.csv`) in each batch's `2_Refolded/Complexes/`. A run detected on `ranked.csv` lists both, so `pdb_count` can exceed the design count. Note also that BindCraft2's bare `pLDDT` column is the **binder chain's**, not the complex average (`Target_pLDDT` and `Unbound_Binder_pLDDT` are separate), which is what canonical `binder_plddt` resolves to.
 
 For BindCraft, ascending `Average_i_pTM` means lower values sort first in the API cache; re-sort client-side if “higher is better” for your analysis.
 

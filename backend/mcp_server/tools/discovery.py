@@ -210,7 +210,7 @@ def register(mcp: Any) -> None:
         methods: Annotated[
             Optional[List[str]],
             Field(
-                description="Filter to these method IDs (bindcraft, rfd3, boltzgen, …)."
+                description="Filter to these method IDs (bindcraft, bindcraft2, rfd3, rfd4_proteina, boltzgen, …)."
             ),
         ] = None,
         project_id: Annotated[

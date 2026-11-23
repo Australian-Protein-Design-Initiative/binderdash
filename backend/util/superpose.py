@@ -15,7 +15,9 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import requests
-from Bio.PDB import MMCIFParser, PDBParser, Structure
+from Bio.PDB import PDBParser, Structure
+
+from .structure_io import parse_mmcif
 from Bio.PDB.mmcifio import MMCIFIO
 from Bio.PDB.Polypeptide import is_aa
 from tmtools import tm_align
@@ -172,8 +174,7 @@ def _load_structure_from_path(path: Path) -> Structure.Structure:
             tmp.write(data)
             tmp_path = tmp.name
         try:
-            parser = MMCIFParser(QUIET=True)
-            return parser.get_structure("s", tmp_path)
+            return parse_mmcif(tmp_path, "s")
         finally:
             os.unlink(tmp_path)
     if lower.endswith(".pdb.gz"):
@@ -188,8 +189,7 @@ def _load_structure_from_path(path: Path) -> Structure.Structure:
         finally:
             os.unlink(tmp_path)
     if lower.endswith(".cif"):
-        parser = MMCIFParser(QUIET=True)
-        return parser.get_structure("s", str(path))
+        return parse_mmcif(str(path), "s")
     parser = PDBParser(QUIET=True)
     return parser.get_structure("s", str(path))
 
@@ -198,7 +198,7 @@ def _load_structure_from_bytes(data: bytes, fmt: str) -> Structure.Structure:
     fmt_l = fmt.lower()
     if fmt_l == "mmcif":
         suffix = ".cif"
-        parser_f = lambda p: MMCIFParser(QUIET=True).get_structure("s", p)
+        parser_f = lambda p: parse_mmcif(p, "s")
     else:
         suffix = ".pdb"
         parser_f = lambda p: PDBParser(QUIET=True).get_structure("s", p)

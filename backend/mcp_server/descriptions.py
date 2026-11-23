@@ -9,7 +9,7 @@ LIST_RUNS = """List the binder design runs available in Binderdash.
 
 Start here. Every other tool takes `run_id` values from this one.
 
-Each run has a `method` (bindcraft, boltzgen, rfd, rfd3, ...), which determines what
+Each run has a `method` (bindcraft, bindcraft2, boltzgen, rfd, rfd3, rfd4_proteina, ...), which determines what
 columns its designs carry — there is no fixed schema across methods. Identify runs by
 `run_id` and `method` (short, unambiguous); do not rely on a truncated `run_name` in a
 client table view. Runs sharing a `merge_group` are separate folders of the same logical

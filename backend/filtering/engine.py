@@ -580,6 +580,8 @@ _MPNN_BEST_SCORE: Dict[str, Tuple[str, Tuple[str, ...], bool]] = {
     "rfd": ("pae_interaction", ("plddt_binder",), False),
     "boltzgen": ("design_to_target_iptm", ("design_ptm",), True),
     "rfd3": ("iptm", ("rf3_ipsae_min",), True),
+    "bindcraft2": ("i_pDAE", ("i_pTM",), True),
+    "rfd4_proteina": ("oracle_ppi_iptm_coi", ("oracle_ppi_plddt_coi",), True),
 }
 
 

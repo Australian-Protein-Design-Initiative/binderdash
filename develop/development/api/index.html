@@ -365,7 +365,7 @@ curl -sS -H "Authorization: Bearer $BINDERDASH_TOKEN" "$BASE/api/runs"</code></p
 </tr>
 <tr>
 <td><code>method</code></td>
-<td><code>bindcraft</code>, <code>rfd</code>, <code>rfd3</code>, <code>boltzgen</code>, …</td>
+<td><code>bindcraft</code>, <code>bindcraft2</code>, <code>rfd</code>, <code>rfd3</code>, <code>rfd4_proteina</code>, <code>boltzgen</code>, …</td>
 </tr>
 <tr>
 <td><code>path</code></td>
@@ -411,7 +411,7 @@ curl -sS -H "Authorization: Bearer $BINDERDASH_TOKEN" "$BASE/api/runs"</code></p
 </tr>
 <tr>
 <td><code>backbone_id</code></td>
-<td><code>design_id</code> with MPNN / AF2 suffixes removed</td>
+<td><code>design_id</code> with MPNN / AF2 / BindCraft2 <code>_candidate{n}</code> and <code>_seq{n}</code> suffixes removed</td>
 </tr>
 <tr>
 <td><code>run_id</code>, <code>project_id</code>, <code>run_name</code>, <code>method</code>, <code>run_path</code></td>
@@ -478,8 +478,20 @@ curl -sS -H "Authorization: Bearer $BINDERDASH_TOKEN" "$BASE/api/runs"</code></p
 <td><code>iptm</code>, <code>pair_pae</code>, <code>rf3_ipsae_min</code>, <code>rf3_rmsd_target_aligned_binder_rmsd_all</code></td>
 <td>descending</td>
 </tr>
+<tr>
+<td><code>rfd4_proteina</code></td>
+<td><code>oracle_ppi_iptm_coi</code>, else <code>consensus_z</code> (refolded runs only)</td>
+<td>descending</td>
+</tr>
+<tr>
+<td><code>bindcraft2</code></td>
+<td><code>i_pDAE</code> (absent for a design with no interface contacts; those sort last)</td>
+<td>descending</td>
+</tr>
 </tbody>
 </table>
+<p>RFD4-Proteina's <code>combined_scores.tsv</code> carries only identity and sequence. Its scores are merged on ingest from the oracle's sibling table (<code>of3_inline_metrics.csv</code> for OpenFold3, <code>af3_inline_metrics.csv</code> for AlphaFold3) in the same directory, joined per batch - <code>example_id</code> repeats across batches, so the key is the batch from <code>dataset_name</code> plus <code>example_id</code>. Merged columns have their dots flattened to underscores (<code>oracle_ppi.iptm_coi</code> becomes <code>oracle_ppi_iptm_coi</code>), generation hyperparameters and work-directory paths are dropped, and <code>inline_metrics_oracle</code> records which oracle produced them. <strong>The oracle reports pTM, ipTM and pLDDT on 0-100; these are rescaled to 0-1 on merge</strong> so they match every other method, while the PAE and RMSD columns stay in angstroms. <code>_coi</code> means the chain of interest, which for a binder run is the binder chain.</p>
+<p>BindCraft2 publishes structures per stage: accepted designs (<code>ranked.csv</code>) in <code>results/bc2/ranked/</code>, refolded candidates (<code>refolded.csv</code>) in each batch's <code>2_Refolded/Complexes/</code>. A run detected on <code>ranked.csv</code> lists both, so <code>pdb_count</code> can exceed the design count. Note also that BindCraft2's bare <code>pLDDT</code> column is the <strong>binder chain's</strong>, not the complex average (<code>Target_pLDDT</code> and <code>Unbound_Binder_pLDDT</code> are separate), which is what canonical <code>binder_plddt</code> resolves to.</p>
 <p>For BindCraft, ascending <code>Average_i_pTM</code> means lower values sort first in the API cache; re-sort client-side if “higher is better” for your analysis.</p>
 <h2 id="endpoint-reference">Endpoint reference<a class="headerlink" href="#endpoint-reference" title="Permanent link">&para;</a></h2>
 <h3 id="auth">Auth<a class="headerlink" href="#auth" title="Permanent link">&para;</a></h3>

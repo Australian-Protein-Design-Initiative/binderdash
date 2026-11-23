@@ -863,7 +863,6 @@ export interface FilteringPreviewResponseDto {
     total_designs: number
     per_filter_counts: FilterCascadeStageDto[]
     final_passing: number
-    available_columns: ColumnInfoDto[]
 }
 
 export interface FilteringColumnsResponseDto {

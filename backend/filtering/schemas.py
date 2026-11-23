@@ -254,7 +254,6 @@ class FilteringPreviewResponse(BaseModel):
     total_designs: int
     per_filter_counts: List[FilterCascadeStage]
     final_passing: int
-    available_columns: List[ColumnInfo]
 
 
 class FilteringRunRequest(BaseModel):

@@ -9,7 +9,7 @@ from __future__ import annotations
 import math
 import uuid
 from dataclasses import dataclass, field as dc_field
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set
 
 import polars as pl
 
@@ -24,6 +24,7 @@ from .engine import (
     run_filtering_pipeline,
 )
 from .metrics import (
+    METRIC_ALIASES,
     RAW_TO_CANONICAL,
     available_columns_for_methods,
     higher_is_better,
@@ -47,6 +48,7 @@ from .schemas import (
     FilteringRunResponse,
     FilterSpec,
     RankedDesignRow,
+    RankingMetric,
     SavedSet,
     SavedSetDesignRow,
     SavedSetDesignsResponse,
@@ -61,19 +63,53 @@ from .schemas import (
 _STRING_FILTER_COLUMNS = ["design_id", "project_id", "run_name", "method", "Sequence"]
 
 
-def build_designs_dataframe(run_ids: List[str]) -> pl.DataFrame:
+def build_designs_dataframe(
+    run_ids: List[str], columns: Optional[Set[str]] = None
+) -> pl.DataFrame:
     """Aggregate DataFrame for the given runs, from the in-memory designs cache (loads
     on demand for runs not already cached). Empty DataFrame if no designs found.
 
-    Design dicts are heterogeneous (method-dependent columns; see CLAUDE.md) — polars
-    infers a union schema across the row dicts and fills missing keys with null,
-    matching pandas' prior behaviour here.
+    Design dicts are heterogeneous (method-dependent columns; see CLAUDE.md), so the
+    frame is the union of their keys (first-seen order), null where a row lacks one.
+
+    Built one column at a time rather than ``pl.DataFrame(rows)``: polars' row-wise
+    dict ingestion peaked at ~1.6 GB for ~31k designs x 417 columns (a 147 MB frame),
+    column-wise at ~0.47 GB, with identical dtypes and values (``strict=False`` gives
+    the same supertype inference, e.g. int+str -> String).
+
+    ``columns`` restricts the frame to those keys; pass it whenever the caller knows
+    what it reads. The live filter path touches a handful of columns, which builds in
+    tens of MB. Keys absent from every row stay absent, as in the full build.
     """
     rows = get_designs_for_run_ids(run_ids)
     if not rows:
         return pl.DataFrame()
-    return pl.DataFrame(rows, infer_schema_length=None)
+    keys = dict.fromkeys(k for d in rows for k in d)
+    if columns is not None:
+        keys = [k for k in keys if k in columns]
+    return pl.DataFrame(
+        {k: pl.Series(k, [d.get(k) for d in rows], strict=False) for k in keys}
+    )
 
+
+_KEY_COLUMNS = ("run_id", "design_id", "source_path", "method")
+_TIEBREAK_COLUMNS = ("design_to_target_iptm", "iptm", "Average_i_pTM")
+
+
+def _referenced_columns(
+    filters: List[FilterSpec], metrics: Optional[List[RankingMetric]] = None
+) -> Set[str]:
+    """Every design key the hard-filter and ranking stages can read for these specs:
+    identity columns, each named column, and every raw column a canonical name may
+    resolve to (see engine._resolve_canonical)."""
+    cols: Set[str] = set(_KEY_COLUMNS)
+    for name in [f.column for f in filters] + [m.column for m in metrics or []]:
+        cols.add(name)
+        for raw in METRIC_ALIASES.get(name, {}).values():
+            cols.update([raw] if isinstance(raw, str) else (raw or []))
+    if metrics:
+        cols.update(_TIEBREAK_COLUMNS)
+    return cols
 
 
 @dataclass
@@ -96,8 +132,9 @@ def build_filter_inputs(
     run_ids: List[str],
     filters: List[FilterSpec],
     target_contact_groups: Optional[List[TargetContactGroup]] = None,
+    columns: Optional[Set[str]] = None,
 ) -> FilterInputs:
-    df = build_designs_dataframe(run_ids)
+    df = build_designs_dataframe(run_ids, columns)
     if df.is_empty() or not target_contact_groups:
         return FilterInputs(df=df, specs=list(filters))
     df, contact_specs, labels, warnings = augment_with_target_contacts(
@@ -202,7 +239,7 @@ def compute_available_columns(run_ids: List[str]) -> List[ColumnInfo]:
             present_in_runs = sorted(
                 str(m)
                 for m in df["method"].unique().to_list()
-                if df.filter(pl.col("method") == m)[col].drop_nulls().len() > 0
+                if df[col].filter(df["method"] == m).drop_nulls().len() > 0
             )
             columns.append(
                 ColumnInfo(
@@ -242,13 +279,16 @@ def compute_available_columns(run_ids: List[str]) -> List[ColumnInfo]:
 
 def compute_preview(request: FilteringPreviewRequest) -> FilteringPreviewResponse:
     inputs = build_filter_inputs(
-        request.run_ids, request.filters, request.target_contact_groups
+        request.run_ids,
+        request.filters,
+        request.target_contact_groups,
+        columns=_referenced_columns(request.filters),
     )
     df = inputs.df
     total = df.height
     if df.is_empty():
         return FilteringPreviewResponse(
-            total_designs=0, per_filter_counts=[], final_passing=0, available_columns=[]
+            total_designs=0, per_filter_counts=[], final_passing=0
         )
 
     stages = filter_cascade_counts(df, inputs.specs)
@@ -261,7 +301,6 @@ def compute_preview(request: FilteringPreviewRequest) -> FilteringPreviewRespons
         total_designs=total,
         per_filter_counts=stages,
         final_passing=final_passing,
-        available_columns=compute_available_columns(request.run_ids),
     )
 
 
@@ -272,7 +311,10 @@ def compute_apply(request: FilteringApplyRequest) -> FilteringApplyResponse:
     filter+rank+diversity pipeline (used for Saved Set creation).
     """
     inputs = build_filter_inputs(
-        request.run_ids, request.filters, request.target_contact_groups
+        request.run_ids,
+        request.filters,
+        request.target_contact_groups,
+        columns=_referenced_columns(request.filters),
     )
     df = inputs.df
     if df.is_empty():
@@ -294,7 +336,7 @@ def compute_apply(request: FilteringApplyRequest) -> FilteringApplyResponse:
 
 
 def _pick_tiebreak_column(df: pl.DataFrame) -> Optional[str]:
-    for candidate in ("design_to_target_iptm", "iptm", "Average_i_pTM"):
+    for candidate in _TIEBREAK_COLUMNS:
         if candidate in df.columns:
             return candidate
     return None
@@ -308,7 +350,10 @@ def compute_rank(request: FilteringRankRequest) -> FilteringRankResponse:
     it's a deliberate user action.
     """
     inputs = build_filter_inputs(
-        request.run_ids, request.filters, request.target_contact_groups
+        request.run_ids,
+        request.filters,
+        request.target_contact_groups,
+        columns=_referenced_columns(request.filters, request.metrics),
     )
     df = inputs.df
     if df.is_empty():

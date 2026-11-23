@@ -57,9 +57,6 @@ class TestFilteringPreview:
         assert body["total_designs"] == 10
         assert body["per_filter_counts"][0]["remaining"] == 7
         assert body["final_passing"] == 7
-        names = {c["name"] for c in body["available_columns"]}
-        assert "iptm" in names
-        assert "rmsd" in names
 
     def test_preview_no_runs_found(self, api_client, sqlite_designs_repo) -> None:
         cache_mod.run_cache.clear()
@@ -452,3 +449,52 @@ class TestSavedSetsCrud:
     def test_download_missing_returns_404(self, api_client, sqlite_designs_repo) -> None:
         resp = api_client.get("/api/saved-sets/does-not-exist/download")
         assert resp.status_code == 404
+
+
+class TestColumnProjection:
+    """apply/preview/rank build only the columns their specs read (memory: the full
+    union schema is hundreds of columns). Results must match the full-frame engine."""
+
+    def test_projected_matches_full_frame(self) -> None:
+        from backend.filtering.engine import apply_hard_filters, rank_designs
+        from backend.filtering.schemas import (
+            FilteringApplyRequest,
+            FilteringRankRequest,
+            FilterSpec,
+            RankingMetric,
+        )
+        from backend.filtering.service import (
+            build_designs_dataframe,
+            compute_apply,
+            compute_rank,
+        )
+
+        cache_mod.designs_by_run_id.clear()
+        cache_mod.designs_by_run_id["bc"] = [
+            _design("bc", i, run_name=f"bc-{i % 2}", unrelated=i, **({"good": True} if i < 3 else {}))
+            for i in range(6)
+        ]
+        cache_mod.designs_by_run_id["r3"] = [
+            {"run_id": "r3", "design_id": f"x{i}", "method": "rfd3", "iptm": 0.6 + i * 0.03,
+             "run_name": "r3-1", "other": "z"}
+            for i in range(6)
+        ]
+        run_ids = ["bc", "r3"]
+        filters = [
+            FilterSpec(column="iptm", operator=">=", threshold=0.65),  # canonical, cross-method
+            FilterSpec(column="run_name", operator="contains", text_value="-1"),
+            FilterSpec(column="tag", operator="is_empty"),
+            FilterSpec(column="good", operator="not_equals", text_value="false"),
+        ]
+        metrics = [RankingMetric(column="iptm", weight=1, higher_is_better=True)]
+
+        full = apply_hard_filters(build_designs_dataframe(run_ids), filters)
+        expected = sorted(full.filter("pass_filters")["design_id"].to_list())
+        got = compute_apply(FilteringApplyRequest(run_ids=run_ids, filters=filters))
+        assert sorted(k.design_id for k in got.passing_keys) == expected
+        assert expected  # the filters must leave something to compare
+
+        full_ranked = rank_designs(full, metrics, tiebreak_column="iptm")["design_id"].to_list()
+        ranked = compute_rank(FilteringRankRequest(run_ids=run_ids, filters=filters, metrics=metrics))
+        assert [r.design_id for r in ranked.designs] == full_ranked
+        cache_mod.designs_by_run_id.clear()

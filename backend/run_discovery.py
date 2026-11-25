@@ -967,7 +967,7 @@ def parse_run_params(run_metadata: Dict[str, Any]) -> Optional[Any]:
             return None
 
         logger.info(f"Parsing run params from {json_path}")
-        with open(json_path, "r") as f:
+        with open(json_path, "r", encoding="utf-8") as f:
             data = json.load(f)
         return data
     except Exception as e:

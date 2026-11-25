@@ -88,9 +88,9 @@ async def open_data_dir():
         if sys.platform == "win32":
             os.startfile(path)  # type: ignore[attr-defined]
         elif sys.platform == "darwin":
-            subprocess.Popen(["open", str(path)], check=False)
+            subprocess.Popen(["open", str(path)])
         else:
-            subprocess.Popen(["xdg-open", str(path)], check=False)
+            subprocess.Popen(["xdg-open", str(path)])
     except OSError as e:
         logger.exception("Failed to open data directory %s", path)
         raise HTTPException(

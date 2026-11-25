@@ -53,10 +53,16 @@ def is_within_bases(path_str: Any, base_dir_strings: List[str]) -> bool:
     under that base and must still count as inside it. ``..`` is collapsed, so it
     cannot be used to step out. Each base is matched both as written and resolved,
     because ``/api/tree`` hands out resolved base paths.
+
+    Compared through ``os.path.normcase``: identity on POSIX, but on Windows the
+    filesystem is case-insensitive, and a base written ``C:\\Runs`` would otherwise
+    fail to contain a stored run path spelled ``c:\\runs\\...``, dropping the run at
+    startup. ``is_under_any_base`` needs no equivalent - ``PurePath`` comparison is
+    already case-insensitive under the Windows flavour.
     """
     if not isinstance(path_str, str) or not path_str.strip():
         return False
-    candidate = normalised_path(path_str)
+    candidate = os.path.normcase(normalised_path(path_str))
     for raw in base_dir_strings:
         s = raw.strip()
         if not s:
@@ -66,7 +72,7 @@ def is_within_bases(path_str: Any, base_dir_strings: List[str]) -> bool:
             forms.add(str(Path(s).expanduser().resolve()))
         except (OSError, RuntimeError):
             pass
-        for base in forms:
+        for base in (os.path.normcase(f) for f in forms):
             if candidate == base or candidate.startswith(base.rstrip(os.sep) + os.sep):
                 return True
     return False

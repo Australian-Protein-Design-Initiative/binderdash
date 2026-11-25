@@ -71,7 +71,7 @@ def _module_sources() -> str:
     here = Path(__file__).parent
     blocks: List[str] = []
     for name in _MODULES:
-        source = (here / f"{name}.py").read_text()
+        source = (here / f"{name}.py").read_text(encoding="utf-8")
         blocks.append(
             f"# {'=' * 70}\n# from binderdash backend/seq_prep/{name}.py\n# {'=' * 70}\n"
             + _strip_module_imports(source)
@@ -132,7 +132,7 @@ SEQUENCE_COLUMNS = ("prepared_aa", "original_sequence", "Sequence", "sequence", 
 def read_designs(path, default_tag=None):
     """Read a Prepare Sequences export, or any TSV/CSV with design_id, a
     sequence column, and tag."""
-    text = Path(path).read_text()
+    text = Path(path).read_text(encoding="utf-8")
     delimiter = "\\t" if "\\t" in text.splitlines()[0] else ","
     rows = list(csv.DictReader(io.StringIO(text), delimiter=delimiter))
     if not rows:
@@ -266,7 +266,7 @@ def main(argv=None):
     if want_optimize:
         seeds = {}
         if args.seed_map:
-            raw = json.loads(Path(args.seed_map).read_text())
+            raw = json.loads(Path(args.seed_map).read_text(encoding="utf-8"))
             rows = raw.get("prepared", raw).get("rows", []) if isinstance(raw, dict) else []
             if rows:
                 seeds = {r["design_id"]: r["seed"] for r in rows if r.get("seed") is not None}
@@ -324,12 +324,12 @@ def main(argv=None):
         text = render(fmt, rows, cfg)
         suffix = FORMATS[fmt][1]
         path = Path(f"{stem}_{fmt}.{suffix}" if len(formats) > 1 else f"{stem}.{suffix}")
-        path.write_text(text + "\\n")
+        path.write_text(text + "\\n", encoding="utf-8")
         print(f"wrote {path} ({len(rows)} row(s))", file=sys.stderr)
 
     if seeds_used:
         seed_path = Path(f"{stem}_seeds.json")
-        seed_path.write_text(json.dumps(seeds_used, indent=2) + "\\n")
+        seed_path.write_text(json.dumps(seeds_used, indent=2) + "\\n", encoding="utf-8")
         print(f"wrote {seed_path} - pass it to --seed-map to reproduce this DNA", file=sys.stderr)
     return 0
 

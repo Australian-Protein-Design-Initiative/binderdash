@@ -110,7 +110,7 @@ def load_scores_table(scores_file: str) -> Dict[str, Dict[str, Any]]:
     scores_data = {}
 
     try:
-        with open(scores_file, "r") as f:
+        with open(scores_file, "r", encoding="utf-8") as f:
             reader = csv.DictReader(f, delimiter="\t")
 
             # Check if 'filename' column exists
@@ -246,7 +246,7 @@ def write_fasta(
     if not output_file or output_file == "-":
         sys.stdout.write(output_text)
     else:
-        with open(output_file, "w") as f:
+        with open(output_file, "w", encoding="utf-8") as f:
             f.write(output_text)
 
 

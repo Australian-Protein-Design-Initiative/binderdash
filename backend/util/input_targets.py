@@ -48,7 +48,7 @@ def _structure_paths_in_config(config_path: Path) -> List[str]:
     """Structure paths named inside a YAML/JSON spec, resolved against the spec's own
     directory (how every config-mode workflow resolves them)."""
     try:
-        text = config_path.read_text()
+        text = config_path.read_text(encoding="utf-8")
     except OSError:
         return []
     try:

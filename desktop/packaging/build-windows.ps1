@@ -34,6 +34,21 @@ if (-not (Test-Path $distDir)) {
     throw "Expected dist\Binderdash after PyInstaller build"
 }
 
+# Every file extracted from a downloaded zip inherits its mark of the web, and
+# .NET Framework refuses to load an assembly from the internet zone. pythonnet's
+# netfx loader then fails to resolve Python.Runtime.Loader.Initialize and the app
+# exits before the window opens, on a machine that is otherwise set up correctly.
+# The opt-in below is read by the default AppDomain of this process only.
+$exeConfig = @"
+<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+  <runtime>
+    <loadFromRemoteSources enabled="true"/>
+  </runtime>
+</configuration>
+"@
+Set-Content -Path (Join-Path $distDir "Binderdash.exe.config") -Value $exeConfig -Encoding UTF8
+
 $readme = @"
 Binderdash $version (Windows)
 

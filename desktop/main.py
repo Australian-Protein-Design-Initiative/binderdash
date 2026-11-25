@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import html
+import importlib
 import logging
 import socket
 import sys
@@ -107,6 +108,38 @@ def _show_startup_error(message: str) -> None:
         print(message, file=sys.stderr)
 
 
+def _selftest(port: int, log_file: Path) -> int:
+    """Start the backend and resolve a GUI toolkit, then exit.
+
+    A frozen bundle missing a compiled extension module still builds, still
+    launches, and only fails when the import that needs it runs. Packaging CI
+    runs the built artifact with --selftest so that failure happens on the
+    release build rather than on a user's machine.
+    """
+    server_thread = _start_uvicorn(port)
+    if not _wait_for_health(port, server_thread):
+        print(_startup_failure_message(port, log_file), file=sys.stderr)
+        return 1
+
+    # Imported this way deliberately: webview/__init__.py keeps a module-level
+    # `guilib = None` that shadows the submodule until a window is created.
+    guilib = importlib.import_module("webview.guilib")
+
+    try:
+        guilib.initialize()
+    except Exception:
+        traceback.print_exc()
+        print(
+            "selftest FAILED: backend serves /health but pywebview found no GUI "
+            "toolkit, so the app would start without a window.",
+            file=sys.stderr,
+        )
+        return 1
+
+    print(f"selftest OK: backend healthy on port {port}, GUI toolkit available")
+    return 0
+
+
 class DesktopApi:
     """JS bridge exposed to the SPA via pywebview."""
 
@@ -159,6 +192,9 @@ def main() -> int:
         port,
         user_data_dir(),
     )
+
+    if "--selftest" in sys.argv[1:]:
+        return _selftest(port, log_file)
 
     server_thread = _start_uvicorn(port)
 

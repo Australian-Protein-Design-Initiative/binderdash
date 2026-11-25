@@ -11,17 +11,17 @@ if [[ ! -f backend/static/index.html ]]; then
   (cd frontend && pnpm install && pnpm run build)
 fi
 
-if [[ "$(uname -s)" == "Linux" ]]; then
-  if ! /usr/bin/python3 -c "import gi" 2>/dev/null; then
-    echo "ERROR: python3-gi is required to build the Linux desktop bundle."
-    echo "Install: sudo apt-get install python3-gi python3-gi-cairo gir1.2-gtk-3.0 gir1.2-webkit2-4.1"
-    exit 1
-  fi
-fi
+# python3-gi is checked by binderdash.spec, against the interpreter that actually runs
+# PyInstaller. Checking /usr/bin/python3 here passed on a machine whose distro Python
+# was a different minor version from the build venv, and the bundle shipped without
+# gi's bindings.
 
 echo "Installing backend + desktop dependencies..."
 uv pip install -r backend/requirements.txt
-uv pip install -e backend 2>/dev/null || uv pip install -r backend/requirements.txt
+# --no-deps: without it the editable install re-resolves the backend's own unpinned
+# dependencies and silently upgrades them over the versions pinned on the line above,
+# so the bundle stops matching requirements.txt.
+uv pip install -e backend --no-deps 2>/dev/null || uv pip install -r backend/requirements.txt
 # Linux GTK/WebKit bindings come from distro python3-gi (bundled via binderdash.spec).
 # pywebview[gtk] would pull pip pygobject and fail to compile in CI.
 uv pip install pywebview pyinstaller

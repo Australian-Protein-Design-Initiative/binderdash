@@ -1,6 +1,6 @@
 [project]
 name = "binderdash-backend"
-version = "0.4.2"
+version = "0.4.3"
 description = "Backend for binderdash"
 dependencies = [
     "fastapi",

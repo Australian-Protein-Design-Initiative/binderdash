@@ -3,6 +3,7 @@
 
 import importlib.util
 import sys
+import tempfile
 from pathlib import Path
 
 from PyInstaller.utils.hooks import collect_all, collect_data_files, collect_submodules
@@ -95,10 +96,20 @@ hooksconfig: dict = {}
 if sys.platform == "linux":
     # pywebview on Linux needs PyGObject (gi). Ubuntu/Debian ship it for system Python
     # under dist-packages; include it in the frozen bundle.
+    # Expose only the two distro packages pywebview needs, through a directory of
+    # symlinks, rather than putting all of dist-packages on the search path.
+    # PyInstaller prepends pathex to the module graph's path, so dist-packages there
+    # shadows the build venv for every package present in both: that is how 0.4.2
+    # shipped with the distro's numpy and a cryptography whose Python half and Rust
+    # half came from different installations.
     _dist_packages = Path("/usr/lib/python3/dist-packages")
-    if _dist_packages.is_dir():
-        sys.path.insert(0, str(_dist_packages))
-        pathex.append(str(_dist_packages))
+    if (_dist_packages / "gi").is_dir():
+        _gi_only = Path(tempfile.mkdtemp(prefix="binderdash-gi-"))
+        for _pattern in ("gi", "cairo", "PyGObject*", "pycairo*"):
+            for _src in _dist_packages.glob(_pattern):
+                (_gi_only / _src.name).symlink_to(_src)
+        sys.path.append(str(_gi_only))
+        pathex.append(str(_gi_only))
 
     for _pkg in ("gi", "cairo"):
         try:
@@ -108,6 +119,32 @@ if sys.platform == "linux":
             hiddenimports += _h
         except Exception:
             pass
+
+    # collect_all skips extension modules (same gap as biotite below), so gi's
+    # bindings have to be listed by hand. Importing them here under the build
+    # interpreter is also the ABI check: distro PyGObject built for a different
+    # Python minor version than the one running PyInstaller fails right here
+    # rather than producing a bundle whose window never opens.
+    try:
+        import gi._gi as _gi_ext
+
+        _gi_bins = [(_gi_ext.__file__, "gi")]
+        try:
+            import gi._gi_cairo as _gi_cairo_ext
+
+            _gi_bins.append((_gi_cairo_ext.__file__, "gi"))
+        except ImportError:
+            pass
+        binaries += _gi_bins
+    except ImportError as exc:
+        raise SystemExit(
+            f"PyGObject bindings (gi._gi) are not importable under {sys.executable}: {exc}\n"
+            "pywebview has no GUI backend without them, so the packaged app would "
+            "start its server and never open a window.\n"
+            "Install python3-gi for a Python matching this interpreter: "
+            "sudo apt-get install python3-gi python3-gi-cairo gir1.2-gtk-3.0 "
+            "gir1.2-webkit2-4.1"
+        )
 
     hiddenimports += collect_submodules("gi")
     hiddenimports += [
@@ -130,6 +167,18 @@ if sys.platform == "linux":
             "module-versions": {"Gtk": "3.0"},
         },
     }
+
+# The Rust bindings and the Python layer of cryptography ship as one unit; a build
+# environment holding halves of two releases yields an app that cannot import
+# authlib, and so cannot serve /health. Fail here instead of at the user's first launch.
+try:
+    import cryptography.hazmat.primitives.hashes  # noqa: F401
+except Exception as exc:
+    raise SystemExit(
+        f"cryptography is broken in the build environment: {exc}\n"
+        "Its Python files and its _rust extension are probably from different "
+        "releases. Reinstall it: uv pip install --reinstall -r backend/requirements.txt"
+    )
 
 # Importing biotite.structure pulls Cython extensions (sequence align) and the
 # Rust extension biotite.rust. Modulegraph misses both: rust submodules are not
@@ -167,7 +216,20 @@ a = Analysis(
     # fastmcp is an optional extra. If it happens to be installed in the build
     # environment, bundling it pulls the mcp SDK, which fails at import in a
     # frozen app. Desktop builds leave the endpoint unmounted.
-    excludes=["tkinter", "matplotlib", "pytest", "fastmcp", "mcp"],
+    # pkg_resources is referenced only from build-time helpers (pycairo's
+    # get_include(), pygments' plugin lookup). Bundling it adds a runtime hook that
+    # runs before main() and aborts the app when its vendored dependencies are
+    # incomplete, which is what modern setuptools, having dropped pkg_resources
+    # entirely, guarantees.
+    excludes=[
+        "tkinter",
+        "matplotlib",
+        "pytest",
+        "fastmcp",
+        "mcp",
+        "pkg_resources",
+        "setuptools",
+    ],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
     cipher=block_cipher,

@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.3] - 2026-11-25
+
 ### Added
 
 - **Run types**: Two more nf-binder-design pipelines are detected on scan. **RFD4-Proteina** (`--method rfd4_proteina`, method id `rfd4_proteina`) reads `results/rfd4_proteina/combined_scores.tsv` with the mmCIFs in `results/rfd4_proteina/designs/`. That table holds only identity and sequence, so the oracle's scores are merged in on ingest from its sibling `of3_inline_metrics.csv` / `af3_inline_metrics.csv`, joined per batch and with dots flattened to underscores; `inline_metrics_oracle` records which oracle produced them, and pTM/ipTM/pLDDT are rescaled from that file's 0-100 to 0-1 so they match the other methods (PAE and RMSD stay in angstroms). The primary score is `oracle_ppi_iptm_coi` - interface pTM for the binder chain - falling back to `consensus_z` on a run refolded with `--refold_with`. The oracle's `ppi_pass`, `pre_oracle_pass`, `ppi_all_metrics_present` and `oracle_ppi_has_clash` flags are stored as booleans rather than the 0.0/1.0 the file writes. **BindCraft2** (`--method bc2`, method id `bindcraft2`) reads `results/bc2/ranked.csv` with the accepted mmCIFs in `results/bc2/ranked/`, ranked by `i_pDAE` (BindCraft2's own distance-masked interface confidence, highest first); a campaign that accepted nothing falls back to `results/bc2/refolded.csv`, every scored candidate with its `outcome` and `failed_filters`. In both tiers, structures come from wherever that stage published them: `results/bc2/ranked/` for accepted designs, each batch's `2_Refolded/Complexes/` for refolded candidates (a ranked run lists both, so its structure count can exceed its design count - which is what lets chain roles resolve on a campaign that accepted a single design). BindCraft2 `_candidate{n}` (refolded) and `_seq{n}` (accepted) suffixes collapse onto a shared `backbone_id`, so the Designs table groups the candidates of one trajectory as it does MPNN variants.
@@ -21,19 +23,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Docs**: The documentation site and repository links now point at [Australian-Protein-Design-Initiative/binderdash](https://github.com/Australian-Protein-Design-Initiative/binderdash). The published docs are at <https://australian-protein-design-initiative.github.io/binderdash/>.
 
+### Fixed
+
+- **Desktop app**: The 0.4.2 desktop builds would not start. The Linux packaging spec put the whole of the distro's `/usr/lib/python3/dist-packages` on PyInstaller's module search path to pick up PyGObject, and because that path takes precedence over the build environment, the bundle ended up mixing two installations of every package present in both. The result carried a cryptography whose Python files and Rust extension came from different releases, so the backend could not import authlib and never served `/health`, and it was missing PyGObject's compiled bindings, so pywebview had no GUI backend either. Only `gi` and `cairo` are exposed from the distro now, their extension modules are bundled explicitly (`collect_all` skips extension modules), and the build fails up front if either dependency is unusable where it is being built.
+- **Desktop app**: Packaging CI runs each built artifact with a new `--selftest` flag on all three platforms. It starts the backend, waits for `/health` and resolves a GUI toolkit, so a bundle missing a compiled extension module - which builds and launches normally and only fails at the import that needs it - stops the release instead of reaching users.
+- **Designs / tables**: Clicking the row-selection cell toggles that row. On Designs, a click beside the checkbox keeps the rest of a multi-selection. Select Runs and Ingest scan results use the same toggle.
+- **Downloads**: A design bundle zip unpacks into one folder named after the download (the order name, or `saved_set_<name>`).
+- **Sequence prep / DNA optimisation**: A custom nucleotide addition that is not a whole number of codons stays as literal DNA during optimisation, so the design and tag reading frame stays aligned.
+- **Structures**: mmCIF files written without an `_atom_site.occupancy` column (BindCraft2's, among others) no longer fail to load. Every mmCIF reader supplies the missing column, so sequence extraction, chain-role resolution (and with it Target Contacts), tag metrics and superposition all work on those files.
+
 ### Security
 
 - **Ingest**: `POST /api/runs/ingest` no longer stores the run details sent by the client. It takes only each run's folder path(s), re-detects the run on disk, and rejects folders outside `RUN_BASE_DIRS`. Previously a signed-in user could store arbitrary `pdb_files` / `results_table` paths and then read those files through the structure and run-table endpoints.
 - **Startup**: The server refuses to start if `RUN_BASE_DIRS` is empty or lists a directory that does not exist (desktop builds excepted). An empty `RUN_BASE_DIRS` used to let `/api/tree` and `/api/runs/scan` reach any path, with the working directory offered as a fallback root.
 - **Stored runs**: Runs whose folders, structure files or results table lie outside the current `RUN_BASE_DIRS` are not loaded at startup. Each is logged as a warning and kept in the database, and reappears if its directory is added back. A database shared between Docker and a local server (different paths for the same runs) will show only the runs whose paths exist under the current setting.
 - **Accounts**: A user marked inactive is refused at login and on existing sessions, as their API keys already were.
-
-### Fixed
-
-- **Designs / tables**: Clicking the row-selection cell toggles that row. On Designs, a click beside the checkbox keeps the rest of a multi-selection. Select Runs and Ingest scan results use the same toggle.
-- **Downloads**: A design bundle zip unpacks into one folder named after the download (the order name, or `saved_set_<name>`).
-- **Sequence prep / DNA optimisation**: A custom nucleotide addition that is not a whole number of codons stays as literal DNA during optimisation, so the design and tag reading frame stays aligned.
-- **Structures**: mmCIF files written without an `_atom_site.occupancy` column (BindCraft2's, among others) no longer fail to load. Every mmCIF reader supplies the missing column, so sequence extraction, chain-role resolution (and with it Target Contacts), tag metrics and superposition all work on those files.
 
 ## [0.4.2] - 2026-11-03
 

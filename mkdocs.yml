@@ -19,6 +19,7 @@ theme:
     - json
     - python
     - bash
+    - powershell
     - nginx
     - http
 

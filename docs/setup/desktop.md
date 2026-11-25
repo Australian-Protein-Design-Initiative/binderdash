@@ -37,6 +37,16 @@ xattr -cr Binderdash.app
 
 The app uses the Microsoft Edge [WebView2 runtime](https://developer.microsoft.com/en-us/microsoft-edge/webview2/), which is already installed on current Windows 10 and 11. If SmartScreen warns about an unsigned app, choose **More info**, then **Run anyway**.
 
+!!! warning "If the app does not start"
+
+    An error like `RuntimeError: Failed to resolve Python.Runtime.Loader.Initialize` means Windows has marked the unzipped files as coming from the internet, and .NET will not load the bundled `Python.Runtime.dll` while that mark is on it. Clear the mark and run the app again:
+
+    ```powershell
+    Get-ChildItem 'C:\path\to\Binderdash' -Recurse -File | Unblock-File
+    ```
+
+    Right-clicking the zip, choosing **Properties** and ticking **Unblock** before unzipping avoids it.
+
 ## Loading your runs
 
 1. Open **Ingest Runs** and use **Choose folder** to pick the folder that contains your design runs. The path is saved for future sessions.

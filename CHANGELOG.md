@@ -22,6 +22,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **Docs**: The documentation site and repository links now point at [Australian-Protein-Design-Initiative/binderdash](https://github.com/Australian-Protein-Design-Initiative/binderdash). The published docs are at <https://australian-protein-design-initiative.github.io/binderdash/>.
+- **Desktop**: The Windows zip now holds a version-stamped `Binderdash-X.Y.Z`
+  folder. Every build used to extract to a folder named `Binderdash`, so
+  unzipping a new one over an old one merged the two into a mix of both
+  rather than replacing it.
 
 ### Fixed
 
@@ -35,6 +39,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Downloads**: A design bundle zip unpacks into one folder named after the download (the order name, or `saved_set_<name>`).
 - **Sequence prep / DNA optimisation**: A custom nucleotide addition that is not a whole number of codons stays as literal DNA during optimisation, so the design and tag reading frame stays aligned.
 - **Structures**: mmCIF files written without an `_atom_site.occupancy` column (BindCraft2's, among others) no longer fail to load. Every mmCIF reader supplies the missing column, so sequence extraction, chain-role resolution (and with it Target Contacts), tag metrics and superposition all work on those files.
+- **Desktop**: The app no longer reports "backend did not start" on a slow
+  first launch. A cold start of the frozen bundle on Windows spends around
+  30 seconds importing before uvicorn binds - the extracted files are not in
+  the page cache and Defender scans each one - and `/health` was measured at
+  47 seconds on a clean Windows 11 VM, against the 10 seconds the launcher
+  allowed. It put up a startup-error window while its own backend was still
+  coming up behind it. The wait is now 180 seconds, and still fails
+  immediately if the server thread dies.
+- **Desktop**: A windowed build logged every record twice, because the log
+  file got both the stream handler (stdout and stderr are redirected to it
+  when there is no console) and a second file handler on the same path.
 
 ### Security
 

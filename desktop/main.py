@@ -27,7 +27,14 @@ from desktop.paths import is_frozen, repo_root, user_data_dir
 logger = logging.getLogger(__name__)
 
 DEFAULT_PORT = 8765
-HEALTH_TIMEOUT_S = 10.0
+# A cold start of the frozen bundle on Windows spends ~30s importing before
+# uvicorn binds: the extracted files are not in the page cache and Defender
+# scans each one. Measured at 47s to a healthy /health on a clean Windows 11
+# VM, against the 10s this used to allow - so the app reported a startup
+# failure while its own backend was still coming up behind the error window.
+# Waiting longer is free: _wait_for_health returns as soon as the server
+# thread dies, so a backend that genuinely cannot start still fails fast.
+HEALTH_TIMEOUT_S = 180.0
 HEALTH_POLL_INTERVAL_S = 0.2
 
 
@@ -170,7 +177,7 @@ def _persist_window_geometry(config: DesktopConfig) -> None:
         logger.debug("Could not persist window geometry: %s", e)
 
 
-def _redirect_missing_streams(log_file: Path) -> None:
+def _redirect_missing_streams(log_file: Path) -> bool:
     """Give a windowed build somewhere to write.
 
     A frozen windowed app - every Windows build, and a macOS .app opened from
@@ -179,9 +186,13 @@ def _redirect_missing_streams(log_file: Path) -> None:
     uvicorn's log formatter calls sys.stdout.isatty() and brings down logging
     configuration with it. Point them at the log file rather than discarding
     them, so uvicorn's own output still reaches a user's bug report.
+
+    Returns whether it redirected, so the caller can skip adding a second
+    handler on the same file - basicConfig's stream handler already writes
+    there, and two handlers logged every record twice.
     """
     if sys.stdout is not None and sys.stderr is not None:
-        return
+        return False
 
     log_file.parent.mkdir(parents=True, exist_ok=True)
     stream = open(log_file, "a", encoding="utf-8", buffering=1)
@@ -189,11 +200,12 @@ def _redirect_missing_streams(log_file: Path) -> None:
         sys.stdout = stream
     if sys.stderr is None:
         sys.stderr = stream
+    return True
 
 
 def main() -> int:
     log_file = user_data_dir() / "binderdash.log"
-    _redirect_missing_streams(log_file)
+    streams_redirected = _redirect_missing_streams(log_file)
 
     logging.basicConfig(
         level=logging.INFO,
@@ -203,11 +215,12 @@ def main() -> int:
     port = _pick_port()
     config = apply_desktop_env(port)
 
-    file_handler = logging.FileHandler(log_file, encoding="utf-8")
-    file_handler.setFormatter(
-        logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-    )
-    logging.getLogger().addHandler(file_handler)
+    if not streams_redirected:
+        file_handler = logging.FileHandler(log_file, encoding="utf-8")
+        file_handler.setFormatter(
+            logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+        )
+        logging.getLogger().addHandler(file_handler)
 
     logger.info(
         "Starting Binderdash desktop (frozen=%s, port=%s, data_dir=%s)",

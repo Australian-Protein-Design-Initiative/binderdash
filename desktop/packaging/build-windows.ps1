@@ -35,10 +35,10 @@ if (-not (Test-Path $distDir)) {
 }
 
 $readme = @"
-Binderdash (Windows)
+Binderdash $version (Windows)
 
 1. Unzip this folder anywhere.
-2. Run Binderdash.exe.
+2. Open the Binderdash-$version folder and run Binderdash.exe.
 
 Requires Microsoft Edge WebView2 runtime:
 https://developer.microsoft.com/en-us/microsoft-edge/webview2/
@@ -49,7 +49,9 @@ If SmartScreen warns about an unsigned app, choose More info → Run anyway.
 $staging = Join-Path $RepoRoot "dist\windows-staging"
 if (Test-Path $staging) { Remove-Item -Recurse -Force $staging }
 New-Item -ItemType Directory -Path $staging | Out-Null
-Copy-Item -Recurse $distDir (Join-Path $staging "Binderdash")
+# Versioned folder name: extracting two builds of the same version-less
+# "Binderdash" folder merges them, leaving a mix of both on disk.
+Copy-Item -Recurse $distDir (Join-Path $staging "Binderdash-$version")
 Set-Content -Path (Join-Path $staging "README.txt") -Value $readme -Encoding UTF8
 
 $zipPath = Join-Path $RepoRoot "dist\$zipName"

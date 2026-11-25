@@ -19,7 +19,7 @@ def test_logging_configures_with_no_console(tmp_path, monkeypatch):
     monkeypatch.setattr(sys, "stderr", None)
 
     log_file = tmp_path / "not-created-yet" / "binderdash.log"
-    _redirect_missing_streams(log_file)
+    assert _redirect_missing_streams(log_file) is True
 
     assert sys.stdout is not None
     assert sys.stderr is not None
@@ -38,7 +38,9 @@ def test_existing_streams_are_left_alone(tmp_path, monkeypatch):
     monkeypatch.setattr(sys, "stderr", sentinel)
 
     log_file = tmp_path / "binderdash.log"
-    _redirect_missing_streams(log_file)
+    # False tells main() the stream handler already covers the log file, so it
+    # must not add a FileHandler on top and log every record twice.
+    assert _redirect_missing_streams(log_file) is False
 
     assert sys.stdout is sentinel
     assert sys.stderr is sentinel

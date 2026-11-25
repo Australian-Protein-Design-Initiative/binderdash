@@ -27,6 +27,7 @@
         <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/json.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/python.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/bash.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/powershell.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/nginx.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/http.min.js"></script>
       <script>hljs.highlightAll();</script> 
@@ -157,6 +158,12 @@
 <li>Run <code>Binderdash.exe</code>.</li>
 </ol>
 <p>The app uses the Microsoft Edge <a href="https://developer.microsoft.com/en-us/microsoft-edge/webview2/">WebView2 runtime</a>, which is already installed on current Windows 10 and 11. If SmartScreen warns about an unsigned app, choose <strong>More info</strong>, then <strong>Run anyway</strong>.</p>
+<div class="admonition warning">
+<p class="admonition-title">If the app does not start</p>
+<p>An error like <code>RuntimeError: Failed to resolve Python.Runtime.Loader.Initialize</code> means Windows has marked the unzipped files as coming from the internet, and .NET will not load the bundled <code>Python.Runtime.dll</code> while that mark is on it. Clear the mark and run the app again:</p>
+<pre class="highlight"><code class="language-powershell">Get-ChildItem 'C:\path\to\Binderdash' -Recurse -File | Unblock-File</code></pre>
+<p>Right-clicking the zip, choosing <strong>Properties</strong> and ticking <strong>Unblock</strong> before unzipping avoids it.</p>
+</div>
 <h2 id="loading-your-runs">Loading your runs<a class="headerlink" href="#loading-your-runs" title="Permanent link">&para;</a></h2>
 <ol>
 <li>Open <strong>Ingest Runs</strong> and use <strong>Choose folder</strong> to pick the folder that contains your design runs. The path is saved for future sessions.</li>

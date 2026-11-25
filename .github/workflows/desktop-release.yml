@@ -12,7 +12,12 @@ concurrency:
 
 jobs:
   build-linux:
-    runs-on: ubuntu-latest
+    # Pinned, not ubuntu-latest: the AppImage bundles the distro's python3-gi, whose
+    # compiled bindings only load under the Python minor version they were built for.
+    # 24.04 ships Python 3.12, matching the uv interpreter below. ubuntu-latest moved
+    # to 26.04 and broke that pairing. Raise both together, or binderdash.spec will
+    # fail the build with the mismatch.
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 

@@ -139,13 +139,18 @@ jobs:
         shell: pwsh
         run: ./desktop/packaging/build-windows.ps1
 
-      # Windows builds are windowed, so the exit code is the only channel here.
+      # Deliberately no -NoNewWindow: that attaches a console the app would never
+      # have when double-clicked, and a windowed build starts with sys.stdout set
+      # to None. Launching it the way a user does is the only way this catches
+      # anything that touches the missing streams. Exit code is the only channel.
       - name: Smoke-test executable
         shell: pwsh
         run: |
           $p = Start-Process -FilePath "dist\Binderdash\Binderdash.exe" `
-            -ArgumentList "--selftest" -PassThru -Wait -NoNewWindow
+            -ArgumentList "--selftest" -PassThru -Wait
           if ($p.ExitCode -ne 0) {
+            $log = Join-Path $env:LOCALAPPDATA "Binderdash\binderdash.log"
+            if (Test-Path $log) { Get-Content $log -Tail 60 }
             throw "Desktop selftest failed with exit code $($p.ExitCode)"
           }
 

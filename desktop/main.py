@@ -170,7 +170,31 @@ def _persist_window_geometry(config: DesktopConfig) -> None:
         logger.debug("Could not persist window geometry: %s", e)
 
 
+def _redirect_missing_streams(log_file: Path) -> None:
+    """Give a windowed build somewhere to write.
+
+    A frozen windowed app - every Windows build, and a macOS .app opened from
+    Finder - starts with no console attached, so sys.stdout and sys.stderr are
+    None. Anything that inspects them then fails before the app can start:
+    uvicorn's log formatter calls sys.stdout.isatty() and brings down logging
+    configuration with it. Point them at the log file rather than discarding
+    them, so uvicorn's own output still reaches a user's bug report.
+    """
+    if sys.stdout is not None and sys.stderr is not None:
+        return
+
+    log_file.parent.mkdir(parents=True, exist_ok=True)
+    stream = open(log_file, "a", encoding="utf-8", buffering=1)
+    if sys.stdout is None:
+        sys.stdout = stream
+    if sys.stderr is None:
+        sys.stderr = stream
+
+
 def main() -> int:
+    log_file = user_data_dir() / "binderdash.log"
+    _redirect_missing_streams(log_file)
+
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -179,7 +203,6 @@ def main() -> int:
     port = _pick_port()
     config = apply_desktop_env(port)
 
-    log_file = user_data_dir() / "binderdash.log"
     file_handler = logging.FileHandler(log_file, encoding="utf-8")
     file_handler.setFormatter(
         logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")

@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><link rel="canonical" href="https://australian-protein-design-initiative.github.io/binderdash/latest/development/storage/" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>Storage architecture - Binderdash</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+        <link href="../../styles.purple.css" rel="stylesheet" />
+        <link href="../../css/version-select.css" rel="stylesheet" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Storage architecture";
+        var mkdocs_page_input_path = "development/storage.md";
+        var mkdocs_page_url = "/binderdash/latest/development/storage/";
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/yaml.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/json.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/python.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/bash.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/nginx.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/http.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> Binderdash
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../..">Home</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Getting started</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../setup/desktop/">Desktop app</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../setup/docker/">Docker deployment</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../setup/authentication/">Authentication</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Usage</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../usage/filtering-ranking/">Filtering and ranking</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Administration</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../admin/backup-restore/">Backup and restore</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../admin/database-migrations/">Database migrations</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Development</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../setup/">Development setup</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/">REST API</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../mcp/">MCP server</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../pipeline-methods/">Pipeline method types</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../sequence_preparation/">Sequence preparation</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Storage architecture</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#1-server-side-database-sqlite-by-default">1. Server-side database (SQLite by default)</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#2-browser-storage-per-user-per-browser-client-side-only">2. Browser storage (per-user, per-browser, client-side only)</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#3-server-filesystem">3. Server filesystem</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#4-download-bundles">4. Download bundles</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#storage-persistence-summary">Storage persistence summary</a>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../download-bundles/">Download bundles</a>
+                  </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="" href="https://github.com/Australian-Protein-Design-Initiative/binderdash/blob/main/CHANGELOG.md">Release history</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">Binderdash</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Development</li>
+      <li class="breadcrumb-item active">Storage architecture</li>
+    <li class="wy-breadcrumbs-aside">
+          <a href="https://github.com/Australian-Protein-Design-Initiative/binderdash/edit/main/docs/development/storage.md" class="icon icon-github"> Edit on GitHub</a>
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="storage-architecture">Storage architecture<a class="headerlink" href="#storage-architecture" title="Permanent link">&para;</a></h1>
+<p>Binderdash stores data in three locations: a server-side database, browser IndexedDB, and the server filesystem. Use this reference when planning backups, multi-user deployments, or container rebuilds. For backup procedures, see <a href="../../admin/backup-restore/">Backup and restore</a>.</p>
+<h2 id="1-server-side-database-sqlite-by-default">1. Server-side database (SQLite by default)<a class="headerlink" href="#1-server-side-database-sqlite-by-default" title="Permanent link">&para;</a></h2>
+<p>The <code>DATABASE</code> environment variable (see <code>AGENTS.md</code>, resolved in <code>backend/persistence/factory.py</code>) selects the database backend. When <code>DATABASE</code> is unset, Binderdash uses <code>NoopDesignsRepository</code>, disables database persistence (which also disables per-user API keys), and serves data from the in-memory cache populated by startup filesystem scans.</p>
+<p>With <code>DATABASE=sqlite:///path/to/file</code> (or the default <code>backend/data/binderdash.sqlite</code>), <code>backend/persistence/sqlite_repo.py</code> creates these tables:</p>
+<table>
+<thead>
+<tr>
+<th>Table</th>
+<th>Contents</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>binderdash_runs</code></td>
+<td>Run-level metadata: method, run name, project ID, resolved run path, <code>ingested_at</code>, and a <code>run_json</code> blob.</td>
+</tr>
+<tr>
+<td><code>binderdash_designs</code></td>
+<td>Per-design records with indexed columns (<code>run_id</code>, <code>design_id</code>, <code>tag</code>, <code>good</code>, <code>binder_chain</code>, <code>short_name</code>), a <code>data_json</code> blob for method-specific score columns, and <code>extra_data</code> for user-added fields. Startup reads this table into the in-memory <code>designs_cache</code> (see <code>cache.py</code>).</td>
+</tr>
+<tr>
+<td><code>binderdash_users</code></td>
+<td>User accounts: email, display name, picture URL, <code>is_admin</code>, <code>is_active</code>, and first/last login timestamps. Non-null emails are unique and link logins across auth providers.</td>
+</tr>
+<tr>
+<td><code>binderdash_user_identities</code></td>
+<td>Auth identities per <code>(provider, identifier)</code> mapped to <code>binderdash_users</code>. Credentials are stored separately in <code>LOCAL_USERS</code> bcrypt hashes or delegated to PAM or Google OAuth.</td>
+</tr>
+<tr>
+<td><code>binderdash_api_keys</code></td>
+<td>Per-user API keys: name, key prefix, <code>key_hash</code>, and created/expires/revoked/last-used timestamps. Key names are unique among active keys for a given user.</td>
+</tr>
+<tr>
+<td><code>binderdash_auth_users</code></td>
+<td>Legacy login-audit table kept for backward compatibility. Startup migrations copy existing rows into <code>binderdash_users</code> and <code>binderdash_user_identities</code>.</td>
+</tr>
+<tr>
+<td><code>binderdash_tag_metrics_cache</code></td>
+<td>Cached tag-placement metrics (SASA-based tag-site scoring), keyed by run, design, structure file, and tag parameters to avoid recomputing repeated UI requests.</td>
+</tr>
+<tr>
+<td><code>binderdash_structural_metrics_cache</code></td>
+<td>Cached structural metrics from <code>backend/filtering/structural_metrics.py</code> (secondary structure, hydrophobic patch area, hbonds/saltbridges, delta SASA), keyed by run, design, structure file, and chain selection.</td>
+</tr>
+<tr>
+<td><code>binderdash_target_contacts_cache</code></td>
+<td>Cached per-design target contact records, keyed by run, design, structure file, chains, and a parameter hash (<code>params_key</code>).</td>
+</tr>
+<tr>
+<td><code>binderdash_target_residues</code></td>
+<td>Per-run target residue reference data and <code>target_moves</code> flag, keyed by run, <code>params_key</code>, and chains.</td>
+</tr>
+<tr>
+<td><code>binderdash_saved_sets</code></td>
+<td>Named Saved Sets created from the Filtering tab: id, name, creation timestamp, source run IDs, filter/ranking/diversity recipe (<code>filter_params</code> JSON), and <code>result_summary</code> JSON. Saved Sets are stored server-side, shared across all users of the server/database, and unaffected by clearing browser data.</td>
+</tr>
+<tr>
+<td><code>binderdash_saved_set_designs</code></td>
+<td>Designs belonging to each Saved Set at creation time: design/run/source-path identifiers, final rank, quality score, diversity-subset membership, and a metrics snapshot. Saved Sets are immutable after creation except for renaming (<code>PATCH /api/saved-sets/{id}</code>); clicking "reapply filters" in the UI creates a new set instead of editing the existing one.</td>
+</tr>
+</tbody>
+</table>
+<p>None of these tables store structure files (PDB/CIF) or raw run output. They store only metadata, computed metrics, and filesystem paths pointing to the server files in §3.</p>
+<p>SQLite is the only implemented backend. Setting <code>DATABASE</code> to any non-<code>sqlite</code> scheme (including <code>postgres</code> or <code>postgresql</code>) causes startup to fail with a <code>RuntimeError</code> instead of falling back to <code>NoopDesignsRepository</code>. To run without persistence, leave <code>DATABASE</code> unset.</p>
+<h2 id="2-browser-storage-per-user-per-browser-client-side-only">2. Browser storage (per-user, per-browser, client-side only)<a class="headerlink" href="#2-browser-storage-per-user-per-browser-client-side-only" title="Permanent link">&para;</a></h2>
+<p>Binderdash does not use <code>localStorage</code>. Client-side UI state is stored in IndexedDB via <code>frontend/src/persistence/</code> (<code>db.ts</code>, <code>store.ts</code>, <code>keys.ts</code>, <code>hydrate.ts</code>), using a single database (<code>binderdash-app</code>, object store <code>kv</code>) with namespaced keys defined in <code>PERSISTENCE_KEYS</code> (<code>keys.ts</code>):</p>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Contents</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>binderdash:designs-view-state-v1</code></td>
+<td>DesignsView table state: selections, column visibility/order, sort, tag placements.</td>
+</tr>
+<tr>
+<td><code>binderdash:plots-scatter-axes-v1</code></td>
+<td>Persisted X/Y axis choices per method for the Plots tab.</td>
+</tr>
+<tr>
+<td><code>binderdash:filtering-view-state-v1</code></td>
+<td>Filtering tab working state: hard filters, ranking metrics, alpha/budget, and diversity toggle state. This is unsaved in-progress state, separate from server-side Saved Sets.</td>
+</tr>
+<tr>
+<td><code>binderdash:seq-prep-state-v1</code></td>
+<td>Sequence Preparation tab UI state.</td>
+</tr>
+<tr>
+<td><code>binderdash-viewer-controls-pos</code></td>
+<td>Mol* viewer floating-controls panel position.</td>
+</tr>
+<tr>
+<td><code>binderdash-adv-ref-ui-global</code></td>
+<td>Advanced reference/overlay UI toggles (global).</td>
+</tr>
+<tr>
+<td><code>binderdash-adv-ref:&lt;runId&gt;</code></td>
+<td>Per-run advanced-reference overlay state.</td>
+</tr>
+<tr>
+<td><code>binderdash-tag-placement:&lt;runId&gt;</code></td>
+<td>Per-run tag placement UI state (independent of the DB-cached tag metrics in §1).</td>
+</tr>
+<tr>
+<td><code>binderdash-target-contact-map:&lt;runId&gt;</code></td>
+<td>Per-run target contact map UI state.</td>
+</tr>
+<tr>
+<td><code>binderdash:folders-ui-v1</code></td>
+<td>Folder Browser UI state (expanded folders, selection).</td>
+</tr>
+</tbody>
+</table>
+<p>IndexedDB data is scoped to a single browser profile on one machine. It is not shared across users or devices, is removed by "clear site data", and is independent of server-side persistence. Session authentication uses a separate signed cookie (<code>SessionMiddleware</code> in <code>backend/main.py</code>, signed with <code>SECRET_KEY</code>), not IndexedDB or <code>localStorage</code>.</p>
+<h2 id="3-server-filesystem">3. Server filesystem<a class="headerlink" href="#3-server-filesystem" title="Permanent link">&para;</a></h2>
+<p>Binderdash uses two locations on the server filesystem:</p>
+<ul>
+<li>Run output directories (<code>RUN_BASE_DIRS</code> or ad hoc folders opened via the Folder Browser): original pipeline outputs including results tables and structure files. Binderdash opens these read-only: <code>run_discovery.py</code> scans them and <code>backend/routers/files.py</code> serves structure files on demand. Because the database stores only <code>run_path</code> and <code>source_path</code> references, moving or deleting a run folder causes structure-file downloads and Mol* viewing to fail even while the design rows remain in the database and cache.</li>
+<li>SQLite database file: stored at <code>backend/data/binderdash.sqlite</code> by default (see <code>default_sqlite_url()</code> in <code>backend/persistence/factory.py</code>). Under <code>docker-compose.yml</code>, <code>./data</code> on the host is mounted at <code>/app/data</code> so database state persists across container rebuilds.</li>
+</ul>
+<h2 id="4-download-bundles">4. Download bundles<a class="headerlink" href="#4-download-bundles" title="Permanent link">&para;</a></h2>
+<p>Design bundle zips combine data from all three locations into a single archive without introducing a fourth storage backend: they include the run files (§3), cached metrics (§1), and a JSON snapshot of the browser UI state (§2) so a downloaded set can be inspected or restored later. See <a href="../download-bundles/">Download bundles</a>.</p>
+<p>Saved Sets also store the active UI state inside their <code>filter_params</code> JSON column at creation time, so downloading a set later reproduces both the filter recipe and the table layout. Saved Sets created before this change do not include that field, and the exported bundle marks it as missing.</p>
+<h2 id="storage-persistence-summary">Storage persistence summary<a class="headerlink" href="#storage-persistence-summary" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Server-side storage of Saved Sets: Saved Sets are stored in the <code>binderdash_saved_sets</code> and <code>binderdash_saved_set_designs</code> SQLite tables. They are shared across all users connected to the same server and database file, independent of browser IndexedDB state.</li>
+<li>Clearing browser storage: removes only local UI preferences (table column layout, unsaved filter builder state, viewer panel positions, and tag placement scratch state). Run data, computed metrics, and Saved Sets remain intact.</li>
+<li>Deleting the SQLite file: removes ingested run and design rows and cached tag, structural, and target-contact metrics (which can be recomputed from disk), along with data that cannot be rebuilt from pipeline outputs on disk: Saved Sets, user accounts and identities, per-user API keys, login history, and user-added design fields (<code>good</code>, <code>tag</code>, <code>short_name</code>, <code>extra_data</code>). The original run output directories on the filesystem are not modified.</li>
+</ul>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../sequence_preparation/" class="btn btn-neutral float-left" title="Sequence preparation"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../download-bundles/" class="btn btn-neutral float-right" title="Download bundles">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+        <span>
+          <a href="https://github.com/Australian-Protein-Design-Initiative/binderdash" class="fa fa-github" style="color: #fcfcfc"> GitHub</a>
+        </span>
+    
+    
+      <span><a href="../sequence_preparation/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../download-bundles/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+      <script src="../../js/mermaid-init.mjs" type="module"></script>
+      <script src="../../search/main.js"></script>
+      <script src="../../js/version-select.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

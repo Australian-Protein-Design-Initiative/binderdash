@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><link rel="canonical" href="https://australian-protein-design-initiative.github.io/binderdash/latest/usage/filtering-ranking/" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>Filtering and ranking - Binderdash</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+        <link href="../../styles.purple.css" rel="stylesheet" />
+        <link href="../../css/version-select.css" rel="stylesheet" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Filtering and ranking";
+        var mkdocs_page_input_path = "usage/filtering-ranking.md";
+        var mkdocs_page_url = "/binderdash/latest/usage/filtering-ranking/";
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/yaml.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/json.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/python.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/bash.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/nginx.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/http.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> Binderdash
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../..">Home</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Getting started</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../setup/desktop/">Desktop app</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../setup/docker/">Docker deployment</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../setup/authentication/">Authentication</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Usage</span></p>
+              <ul class="current">
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Filtering and ranking</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#1-hard-filters">1. Hard Filters</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#2-target-contacts">2. Target contacts</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#3-ranking-metrics-quality-score">3. Ranking Metrics (Quality Score)</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#weighted-worst-rank-boltzgen-style">Weighted worst rank (BoltzGen-style)</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#per-metric-rank-weighted-worst-rank">Per-metric rank (weighted worst rank)</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#combining-metrics">Combining metrics</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#4-diversity-selection">4. Diversity Selection</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#5-filter-cascade">5. Filter cascade</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#6-create-saved-set">6. Create Saved Set</a>
+    </li>
+    </ul>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Administration</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../admin/backup-restore/">Backup and restore</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../admin/database-migrations/">Database migrations</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Development</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../development/setup/">Development setup</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../development/api/">REST API</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../development/mcp/">MCP server</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../development/pipeline-methods/">Pipeline method types</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../development/sequence_preparation/">Sequence preparation</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../development/storage/">Storage architecture</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../development/download-bundles/">Download bundles</a>
+                  </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="" href="https://github.com/Australian-Protein-Design-Initiative/binderdash/blob/main/CHANGELOG.md">Release history</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">Binderdash</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Usage</li>
+      <li class="breadcrumb-item active">Filtering and ranking</li>
+    <li class="wy-breadcrumbs-aside">
+          <a href="https://github.com/Australian-Protein-Design-Initiative/binderdash/edit/main/docs/usage/filtering-ranking.md" class="icon icon-github"> Edit on GitHub</a>
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="filtering-and-ranking">Filtering and ranking<a class="headerlink" href="#filtering-and-ranking" title="Permanent link">&para;</a></h1>
+<p>The <strong>Filtering</strong> tab combines all runs selected in <strong>Select Runs</strong> into a single table. Expand the <strong>Available Metrics</strong> panel to inspect every column in the selection, including its canonical name, supporting methods, method-specific raw column names, and min-max range.</p>
+<p>Use the six numbered sections below it to narrow and order your designs. Hard filters and target contacts filter the Designs table as you edit them. Ranking adds a rank column to all designs without hiding rows. Diversity selection narrows the table further when enabled and applied, and Saved Sets store a fixed snapshot on the server.</p>
+<p>The in-progress recipe (filters, ranking metrics, budget, alpha, size buckets, diversity on/off) is stored in the browser (IndexedDB). A Saved Set is a separate server-side snapshot. See <a href="../../development/storage/">Storage architecture</a>.</p>
+<p>For the REST API schemas, see <a href="../../development/api/#filtering-ranking-and-diversity-selection">Filtering, ranking, and diversity selection</a>.</p>
+<h2 id="1-hard-filters">1. Hard Filters<a class="headerlink" href="#1-hard-filters" title="Permanent link">&para;</a></h2>
+<p>A design must pass all enabled filters to remain visible. Edits apply automatically after a short debounce, updating both the Designs table and the <a href="#5-filter-cascade">filter cascade</a>. The status line displays the passing count. Click <strong>Disable all filters</strong> to turn off every row without deleting your rules; disabled rows stay in the list but are ignored.</p>
+<p>Each filter row specifies a column, an operator, and a threshold or value:</p>
+<table>
+<thead>
+<tr>
+<th>Column kind</th>
+<th>Operators</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Numeric</td>
+<td><code>&lt;</code>, <code>≤</code>, <code>&gt;</code>, <code>≥</code></td>
+<td>threshold</td>
+</tr>
+<tr>
+<td>Text</td>
+<td>contains, does not contain, starts with, ends with, equals, not equals, regex</td>
+<td>text</td>
+</tr>
+<tr>
+<td>Either</td>
+<td>is empty, is not empty</td>
+<td>none</td>
+</tr>
+<tr>
+<td>Good</td>
+<td>good, bad, unrated</td>
+<td>none</td>
+</tr>
+</tbody>
+</table>
+<p>Text matching for "contains", "starts with", and "ends with" is case-insensitive; "equals", "not equals", and "regex" are case-sensitive. Null or blank values pass "does not contain" and "not equals" filters.</p>
+<p>The column picker includes canonical metric names (<code>iptm</code>, <code>ptm</code>, <code>rmsd</code>, <code>pae_interaction</code>, <code>hbonds</code>, <code>saltbridge</code>, <code>delta_sasa</code>), raw columns, metadata fields (<code>design_id</code>, <code>project_id</code>, <code>run_name</code>, <code>method</code>, <code>Sequence</code>), and user-set columns (<strong>Good</strong> and <strong>Tag</strong>). <strong>Good</strong> stores the thumbs rating (<strong>good</strong>, <strong>bad</strong>, or <strong>unrated</strong>), and <strong>Tag</strong> stores the terminus choice (<code>N</code>, <code>C</code>, or empty); both appear in the picker even before you rate or tag any designs. Canonical names map to each method's corresponding column via <code>METRIC_ALIASES</code> in <code>backend/filtering/metrics.py</code> (for example, <code>iptm</code> maps to <code>design_to_target_iptm</code> for BoltzGen, <code>Average_i_pTM</code> for BindCraft, <code>iptm</code> for RFdiffusion3, and <code>boltz_iptm</code> for RFdiffusion when a Boltz pulldown column exists).</p>
+<p><code>METRIC_DIRECTIONS</code> in the same module defines default directions for canonical score metrics. Higher-is-better metrics like <code>iptm</code> default new hard filters to <code>&gt;</code>, while lower-is-better metrics like <code>rmsd</code> and <code>pae_interaction</code> default to <code>&lt;</code>. Adding or changing a ranking metric sets the "Higher is better" checkbox from the same map. Unrecognised raw columns keep the default (<code>&lt;</code> for filters, higher-is-better for ranking). The columns API includes <code>higher_is_better</code> on each entry so the UI reads these defaults dynamically.</p>
+<p>If a design's method has no equivalent column for a canonical metric, that design skips the filter. If the method defines the metric but the design's value is null, the design fails the filter. Filtering on a missing raw column name fails all rows. As an exception, missing <strong>Good</strong> and <strong>Tag</strong> values are treated as unrated or empty instead of failing.</p>
+<p>Per-replicate BindCraft columns (<code>1_pLDDT</code>, <code>2_i_pTM</code>, ...) are omitted from the picker because they duplicate the <code>Average_*</code> aggregates.</p>
+<p>Only passing designs appear in the Designs table, but failing designs remain in the ranking pool (<a href="#3-ranking-metrics-quality-score">section 3</a>) with a lower rank. Diversity selection and Saved Sets exclude failing designs.</p>
+<h2 id="2-target-contacts">2. Target contacts<a class="headerlink" href="#2-target-contacts" title="Permanent link">&para;</a></h2>
+<p>Target-contact conditions act as additional hard filters computed directly from each design's 3D structure instead of table columns. Use them to require designs to contact, avoid, bury, or expose specific target residues. They apply on the same debounce as section 1 and count toward both the passing total and the filter-pass count used during ranking.</p>
+<p>Click <strong>Compute target contacts</strong> to parse structures in the selected runs and cache per-residue contact data. The coverage line reports how many designs have cached data; designs without cached contact data fail all target-contact conditions. Contact caching only records residues within 12 Å of the binder, so the distance threshold input caps at 12 Å.</p>
+<p>Binderdash groups runs by target sequence, allowing one target to span runs with different chain IDs. When only one target is present, the residue picker appears directly. With multiple targets, each condition group specifies one target and applies only to runs matching that target (designs from other targets skip the group). If you deselect a group's target run, that group matches zero designs until you remove it or select an active target (which clears the selected residue chips).</p>
+<p>Each condition combines target residues, a comparison operator, a numeric threshold, a measurement qualifier, and a scope.</p>
+<table>
+<thead>
+<tr>
+<th>Comparison</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>within X of binder</td>
+<td>closest approach ≤ X</td>
+</tr>
+<tr>
+<td>further than X from binder</td>
+<td>closest approach &gt; X</td>
+</tr>
+<tr>
+<td>SASA when bound ≤ / ≥</td>
+<td>solvent-accessible surface of the residue in the complex</td>
+</tr>
+<tr>
+<td>ΔSASA on binding ≥ / ≤</td>
+<td>drop in that surface on binding</td>
+</tr>
+</tbody>
+</table>
+<p>Distance uses heavy atoms, Cα, or Cβ. SASA and ΔSASA are in Å², or as a percent of that residue's theoretical maximum (Tien et al. 2013).</p>
+<table>
+<thead>
+<tr>
+<th>Scope</th>
+<th>Passes when</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>any residue</td>
+<td>at least one listed residue meets the comparison</td>
+</tr>
+<tr>
+<td>all residues</td>
+<td>every listed residue that could be evaluated meets it</td>
+</tr>
+<tr>
+<td>at least N</td>
+<td>at least N listed residues meet it</td>
+</tr>
+<tr>
+<td>site total</td>
+<td>the metric, summed over the residues and expressed as a percent of their combined maximum surface, meets the comparison</td>
+</tr>
+</tbody>
+</table>
+<p>The "site total" scope applies only to SASA and ΔSASA, not distance. Listed residues absent from the target sequence are skipped, and if no listed residues exist on the target, the condition passes. Unbound SASA is computed once per run when the target chain coordinates stay fixed, or per design if the target chain moves between designs.</p>
+<h2 id="3-ranking-metrics-quality-score">3. Ranking Metrics (Quality Score)<a class="headerlink" href="#3-ranking-metrics-quality-score" title="Permanent link">&para;</a></h2>
+<p>Select a <strong>Mode</strong> to control how the metric list orders designs. New sessions default to <strong>Simple ranking</strong>.</p>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>Metric ordering</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Simple ranking</td>
+<td>The first enabled metric is the primary key, the next breaks ties, and so on. Each row is labelled 1st, 2nd, 3rd. Weights are not used.</td>
+</tr>
+<tr>
+<td>Weighted-Worst-Rank-Across-Metrics (Boltzgen-style)</td>
+<td>Each metric is ranked, the rank is divided by that metric's weight, and the <strong>worst</strong> of those scaled ranks is the design's score.</td>
+</tr>
+</tbody>
+</table>
+<p>In both modes, designs passing more filters always rank above designs passing fewer, and failing designs remain in the table. Clicking <strong>Apply Ranking</strong> calls <code>POST /api/filtering/rank</code>, inserts the <strong>Ranking</strong> column (<code>binderdash_ranking</code>, 1 = best) as the first data column of the Designs table, and sorts ascending. Re-applying ranking (or running diversity selection, which recomputes ranks) moves the Ranking column back to the front and re-sorts even if you hid or reordered it. Ranking does not change which rows are visible.</p>
+<p>Choosing a preset replaces the current metric list with a predefined recipe for the active mode. Modifying any row clears the preset dropdown selection.</p>
+<p>New sessions start with the <strong>ipTM + Binder pLDDT + Binder RMSD</strong> preset:</p>
+<table>
+<thead>
+<tr>
+<th>Priority</th>
+<th>Metric</th>
+<th>Direction</th>
+<th>Resolves to</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1st</td>
+<td><code>iptm</code></td>
+<td>higher</td>
+<td>BoltzGen <code>design_to_target_iptm</code>, BindCraft <code>Average_i_pTM</code>, RFdiffusion3 <code>iptm</code>, RFdiffusion <code>boltz_iptm</code></td>
+</tr>
+<tr>
+<td>2nd</td>
+<td><code>binder_plddt</code></td>
+<td>higher</td>
+<td>BindCraft <code>Average_Binder_pLDDT</code>, RFdiffusion <code>plddt_binder</code> (else <code>plddt</code>), BoltzGen <code>complex_plddt</code> or <code>design_plddt</code> when present, RFdiffusion3 <code>plddt</code></td>
+</tr>
+<tr>
+<td>3rd</td>
+<td><code>rmsd</code></td>
+<td>lower</td>
+<td>BoltzGen <code>bb_rmsd</code>, RFdiffusion <code>rmsd</code>, RFdiffusion3 <code>rf3_rmsd_target_aligned_binder_rmsd_all</code>, BindCraft <code>Average_Binder_RMSD</code></td>
+</tr>
+</tbody>
+</table>
+<p><code>binder_plddt</code> measures binder-chain confidence. Because BoltzGen final metrics tables often omit pLDDT, Binderdash skips that row and displays a warning.</p>
+<p>The <strong>ipSAE + Binder pLDDT + Binder RMSD</strong> preset replaces the primary key with <code>ipsae</code> (higher is better), which maps to <code>design_ipsae_min</code> in BoltzGen and <code>rf3_ipsae_min</code> in RFdiffusion3. BindCraft and standard RFdiffusion lack an ipSAE column, so that row is skipped with a warning. Simple ranking also includes an <strong>iptm only</strong> preset.</p>
+<h3 id="weighted-worst-rank-boltzgen-style">Weighted worst rank (BoltzGen-style)<a class="headerlink" href="#weighted-worst-rank-boltzgen-style" title="Permanent link">&para;</a></h3>
+<p>Weighted worst rank scores each design by its weakest metric. For every enabled metric, Binderdash ranks all designs, divides each rank by the metric's weight, and takes the largest (worst) scaled rank. Strong performance on one metric does not offset a poor score on another.</p>
+<table>
+<thead>
+<tr>
+<th>Preset</th>
+<th>Metrics</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>BoltzGen defaults</td>
+<td>the six metrics in the table below</td>
+</tr>
+<tr>
+<td>iptm only</td>
+<td><code>iptm</code> at weight 1, higher is better</td>
+</tr>
+</tbody>
+</table>
+<p><strong>BoltzGen defaults</strong> mirrors BoltzGen's <code>Filter</code> recipe (<code>from_inverse_folded=True</code>, <code>use_affinity=False</code>) using canonical names so it works across other methods with matching columns. Instead of BoltzGen's negated <code>neg_min_design_to_target_pae</code>, Binderdash uses raw interaction PAE with <strong>Higher is better</strong> unchecked.</p>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>BoltzGen column</th>
+<th>Also resolves to</th>
+<th>Weight</th>
+<th>Direction</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>iptm</code></td>
+<td><code>design_to_target_iptm</code></td>
+<td>BindCraft <code>Average_i_pTM</code>, RFdiffusion3 <code>iptm</code>, RFdiffusion <code>boltz_iptm</code></td>
+<td>1</td>
+<td>higher</td>
+</tr>
+<tr>
+<td><code>ptm</code></td>
+<td><code>design_ptm</code></td>
+<td>BindCraft <code>Average_pTM</code>, RFdiffusion3 <code>ptm</code></td>
+<td>1</td>
+<td>higher</td>
+</tr>
+<tr>
+<td><code>pae_interaction</code></td>
+<td><code>interaction_pae</code></td>
+<td>RFdiffusion <code>pae_interaction</code>, RFdiffusion3 <code>pair_pae</code>, BindCraft <code>Average_i_pAE</code></td>
+<td>1</td>
+<td>lower</td>
+</tr>
+<tr>
+<td><code>hbonds</code></td>
+<td><code>plip_hbonds_refolded</code></td>
+<td>BindCraft <code>Average_n_InterfaceHbonds</code></td>
+<td>2</td>
+<td>higher</td>
+</tr>
+<tr>
+<td><code>saltbridge</code></td>
+<td><code>plip_saltbridge_refolded</code></td>
+<td>BoltzGen only</td>
+<td>2</td>
+<td>higher</td>
+</tr>
+<tr>
+<td><code>delta_sasa</code></td>
+<td><code>delta_sasa_refolded</code></td>
+<td>BindCraft <code>Average_dSASA</code></td>
+<td>2</td>
+<td>higher</td>
+</tr>
+</tbody>
+</table>
+<p><code>delta_sasa</code> refers to the design pipeline's reported buried-surface column, not Binderdash's own <code>binderdash_delta_sasa</code> column (computed from as-generated structures).</p>
+<p>If an enabled metric has no non-null values in the selected runs (such as <code>saltbridge</code> outside BoltzGen), Binderdash skips it and shows a warning. Disabled rows and rows with weight <code>0</code> are omitted from the ranking request (the UI weight input starts at <code>0.01</code>).</p>
+<h3 id="per-metric-rank-weighted-worst-rank">Per-metric rank (weighted worst rank)<a class="headerlink" href="#per-metric-rank-weighted-worst-rank" title="Permanent link">&para;</a></h3>
+<p>Hard filters and target contacts are evaluated first as annotations, adding <code>num_filters_passed</code> (count of enabled filters passed) and <code>pass_filters</code> (whether all enabled filters passed) without removing rows.</p>
+<p>For each enabled metric, the ranking engine:</p>
+<ol>
+<li>Maps canonical names per row using the same aliases as filters (methods without an equivalent yield null). Existing raw columns are used directly, and metrics with no values in the pool are skipped.</li>
+<li>Negates values when <strong>Higher is better</strong> is unchecked so larger numbers always rank higher.</li>
+<li>Ranks all designs by <code>(num_filters_passed, value)</code> descending. Designs passing more filters always rank ahead of those passing fewer. Ties share the top rank (two designs tied for 2nd both get rank 2, and the next gets rank 4), and null values sort last.</li>
+<li>Divides each rank by the metric's weight.</li>
+</ol>
+<p>Weights represent inverse importance: dividing by a larger weight lowers the scaled rank, reducing how strongly that metric affects the final order. BoltzGen's interface metrics (hydrogen bonds, salt bridges, ΔSASA) use weight 2 so a weak interface count penalises a design half as much as a weak ipTM (weight 1).</p>
+<h3 id="combining-metrics">Combining metrics<a class="headerlink" href="#combining-metrics" title="Permanent link">&para;</a></h3>
+<p>Each design's score key, <code>max_rank</code>, is the maximum of its scaled ranks across enabled metrics. Binderdash orders designs by <code>max_rank</code> ascending (lower is better). Ties break using the first available column among <code>design_to_target_iptm</code>, <code>iptm</code>, or <code>Average_i_pTM</code> (higher is better).</p>
+<p><code>final_rank</code> assigns 1...N in that order and populates the <strong>Ranking</strong> column. <code>quality_score</code> normalises the same order to 1 (best) ... 0 (worst) for <a href="#4-diversity-selection">diversity selection</a> and is hidden from the Designs table.</p>
+<p>Example with four designs, no filters, and two metrics at weight 1:</p>
+<table>
+<thead>
+<tr>
+<th>Design</th>
+<th>ipTM rank</th>
+<th>RMSD rank</th>
+<th>worst (<code>max_rank</code>)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A</td>
+<td>1</td>
+<td>1</td>
+<td>1</td>
+</tr>
+<tr>
+<td>D</td>
+<td>3</td>
+<td>3</td>
+<td>3</td>
+</tr>
+<tr>
+<td>B</td>
+<td>2</td>
+<td>4</td>
+<td>4</td>
+</tr>
+<tr>
+<td>C</td>
+<td>4</td>
+<td>2</td>
+<td>4</td>
+</tr>
+</tbody>
+</table>
+<p>Design A ranks first on both metrics. Designs B and C tie with a <code>max_rank</code> of 4, and the ipTM tie-break puts B ahead of C. Increasing the RMSD weight to 2 scales B's RMSD rank from 4 to 2, lowering B's <code>max_rank</code> to 2 and moving B above D.</p>
+<p>Designs that fail a hard filter always rank below designs passing more filters, regardless of metric scores. Diversity selection and Saved Sets require <code>pass_filters</code> and exclude failing designs, whereas the Ranking column scores the full pool.</p>
+<h2 id="4-diversity-selection">4. Diversity Selection<a class="headerlink" href="#4-diversity-selection" title="Permanent link">&para;</a></h2>
+<p>Diversity selection chooses a subset from designs that passed all hard filters and target-contact conditions, maximising:</p>
+<pre class="highlight"><code class="language-text">(1 − α) × quality_score + α × (1 − similarity to the closest design already picked)</code></pre>
+<p>Pairwise similarity is sequence identity from a Biopython global alignment divided by the length of the longer sequence (matching BoltzGen's normalisation). Selection starts with the highest <code>quality_score</code>, then runs a lazy-greedy loop that recomputes each candidate's marginal gain against all previously selected designs and accepts it once it remains the top candidate.</p>
+<p>Diversity selection is off by default; while off, <strong>Create Saved Set</strong> includes all filter-passing designs and ignores the budget. Enabling the section does not run alignment automatically. Click <strong>Apply Diversity Filter</strong> to run selection (explicitly triggered because pairwise alignment can be slow). Once applied, the Designs table displays only the selected subset, sorted by <strong>Ranking</strong>.</p>
+<p>Editing the budget, α, size buckets, or ranking configuration after applying marks the section <strong>Unapplied</strong> and reverts the table to the hard-filter set until you apply again. Clicking <strong>Apply Diversity Filter</strong> re-runs ranking with the current metrics before selecting and updates the Ranking column. Toggling the section off also reverts the table while caching the last result, so turning it back on with unchanged settings restores the subset without recomputing alignments. The Diversity row in the <a href="#5-filter-cascade">filter cascade</a> mirrors this toggle state.</p>
+<table>
+<thead>
+<tr>
+<th>Control</th>
+<th>Default</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Budget</td>
+<td>24</td>
+<td>Maximum number of designs in the subset. If fewer passing designs have a usable sequence, the subset is smaller and the status message explains why.</td>
+</tr>
+<tr>
+<td>α</td>
+<td>0</td>
+<td>0 uses quality only; 1 uses diversity only. The slider uses a logarithmic scale from 0.0001 to 1 to give finer control near zero, while the number input accepts exact values including 0. Slider marks highlight BoltzGen's defaults: 0.001 for proteins and 0.01 for the peptide-anything protocol.</td>
+</tr>
+<tr>
+<td>Size buckets</td>
+<td>none</td>
+<td>Optional length caps. Each bucket <code>{min, max, num_designs}</code> allows at most <code>num_designs</code> selected sequences with length in <code>[min, max)</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>Designs with missing or blank sequences are excluded from diversity selection; otherwise they would score as maximally dissimilar to every other design. If the selected runs lack a <code>Sequence</code> column, diversity selection is skipped until you extract sequences (<code>POST /api/sequences/extract</code>).</p>
+<p>Above Budget is <strong>Keep only best MPNN variant per backbone</strong>. When diversity selection is enabled, designs sharing a <code>backbone_id</code> collapse to the single variant with the best primary score (designs without a <code>backbone_id</code> are kept unchanged). This deduplication runs before diversity selection so the budget covers distinct backbones instead of multiple MPNN variants of the same backbone. Turning diversity selection off preserves the checkbox state but disables deduplication, so Saved Sets created with diversity off retain all filter-passing designs. The <a href="#5-filter-cascade">filter cascade</a> displays this step as <strong>Remove MPNN duplicates</strong> above Diversity Selection. Toggling this checkbox after applying marks diversity <strong>Unapplied</strong>.</p>
+<h2 id="5-filter-cascade">5. Filter cascade<a class="headerlink" href="#5-filter-cascade" title="Permanent link">&para;</a></h2>
+<p>The cascade is the sequential count of designs remaining after each enabled stage. It refreshes on the same debounce as hard filters and target contacts.</p>
+<p>Rows appear in execution order: each hard filter, each target-contact condition, <strong>Remove MPNN duplicates</strong> (when active), Diversity Selection (when enabled or cached), and <strong>Final set</strong>. Disabled filters remain listed without a remaining count. <strong>Final set</strong> shows the count from the last active stage: the applied diverse subset, the post-MPNN-deduplication count, the last enabled filter, or the unfiltered total.</p>
+<p>When diversity selection is enabled but unapplied, the cascade labels it as unapplied; <strong>Final set</strong> then reflects the hard-filter count after MPNN duplicate removal (if checked) or the hard-filter total. When diversity selection is off, MPNN deduplication does not run, and <strong>Final set</strong> equals all designs passing hard filters and target contacts.</p>
+<h2 id="6-create-saved-set">6. Create Saved Set<a class="headerlink" href="#6-create-saved-set" title="Permanent link">&para;</a></h2>
+<p><strong>Create Saved Set</strong> runs the full pipeline (filter, rank, optional best-MPNN-variant deduplication, and diversity selection) and saves an immutable snapshot containing the source run IDs, recipe, result summary, selected designs (with <code>final_rank</code>, <code>quality_score</code>, and diversity membership), and current UI state (table columns, sort order, and <strong>Keep only best MPNN variant per backbone</strong>). Clicking <strong>Reapply filters</strong> or <strong>Load filters</strong> restores both the recipe and that UI state.</p>
+<p>When diversity is enabled, the saved set contains the diverse subset (up to Budget, limited to filter-passing designs with sequences). When diversity is off, it contains all designs passing the filters. The confirmation message reports the selected count, passing count, and total input count.</p>
+<p>Saved sets are stored on the server, visible to all users on that instance, and unaffected by browser resets. You can rename or delete a saved set later; reapplying its filters creates a new set. Open saved sets under <strong>Saved Sets</strong> to inspect or export them as standard design bundles (ranked rows, structures, and saved UI state; see <a href="../../development/download-bundles/">Download bundles</a>).</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../../setup/authentication/" class="btn btn-neutral float-left" title="Authentication"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../../admin/backup-restore/" class="btn btn-neutral float-right" title="Backup and restore">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+        <span>
+          <a href="https://github.com/Australian-Protein-Design-Initiative/binderdash" class="fa fa-github" style="color: #fcfcfc"> GitHub</a>
+        </span>
+    
+    
+      <span><a href="../../setup/authentication/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../../admin/backup-restore/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+      <script src="../../js/mermaid-init.mjs" type="module"></script>
+      <script src="../../search/main.js"></script>
+      <script src="../../js/version-select.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

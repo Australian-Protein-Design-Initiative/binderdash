@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><link rel="canonical" href="https://australian-protein-design-initiative.github.io/binderdash/latest/development/download-bundles/" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>Download bundles - Binderdash</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+        <link href="../../styles.purple.css" rel="stylesheet" />
+        <link href="../../css/version-select.css" rel="stylesheet" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Download bundles";
+        var mkdocs_page_input_path = "development/download-bundles.md";
+        var mkdocs_page_url = "/binderdash/latest/development/download-bundles/";
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/yaml.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/json.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/python.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/bash.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/nginx.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/http.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> Binderdash
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../..">Home</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Getting started</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../setup/desktop/">Desktop app</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../setup/docker/">Docker deployment</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../setup/authentication/">Authentication</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Usage</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../usage/filtering-ranking/">Filtering and ranking</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Administration</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../admin/backup-restore/">Backup and restore</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../admin/database-migrations/">Database migrations</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Development</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../setup/">Development setup</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/">REST API</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../mcp/">MCP server</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../pipeline-methods/">Pipeline method types</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../sequence_preparation/">Sequence preparation</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../storage/">Storage architecture</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Download bundles</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#scope">Scope</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#contents">Contents</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#cached-target-contacts">Cached target contacts</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#versioning">Versioning</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#build-identity">Build identity</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#memory-and-size">Memory and size</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#restore">Restore</a>
+    </li>
+    </ul>
+                  </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="" href="https://github.com/Australian-Protein-Design-Initiative/binderdash/blob/main/CHANGELOG.md">Release history</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">Binderdash</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Development</li>
+      <li class="breadcrumb-item active">Download bundles</li>
+    <li class="wy-breadcrumbs-aside">
+          <a href="https://github.com/Australian-Protein-Design-Initiative/binderdash/edit/main/docs/development/download-bundles.md" class="icon icon-github"> Edit on GitHub</a>
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="download-bundles">Download bundles<a class="headerlink" href="#download-bundles" title="Permanent link">&para;</a></h1>
+<p>A <strong>design bundle</strong> is a single zip archive containing downloaded design data and the UI state that produced it. You can inspect which runs, filters, ranking settings, and tags generated a folder of PDBs and sequences months later, and restore that state if the runs are still available.</p>
+<p>Three endpoints build bundles through <code>backend/bundles/</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Entry point</th>
+<th>Endpoint</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Designs tab download button</td>
+<td><code>POST /api/bundles/designs</code></td>
+</tr>
+<tr>
+<td>Prepare Sequences download button</td>
+<td><code>POST /api/bundles/prepare-sequences</code></td>
+</tr>
+<tr>
+<td>Saved Sets "download"</td>
+<td><code>GET /api/saved-sets/{id}/download</code></td>
+</tr>
+</tbody>
+</table>
+<p>Call <code>POST /api/bundles/estimate</code> beforehand to get counts and byte sizes without reading structure files, allowing the UI to warn before a large download.</p>
+<h2 id="scope">Scope<a class="headerlink" href="#scope" title="Permanent link">&para;</a></h2>
+<p>A bundle includes <strong>the rows currently in the Designs table</strong>: the selected designs if any are checked, or all filtered designs otherwise. It does not include unselected or filtered-out designs from the active runs.</p>
+<h2 id="contents">Contents<a class="headerlink" href="#contents" title="Permanent link">&para;</a></h2>
+<p>All files are placed inside a single top-level folder matching the zip filename: the order name for Prepare Sequences, <code>saved_set_&lt;name&gt;</code> for a Saved Set, or <code>binderdash_designs</code> for a plain Designs-tab download. Extracting the archive creates that folder instead of unpacking files into the current directory.</p>
+<pre class="highlight"><code>&lt;order_or_set_name&gt;/
+  manifest.json                   build info, file inventory with sha256, coverage counts
+  designs.tsv                     one row per design, every column Binderdash holds
+  binders.fasta                   binder sequences, &gt;design_id
+  binderdash_session.json         the UI state that produced the bundle
+  target_contacts.tsv             cached per-residue distances and SASA (if computed)
+  target_contacts_reference.json  per-run apo SASA reference and compute parameters
+  structures/rank0001_&lt;run&gt;_&lt;name&gt;.pdb
+  schemas/*.schema.json           JSON Schema for each JSON member
+  README.txt</code></pre>
+<p>Prepare Sequences adds <code>constructs.tsv</code>, <code>constructs_aa.fasta</code>, <code>constructs_dna.fasta</code>, <code>constructs_twist_aa.csv</code>, <code>constructs_twist_dna.csv</code>, and <code>prepare_sequences.json</code>.</p>
+<p>Every entry point writes the same core member list. A saved set created before UI state recording was added still includes <code>binderdash_session.json</code>, with <code>"captured": false</code> and a note explaining why it is empty.</p>
+<p>General tables use TSV only; the Designs tab still offers a separate CSV download, so duplicating rows in both delimiters inside the archive is unnecessary. <code>constructs_twist_aa.csv</code> and <code>constructs_twist_dna.csv</code> use CSV because they are Twist vendor upload formats (amino acid and nucleotide). If no optimised DNA is available, <code>constructs_twist_dna.csv</code> is omitted and a warning is added to the manifest.</p>
+<h2 id="cached-target-contacts">Cached target contacts<a class="headerlink" href="#cached-target-contacts" title="Permanent link">&para;</a></h2>
+<p><code>target_contacts.tsv</code> exports only records already present in <code>binderdash_target_contacts_cache</code> for the bundled designs. Computing SASA takes minutes, so downloads do not trigger it. Designs missing a cached record are listed in <code>manifest.json</code> under <code>coverage.designs_without_contacts</code>, alongside <code>coverage.contact_params_key</code> (records cached under an older parameter key are not readable by the current configuration and are excluded from coverage counts).</p>
+<p><code>sasa_apo</code> is read from the per-run reference map, except when a run's target moves between designs; in that case the per-design record provides its own <code>sasa_apo</code> value and overrides the shared reference so the SASA delta stays accurate.</p>
+<h2 id="versioning">Versioning<a class="headerlink" href="#versioning" title="Permanent link">&para;</a></h2>
+<p>Every JSON member includes <code>schema_version</code>, a <code>kind</code> discriminator, and the app version and git commit that generated it. Increment the <strong>major</strong> version only for breaking changes (removing or retyping a field); increment the minor version for additive optional fields. Readers reject any major version higher than the one they support and ignore unknown keys.</p>
+<p><code>backend/bundles/json_schemas.py</code> generates schemas from the Pydantic models at request time so each schema matches its corresponding JSON data. To detect unversioned model changes, <code>backend/tests/test_bundle_schemas.py</code> compares each generated schema against a golden snapshot in <code>backend/tests/fixtures/bundle_schemas/</code>. When that test fails, check whether the change is additive (regenerate the golden snapshot and increment the minor version) or breaking (add a new golden file, increment the major version, and keep the previous snapshot).</p>
+<p><code>SessionState</code> and <code>PrepareSequencesPayload</code> use <code>extra="allow"</code> because they mirror Pinia stores that change independently of the backend, and rejecting a download with HTTP 422 over an extra pass-through frontend field would break exports unnecessarily. Presentational fields (coloured segment spans, display duplicates) are accepted on input and stripped before writing so the archive stores data only.</p>
+<h2 id="build-identity">Build identity<a class="headerlink" href="#build-identity" title="Permanent link">&para;</a></h2>
+<p><code>backend/version.py</code> resolves the app version and commit in this order:</p>
+<ol>
+<li>The <code>BINDERDASH_GIT_COMMIT</code> environment variable (set as a Docker build arg).</li>
+<li><code>backend/_build_info.json</code> (written by <code>desktop/packaging/build-common.sh</code> for PyInstaller builds that have no <code>.git</code> directory).</li>
+<li><code>git rev-parse</code> in a source checkout.</li>
+<li><code>unknown</code>.</li>
+</ol>
+<p>Resolution is lazy and cached, so the git subprocess runs at most once per process and only when a bundle is built.</p>
+<h2 id="memory-and-size">Memory and size<a class="headerlink" href="#memory-and-size" title="Permanent link">&para;</a></h2>
+<p>Bundles are written to a <code>tempfile.SpooledTemporaryFile</code> (up to 32 MB in RAM before spilling to disk) and streamed with an accurate <code>Content-Length</code> header. A streaming generator writer would omit <code>Content-Length</code>, turn mid-archive errors into truncated HTTP 200 responses, and still use similar memory because structure files are streamed in both approaches.</p>
+<p>Set <code>BUNDLE_SPOOL_DIR</code> for desktop deployments where <code>/tmp</code> is mounted on tmpfs (RAM), so spilled files write to disk instead of memory.</p>
+<p><code>BUNDLE_MAX_STRUCTURE_FILES</code>, <code>BUNDLE_MAX_STRUCTURE_BYTES</code>, and <code>BUNDLE_MAX_TOTAL_BYTES</code> prevent oversized requests and return HTTP 413 with the measured estimate when exceeded. The UI uses a lower warning threshold because <code>response.blob()</code> buffers the entire archive in browser memory.</p>
+<h2 id="restore">Restore<a class="headerlink" href="#restore" title="Permanent link">&para;</a></h2>
+<p>"Restore session from JSON" in the app header loads a <code>binderdash_session.json</code> or <code>prepare_sequences.json</code> file back into the Pinia stores (<code>frontend/src/session/{sessionState,prepareState}.ts</code>). Restoration runs per section so filters still load even if some original runs are no longer present in Binderdash. Each section reports <code>applied</code>, <code>partial</code>, or <code>skipped</code>.</p>
+<p>Filter and ranking restoration delegates to <code>filteringStore.loadRecipe()</code>, sharing the same code path used by a Saved Set's "Reapply filters" action.</p>
+<p>Optimised DNA is not restored because it depends on both the settings and the input sequences. Leaving it blank and setting the store's staleness flag prompts you to re-run optimisation instead of displaying stale DNA.</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../storage/" class="btn btn-neutral float-left" title="Storage architecture"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+        <span>
+          <a href="https://github.com/Australian-Protein-Design-Initiative/binderdash" class="fa fa-github" style="color: #fcfcfc"> GitHub</a>
+        </span>
+    
+    
+      <span><a href="../storage/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+      <script src="../../js/mermaid-init.mjs" type="module"></script>
+      <script src="../../search/main.js"></script>
+      <script src="../../js/version-select.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

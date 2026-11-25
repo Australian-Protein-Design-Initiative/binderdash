@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Desktop app (Windows)**: The app starts from a folder unzipped straight out of the downloaded release zip. Every extracted file inherits the zip's mark of the web, and .NET Framework refuses to load an assembly from the internet zone, so pythonnet could not load the bundled `Python.Runtime.dll` and the app exited with `RuntimeError: Failed to resolve Python.Runtime.Loader.Initialize` before the window opened. Whether it happened at all depended on how the zip was unpacked - Explorer's **Extract All** marks every file, several other tools do not - so the same build worked on one machine and not the next. The Windows build now ships a `Binderdash.exe.config` opting into `loadFromRemoteSources`, which applies to the app's own process only.
+
 ## [0.4.3] - 2026-11-25
 
 ### Added
